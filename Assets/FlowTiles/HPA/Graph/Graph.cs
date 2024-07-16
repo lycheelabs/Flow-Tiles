@@ -411,7 +411,7 @@ public class Graph
     {
         if (lineSize > 0)
         {
-            if (lineSize <= 5)
+            if (lineSize <= 5 || true)
             {
                 //Line is too small, create 1 inter edges
                 CreateConcreteInterEdge(c1, c2, x, i - (lineSize / 2 + 1));

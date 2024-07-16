@@ -53,6 +53,30 @@ public class Map
     }
 
     /// <summary>
+    /// Loads a map from the base map directory
+    /// </summary>
+    /// <param name="MapName">File from which to load the map</param>
+    public static Map CreateMap(bool[,] wallMap) {
+        Map map = new Map();
+        map.Width = wallMap.GetLength(0);
+        map.Height = wallMap.GetLength(1);
+
+        map.Obstacles = new bool[map.Height][];
+        map.Tiles = new char[map.Height][];
+        map.FreeTiles = 0;
+
+        for (int y = 0; y < map.Height; ++y) {
+            map.Obstacles[y] = new bool[map.Width];
+            map.Tiles[y] = new char[map.Width];
+
+            for (int x = 0; x < map.Width; ++x) {
+                map.Obstacles[y][x] = wallMap[x,y];
+            }
+        }
+        return map;
+    }
+
+    /// <summary>
     /// Gets the base map directory
     /// </summary>
     private static string GetBaseMapDirectory()
