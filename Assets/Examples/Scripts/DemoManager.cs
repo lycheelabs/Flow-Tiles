@@ -1,6 +1,6 @@
 using Unity.Collections;
 using Unity.Entities;
-using Unity.VisualScripting;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
@@ -9,6 +9,7 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 1000;
         public bool[,] WallMap;
+        public NativeArray<bool> WallData;
 
         private Graph Graph;
 
@@ -20,21 +21,21 @@ namespace FlowTiles.Examples {
             WallMap = new bool[LevelSize, LevelSize];
             for (int i = 0; i < LevelSize; i++) {
                 for (int j = 0; j < LevelSize; j++) {
-                    if (Random.value < 0.2f) WallMap[i, j] = true;
+                    if (UnityEngine.Random.value < 0.2f) WallMap[i, j] = true;
                 }
             }
 
-            var wallData = new NativeArray<bool>(LevelSize * LevelSize, Allocator.Persistent);
+            WallData = new NativeArray<bool>(LevelSize * LevelSize, Allocator.Persistent);
             for (int i = 0; i < LevelSize; i++) {
                 for (int j = 0; j < LevelSize; j++) {
                     var index = i + j * LevelSize;
-                    wallData[index] = WallMap[i, j];
+                    WallData[index] = WallMap[i, j];
                 }
             }
 
             var levelSetup = new LevelSetup {
                 Size = LevelSize,
-                Walls = wallData,
+                Walls = WallData,
             };
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -47,6 +48,19 @@ namespace FlowTiles.Examples {
         }
 
         void Update() {
+
+            var position = Camera.main.ScreenToWorldPoint(Input.mousePosition); 
+            var mouseCell = new int2((int)(position.x + 0.5f), (int)(position.y + 0.5f));
+            if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
+                if (Input.GetMouseButtonDown(0)) {
+                    var cellIndex = mouseCell.x + mouseCell.y * LevelSize;
+                    var flip = !WallMap[mouseCell.x, mouseCell.y];
+                    WallData[cellIndex] = flip;
+                    WallMap[mouseCell.x, mouseCell.y] = flip;
+                    Debug.Log("CLICK");
+                }
+            }
+
             /*var nodes = Graph.nodes;
             foreach (var node in nodes.Values) {
                 for (int i = 0; i < node.edges.Count; i++) {
