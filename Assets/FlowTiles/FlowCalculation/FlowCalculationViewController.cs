@@ -104,6 +104,8 @@ namespace FlowField
 			}
 
 			var source = _flowFieldManager.Source;
+			var sourceWavefront = new NativeArray<Vector2Int>(size, Allocator.TempJob);
+			for (int i = 0; i < size; i++) { sourceWavefront[i] = new Vector2Int(i, 0); }
 
 			if (_requiresDispose)
 			{
@@ -114,7 +116,8 @@ namespace FlowField
 			_width = size;
 			_height = size;
 			TimeSpan timeSpan;
-			(_direction, _gradient, timeSpan) = FlowCalculationController.RequestCalculation(speeds, source, size, size);
+			(_direction, _gradient, timeSpan) = FlowCalculationController.RequestCalculation(
+				speeds, sourceWavefront, size, size);
 			
 			PerformanceText.SetText($"Calculated in {timeSpan:mm':'ss':'fff}");
 			_requiresDispose = true;

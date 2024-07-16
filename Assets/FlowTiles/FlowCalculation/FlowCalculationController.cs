@@ -11,7 +11,7 @@ namespace FlowField
     public static class FlowCalculationController
     {
         public static (NativeArray<double2> direction, NativeArray<double> gradient, TimeSpan performance) 
-            RequestCalculation(float[,] speeds, Vector2Int source, int width, int height)
+            RequestCalculation(float[,] speeds, NativeArray<Vector2Int> source, int width, int height)
         {
             var size = (width + 2) * (height + 2);
             var map = new NativeArray<double>(size, Allocator.TempJob);
@@ -34,7 +34,7 @@ namespace FlowField
                 Map = map,
                 Height = height,
                 Width = width,
-                Source = source,
+                Sources = source,
 
                 Direction = direction,
                 Distance = distance,

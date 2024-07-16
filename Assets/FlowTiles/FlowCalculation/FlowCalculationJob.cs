@@ -10,7 +10,7 @@ namespace FlowField
     public struct FlowCalculationJob : IJob
     {
         [ReadOnly] public NativeArray<double> Map;
-        [ReadOnly] public Vector2Int Source;
+        [ReadOnly] public NativeArray<Vector2Int> Sources;
         [ReadOnly] public int Width;
         [ReadOnly] public int Height;
 
@@ -27,41 +27,41 @@ namespace FlowField
 
         private const int NeighborsCount = 4;
 
-        public void Execute()
-        {
-            Source += Vector2Int.one;
-
-            for (var x = 0; x < Width + 2; x++)
-            {
-                for (var y = 0; y < Height + 2; y++)
-                {
-                    Distance[GetIndex(x, y)] = Inf;
-                }
-            }
+        public void Execute() {
 
             var queue = new NativeQueue<Vector2Int>(Allocator.Temp);
             var secondQueue = new NativeQueue<Vector2Int>(Allocator.Temp);
             var thirdQueue = new NativeQueue<Vector2Int>(Allocator.Temp);
             var processedPositions = new NativeArray<bool>((Width + 2) * (Height + 2), Allocator.Temp);
 
-            Distance[GetIndex(Source.x, Source.y)] = 0;
-            Goal[GetIndex(Source.x, Source.y)] = new double2(Source.x, Source.y);
-            processedPositions[GetIndex(Source)] = true;
-
-            for (var i = 0; i < NeighborsCount; i++)
-            {
-                if (TryGetNeighbor(Source, i, out var neighbor))
-                {
-                    var q = Map[GetIndex(neighbor)] > 0 ? queue : secondQueue;
-                    q.Enqueue(neighbor);
-                    processedPositions[GetIndex(neighbor)] = true;
+            for (var x = 0; x < Width + 2; x++) {
+                for (var y = 0; y < Height + 2; y++) {
+                    Distance[GetIndex(x, y)] = Inf;
                 }
+            }
+
+            for (int s = 0; s < Sources.Length; s++) {
+                var source = Sources[s];
+                source += new Vector2Int(1, 1);
+
+                Distance[GetIndex(source.x, source.y)] = 0;
+                Goal[GetIndex(source.x, source.y)] = new double2(source.x, source.y);
+                processedPositions[GetIndex(source)] = true;
+
+                queue.Enqueue(source);
+
+                /*for (var i = 0; i < NeighborsCount; i++) {
+                    if (TryGetNeighbor(source, i, out var neighbor)) {
+                        var q = Map[GetIndex(neighbor)] > 0 ? queue : secondQueue;
+                        q.Enqueue(neighbor);
+                        processedPositions[GetIndex(neighbor)] = true;
+                    }
+                }*/
             }
 
             const int iterationLimit = 500000;
             var iterationsCount = 0;
-
-            var sourcesCount = Map[GetIndex(Source)] == 0 ? queue.Count : 0;
+            var sourcesCount = queue.Count;//Map[GetIndex(Source)] == 0 ? queue.Count : 0;
 
             while ((queue.Count > 0 || secondQueue.Count > 0) && iterationsCount < iterationLimit)
             {
