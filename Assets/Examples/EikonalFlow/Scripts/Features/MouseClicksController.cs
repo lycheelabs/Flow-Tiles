@@ -23,7 +23,7 @@ namespace FlowField
 			{
 				if (_lastProcessedLeft.HasValue == false || p1 != _lastProcessedLeft.Value)
 				{
-					_flowFieldManager.SetSource(p1);
+					//_flowFieldManager.SetSource(p1);
 					_lastProcessedLeft = p1;
 				}
 			}

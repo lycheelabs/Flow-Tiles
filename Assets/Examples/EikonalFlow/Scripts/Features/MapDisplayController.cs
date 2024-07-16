@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Drawing;
 using UnityEngine;
 
 namespace FlowField
@@ -56,13 +57,16 @@ namespace FlowField
 
 		private void BuildSourceMesh ()
 		{
-			var sourcePos = _flowFieldManager.Source;
+			var sources = _flowFieldManager.Goal;
+			var size = sources.Length;
 
 			var vertices = new List<Vector3>();
 			var triangles = new List<int>();
 			_sourceMesh = new();
 
-			MeshUtility.MakeRectangle(ref vertices, ref triangles, new Vector3(sourcePos.x, 0f, sourcePos.y), 1, 1);
+			for (var i = 0; i < size; i += 1) {
+				MeshUtility.MakeRectangle(ref vertices, ref triangles, new Vector3(sources[i].x, 0f, sources[i].y), 1, 1);
+			}
 
 			_sourceMesh.SetVertices(vertices);
 			_sourceMesh.SetTriangles(triangles, 0);
