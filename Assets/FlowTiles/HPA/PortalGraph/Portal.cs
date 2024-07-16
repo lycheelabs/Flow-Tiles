@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace FlowTiles {
+namespace FlowTiles.PortalGraphs {
 
     public class Portal {
         public GridTile pos;

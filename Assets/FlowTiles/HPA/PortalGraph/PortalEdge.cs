@@ -1,7 +1,7 @@
 
 using System.Collections.Generic;
 
-namespace FlowTiles {
+namespace FlowTiles.PortalGraphs {
 
     public class PortalEdge {
         public Portal start;

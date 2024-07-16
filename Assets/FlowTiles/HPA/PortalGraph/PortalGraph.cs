@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-namespace FlowTiles {
+namespace FlowTiles.PortalGraphs {
     public class PortalGraph {
 
         public static float SQRT2 = Mathf.Sqrt(2f);
