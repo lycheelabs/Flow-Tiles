@@ -26,6 +26,9 @@ namespace FlowTiles.Examples {
             for (int i = 0; i < setup.Size; i++) {
                 for (int j = 0; j < setup.Size; j++) {
                     var entity = state.EntityManager.Instantiate(wall);
+                    state.EntityManager.SetComponentData(entity, new WallData {
+                        cell = new int2(i, j),
+                    });
                     state.EntityManager.SetComponentData(entity, new LocalTransform {
                         Position = new float3(i, j, 0),
                         Scale = 1,
