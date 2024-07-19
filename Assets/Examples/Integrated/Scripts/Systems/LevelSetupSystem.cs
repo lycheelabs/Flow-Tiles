@@ -15,10 +15,11 @@ namespace FlowTiles.Examples {
         }
 
         public void OnUpdate (ref SystemState state) {
-            if (!instantiated) {
-                instantiated = true;
+            if (instantiated) {
+                return;
             }
-
+            instantiated = true;
+            
             var setup = SystemAPI.GetSingleton<LevelSetup>();
             var prefabs = SystemAPI.GetSingleton<PrefabLinks>();
             var wall = prefabs.Wall;
@@ -35,6 +36,9 @@ namespace FlowTiles.Examples {
                     });
                 }
             }
+
+            var agent = state.EntityManager.Instantiate(prefabs.Agent);
+            
         }
 
     }

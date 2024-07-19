@@ -103,7 +103,7 @@ namespace FlowTiles.PortalGraphs {
         }
 
         /// <summary>
-        /// Insert start and dest nodes in graph in all layers
+        /// Insert start and dest nodes in graph
         /// </summary>
         public void InsertPortals(GridTile start, GridTile dest, out Portal nStart, out Portal nDest) {
             PortalGraphSector cStart, cDest;

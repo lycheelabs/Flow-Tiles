@@ -10,6 +10,7 @@ namespace FlowTiles.Examples {
     public class DemoManager : MonoBehaviour {
 
         public int LevelSize = 1000;
+        public int Resolution = 10;
         public bool[,] WallMap;
         public NativeArray<bool> WallData;
 
@@ -30,31 +31,43 @@ namespace FlowTiles.Examples {
             WallData = new NativeArray<bool>(LevelSize * LevelSize, Allocator.Persistent);
             for (int i = 0; i < LevelSize; i++) {
                 for (int j = 0; j < LevelSize; j++) {
+                    if (i == 0 && j == 0) continue;
                     var index = i + j * LevelSize;
                     WallData[index] = WallMap[i, j];
                 }
             }
 
-            var levelSetup = new LevelSetup {
-                Size = LevelSize,
-                Walls = WallData,
-            };
-
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+
             var singleton = em.CreateEntity();
             em.AddComponent<LevelSetup>(singleton);
-            em.SetComponentData(singleton, levelSetup);
+            em.SetComponentData(singleton, new LevelSetup {
+                Size = LevelSize,
+                Walls = WallData,
+            });
 
             var map = Map.CreateMap(WallMap);
-            Graph = new PortalGraph(map, 10);
+            Graph = new PortalGraph(map, Resolution);
+                        
         }
 
         void Update() {
 
-            // Modify the grid
             var position = Camera.main.ScreenToWorldPoint(Input.mousePosition); 
             var mouseCell = new int2((int)(position.x + 0.5f), (int)(position.y + 0.5f));
             if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
+
+                // Update the agent
+                var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+                var agents = em.CreateEntityQuery(new ComponentType[] { typeof(AgentData) });
+                if (agents.TryGetSingletonEntity<AgentData>(out Entity agent)) {
+                    em.SetComponentData(agent, new PathfindingData {
+                        OriginCell = 0,
+                        DestCell = mouseCell
+                    });
+                }
+
+                // Modify the grid
                 if (Input.GetMouseButtonDown(0)) {
                     var cellIndex = mouseCell.x + mouseCell.y * LevelSize;
                     var flip = !WallMap[mouseCell.x, mouseCell.y];
