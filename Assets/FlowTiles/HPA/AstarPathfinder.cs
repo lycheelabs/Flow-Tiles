@@ -32,10 +32,14 @@ namespace FlowTiles {
 
             while (pq.Count > 0) {
                 current = pq.Dequeue();
-                if (current.pos.Equals(dest.pos))
+
+                var rootMatches = current.root != null 
+                    && current.root.pos.Equals(dest.pos)
+                    && current.root.color == dest.color;
+                if (current.pos.Equals(dest.pos) || rootMatches) {
                     //Rebuild path and return it
                     return RebuildPath(Parent, current);
-
+                }
 
                 Visited.Add(current.pos);
 

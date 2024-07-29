@@ -1,32 +1,40 @@
 ﻿using FlowTiles.PortalGraphs;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Mathematics;
 
 namespace FlowTiles {
 
     public static class HierarchicalPathfinder {
 
-        public static LinkedList<PortalEdge> FindHierarchicalPath(PortalGraph graph, int2 start, int2 dest) {
-            Portal nStart, nDest;
+        public static List<int2> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
+            var result = new List<int2>();
 
             // Validity checks
             if (!graph.portals.ContainsKey(start) || !graph.portals.ContainsKey(dest)) {
-                //UnityEngine.Debug.LogWarning("NO PATH FOUND");
-                return new LinkedList<PortalEdge>();
+                return result;
             }
 
-            //1. Insert nodes
-            graph.InsertPortals(start, dest, out nStart, out nDest);
+            //1. Find start and end nodes
+            var startExists = graph.TryGetSectorRoot(start.x, start.y, out var startNode);
+            var destExists = graph.TryGetSectorRoot(dest.x, dest.y, out var destNode);
+            if (!startExists || !destExists || startNode.pos.Equals(destNode.pos)) {
+                return result;
+            }
 
-            LinkedList<PortalEdge> path;
             //2. search for path in the highest level
-            path = AstarPathfinder.FindPath(nStart, nDest);
+            var path = AstarPathfinder.FindPath(startNode, destNode).ToArray();
 
-            //3. Remove all created nodes from the graph
-            graph.RemoveAddedPortals();
-
-            return path;
+            //3. process the path
+            if (path.Length == 0) {
+                return result;
+            }
+            for (var i = 0; i < path.Length - 1; i+=2) {
+                result.Add(path[i].end.pos);
+            }
+            result.Add(dest);
+            return result;
         }
 
         public static LinkedList<PortalEdge> FindLowlevelPath(PortalGraph graph, int2 start, int2 dest) {

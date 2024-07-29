@@ -47,6 +47,32 @@ namespace FlowTiles.PortalGraphs {
             return sectors[math.clamp(index, 0, sectors.Length - 1)];
         }
 
+        public bool TryGetSectorRoot(int x, int y, out Portal node) {
+            node = null;
+
+            // Find sector
+            var sectorX = x / resolution;
+            var sectorY = y / resolution;
+            var index = sectorX + widthSectors * sectorY;
+            if (index < 0 || index >= sectors.Length) {
+                return false;
+            }
+
+            // Find color
+            var sector = sectors[index];
+            var tileX = x % resolution;
+            var tileY = y % resolution;
+            var color = sector.Colors[tileX, tileY];
+            if (color <= 0) {
+                return false;
+            }
+
+            // Return root node for color
+            node = sector.RootPortals[color - 1];
+            return true;
+
+        }
+
         /// <summary>
         /// Create the node-based representation of the map
         /// </summary>
@@ -302,6 +328,12 @@ namespace FlowTiles.PortalGraphs {
             for (int i = 0; i < sectors.Length; ++i) {
                 GenerateIntraEdges(sectors[i]);
             }
+
+            // Create root nodes allowing each start tile to reach start portals
+            for (int s = 0; s < sectors.Length; s++) {
+                sectors[s].CreateRootPortals();
+            }
+
         }
 
         private void DetectAdjacentSectors(PortalGraphSector c1, PortalGraphSector c2) {

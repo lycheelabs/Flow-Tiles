@@ -13,7 +13,10 @@ namespace FlowTiles.PortalGraphs {
         //Boundaries of the cluster (with respect to the original map)
         public Boundaries Boundaries;
         public Dictionary<int2, Portal> Portals;
+
+        public int NumColors;
         public int[,] Colors;
+        public List<Portal> RootPortals;
 
         public int Width;
         public int Height;
@@ -26,7 +29,7 @@ namespace FlowTiles.PortalGraphs {
             Width = Boundaries.Max.x - Boundaries.Min.x + 1;
             Height = Boundaries.Max.y - Boundaries.Min.y + 1;
             Colors = new int[Width, Height];
-
+            RootPortals = new List<Portal>();
         }
 
         public bool Contains(int2 pos) {
@@ -36,7 +39,7 @@ namespace FlowTiles.PortalGraphs {
                 pos.y <= Boundaries.Max.y;
         }
 
-        public void FindColors (Map map) {
+        public void FindColors(Map map) {
             var corner = Boundaries.Min;
 
             for (int x = 0; x < Width; x++) {
@@ -46,18 +49,52 @@ namespace FlowTiles.PortalGraphs {
                     Colors[x, y] = blocked ? -1 : 0;
                 }
             }
-            
-            var colorIndex = 1;
+
+            NumColors = 0;
             for (int x = 0; x < Width; x++) {
                 for (var y = 0; y < Height; y++) {
                     if (map.Obstacles[y + corner.y][x + corner.x]) continue;
 
                     if (Colors[x, y] == 0) {
-                        colorIndex++;
-                        FloodFill(new int2(x, y), colorIndex);
+                        NumColors++;
+                        FloodFill(new int2(x, y), NumColors);
                     }
                 }
             }
+
+        }
+
+        public void CreateRootPortals () {
+            var nodes = new List<Portal>(Portals.Values);
+
+            for (int i = 0; i < nodes.Count; i++) {
+                var portal = nodes[i];
+                var tile = portal.pos - Boundaries.Min;
+                var color = Colors[tile.x, tile.y];
+                portal.color = color;
+            }
+
+            var centerTile = new int2(Width / 2, Height / 2) + Boundaries.Min;
+            for (int c = 1; c <= NumColors; c++) {
+                var colorPortal = new Portal(centerTile);
+                colorPortal.color = c;
+
+                for (int p = 0; p < nodes.Count; p++) {
+                    var portal = nodes[p];
+                    if (portal.color == c) {
+                        colorPortal.edges.Add(new PortalEdge {
+                            start = colorPortal,
+                            end = portal,
+                            type = PortalEdgeType.INTRA,
+                            weight = 0,
+                        });
+                        portal.root = colorPortal;
+                    }
+                }
+
+                RootPortals.Add(colorPortal);
+            }
+
         }
 
         private void FloodFill(int2 startPoint, int newColorIndex) {

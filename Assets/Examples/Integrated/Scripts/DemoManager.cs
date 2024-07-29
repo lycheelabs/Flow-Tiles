@@ -2,7 +2,9 @@ using FlowTiles.PortalGraphs;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
@@ -101,15 +103,23 @@ namespace FlowTiles.Examples {
                 }
 
                 // Find a path
-                var path = HierarchicalPathfinder.FindHierarchicalPath(Graph,
-                    new int2(0, 0),
-                    new int2(mouseCell.x, mouseCell.y));
+                var start = new int2(0, 0);
+                var dest = mouseCell;
+                var path = HierarchicalPathfinder.FindPortalPath(Graph, start, dest);
 
-                foreach (var edge in path) {
+                // Visualise the path
+                if (path.Count > 0) {
                     Debug.DrawLine(
-                        new Vector3(edge.start.pos.x, edge.start.pos.y),
-                        new Vector3(edge.end.pos.x, edge.end.pos.y),
+                        new Vector3(start.x, start.y),
+                        new Vector3(path[0].x, path[0].y),
+                        Color.green);
+
+                    for (int i = 0; i < path.Count - 1; i++) {
+                        Debug.DrawLine(
+                            new Vector3(path[i].x, path[i].y),
+                            new Vector3(path[i + 1].x, path[i + 1].y),
                             Color.green);
+                    }
                 }
 
             }
@@ -121,7 +131,7 @@ namespace FlowTiles.Examples {
                 var nodes = cluster.Portals;
 
                 DrawClusterBoundaries(cluster);
-                DrawClusterConnections(nodes);
+                //DrawClusterConnections(nodes);
             }
         }
 
