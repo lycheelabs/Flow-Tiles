@@ -7,11 +7,14 @@ namespace FlowTiles.PortalGraphs {
 
         public static float SQRT2 = Mathf.Sqrt(2f);
 
+        readonly int resolution;
         readonly int width;
         readonly int height;
+        readonly int widthSectors;
+        readonly int heightSectors;
 
         public Dictionary<int2, Portal> portals;
-        public List<PortalGraphSector> sectors;
+        public PortalGraphSector[] sectors;
 
         //We keep track of added nodes to remove them afterwards
         List<Portal> AddedPortals;
@@ -22,19 +25,27 @@ namespace FlowTiles.PortalGraphs {
         public PortalGraph(Map map, int resolution) {
             AddedPortals = new List<Portal>();
 
-            portals = CreateMapRepresentation(map);
+            this.resolution = resolution;
             width = map.Width;
             height = map.Height;
 
-            int widthSectors, heightSectors;
-
-            //Set number of sectors in horizontal and vertical direction
             widthSectors = Mathf.CeilToInt((float)map.Width / resolution);
             heightSectors = Mathf.CeilToInt((float)map.Height / resolution);
-            sectors = BuildSectors(resolution, widthSectors, heightSectors);
+            sectors = new PortalGraphSector[widthSectors * heightSectors];
 
+            //Set number of sectors in horizontal and vertical direction
+            BuildSectors(resolution, widthSectors, heightSectors);
+
+            portals = CreateMapRepresentation(map);
+            LinkSectors();
         }
 
+        public PortalGraphSector GetSector(int x, int y) {
+            var sectorX = x / resolution;
+            var sectorY = y / resolution;
+            var index = sectorX + widthSectors * sectorY;
+            return sectors[math.clamp(index, 0, sectors.Length - 1)];
+        }
 
         /// <summary>
         /// Create the node-based representation of the map
@@ -44,14 +55,20 @@ namespace FlowTiles.PortalGraphs {
             int i, j;
             int2 gridTile;
 
+            // Colorise the sectors...
+            for (int s = 0; s < sectors.Length; s++) {
+                sectors[s].FindColors(map);
+            }
+
             //1. Create all nodes necessary
-            for (i = 0; i < map.Width; ++i)
+            for (i = 0; i < map.Width; ++i) {
                 for (j = 0; j < map.Height; ++j) {
                     if (!map.Obstacles[j][i]) {
                         gridTile = new int2(i, j);
                         mapnodes.Add(gridTile, new Portal(gridTile));
                     }
                 }
+            }
 
             //2. Create all possible edges
             foreach (Portal n in mapnodes.Values) {
@@ -247,40 +264,44 @@ namespace FlowTiles.PortalGraphs {
         /// <summary>
         /// Build all graph sectors
         /// </summary>
-        private List<PortalGraphSector> BuildSectors(int resolution, int width, int height) {
-            List<PortalGraphSector> sectors = new List<PortalGraphSector>();
+        private void BuildSectors(int resolution, int width, int height) {
             PortalGraphSector sector;
-            int i, j;
+            int x, y;
 
             //Create sectors of this level
-            for (i = 0; i < height; ++i) {
-                for (j = 0; j < width; ++j) {
-                    sector = new PortalGraphSector();
-                    sector.Boundaries.Min = new int2(j * resolution, i * resolution);
-                    sector.Boundaries.Max = new int2(
-                        Mathf.Min(sector.Boundaries.Min.x + resolution - 1, this.width - 1),
-                        Mathf.Min(sector.Boundaries.Min.y + resolution - 1, this.height - 1));
+            for (x = 0; x < width; ++x) {
+                for (y = 0; y < height; ++y) {
 
-                    //Adjust size of sector based on boundaries
-                    sector.Width = sector.Boundaries.Max.x - sector.Boundaries.Min.x + 1;
-                    sector.Height = sector.Boundaries.Max.y - sector.Boundaries.Min.y + 1;
-                    sectors.Add(sector);
+                    var min = new int2(x * resolution, y * resolution);
+                    var max = new int2(
+                        Mathf.Min(min.x + resolution - 1, this.width - 1),
+                        Mathf.Min(min.y + resolution - 1, this.height - 1));
+                    var boundaries = new Boundaries { Min = min, Max = max };
+
+                    sector = new PortalGraphSector(boundaries);
+                    sectors[x + y * width] = sector;
                 }
             }
+        }
+
+        /// <summary>
+        /// Link all graph sectors
+        /// </summary>
+        private void LinkSectors() {
+
+            // TODO: improve linking method
 
             //Add border nodes for every adjacent pair of sectors
-            for (i = 0; i < sectors.Count; ++i) {
-                for (j = i + 1; j < sectors.Count; ++j) {
+            for (int i = 0; i < sectors.Length; i++) {
+                for (int j = i + 1; j < sectors.Length; ++j) {
                     DetectAdjacentSectors(sectors[i], sectors[j]);
                 }
             }
 
             //Add Intra edges for every border nodes and pathfind between them
-            for (i = 0; i < sectors.Count; ++i) {
+            for (int i = 0; i < sectors.Length; ++i) {
                 GenerateIntraEdges(sectors[i]);
             }
-
-            return sectors;
         }
 
         private void DetectAdjacentSectors(PortalGraphSector c1, PortalGraphSector c2) {

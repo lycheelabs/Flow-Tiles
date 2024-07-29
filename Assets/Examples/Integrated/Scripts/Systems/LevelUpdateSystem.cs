@@ -7,6 +7,8 @@ namespace FlowTiles.Examples {
 
     public partial struct LevelUpdateSystem : ISystem {
 
+        public const bool VISUALISE_GRAPH_COLORS = true;
+
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<LevelSetup>();
         }
@@ -16,6 +18,7 @@ namespace FlowTiles.Examples {
             new Job {
                 LevelSize = setup.Size,
                 LevelWalls = setup.Walls,
+                LevelColors = setup.Colors,
             }.ScheduleParallel();
         }
 
@@ -24,15 +27,20 @@ namespace FlowTiles.Examples {
 
             public int2 LevelSize;
             [ReadOnly] public NativeArray<bool> LevelWalls;
-    
+            [ReadOnly] public NativeArray<float4> LevelColors;
+
             [BurstCompile]
             private void Execute(Aspect wall, [ChunkIndexInQuery] int sortKey) {
                 var cell = wall.Cell;
                 var index = cell.x + cell.y * LevelSize.x;
                 var data = LevelWalls[index];
 
-                var brightness = data ? 0 : 1;
+                var brightness = data ? 0f : 1;
                 wall.Color = new float4(brightness);
+
+                if (VISUALISE_GRAPH_COLORS) {
+                    wall.Color *= LevelColors[index];
+                }
             }
         }
 

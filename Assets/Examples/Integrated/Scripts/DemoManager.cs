@@ -4,16 +4,27 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
-using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 
 namespace FlowTiles.Examples {
 
     public class DemoManager : MonoBehaviour {
 
+        private static float4[] graphColorings = new float4[] { 
+            new float4(1f, 0.5f, 0.5f, 1),
+            new float4(0.5f, 1f, 0.5f, 1),
+            new float4(0.5f, 0.5f, 1f, 1),
+            new float4(1f, 1f, 0.5f, 1),
+            new float4(0.5f, 1f, 1f, 1),
+            new float4(1f, 0.5f, 1f, 1),
+        };
+
+        // -----------------------------------------
+
         public int LevelSize = 1000;
         public int Resolution = 10;
         public bool[,] WallMap;
         public NativeArray<bool> WallData;
+        public NativeArray<float4> ColorData;
 
         private PortalGraph Graph;
 
@@ -30,6 +41,7 @@ namespace FlowTiles.Examples {
             }
 
             WallData = new NativeArray<bool>(LevelSize * LevelSize, Allocator.Persistent);
+            ColorData = new NativeArray<float4>(LevelSize * LevelSize, Allocator.Persistent);
             for (int i = 0; i < LevelSize; i++) {
                 for (int j = 0; j < LevelSize; j++) {
                     if (i == 0 && j == 0) continue;
@@ -45,10 +57,22 @@ namespace FlowTiles.Examples {
             em.SetComponentData(singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = WallData,
+                Colors = ColorData,
             });
 
             var map = Map.CreateMap(WallMap);
             Graph = new PortalGraph(map, Resolution);
+
+            for (int y = 0; y < LevelSize; y++) {
+                for (int x = 0; x < LevelSize; x++) {
+                    var sector = Graph.GetSector(x, y);
+                    var color = sector.Colors[x % Resolution, y % Resolution];
+                    var index = x + y * LevelSize;
+                    if (color > 0) {
+                        ColorData[index] = graphColorings[(color - 1) % graphColorings.Length];
+                    }
+                }
+            }
 
         }
 
@@ -92,12 +116,12 @@ namespace FlowTiles.Examples {
 
             // Visualise the graph
             var clusters = Graph.sectors;
-            for (int c = 0;  c < clusters.Count; c++) {
+            for (int c = 0;  c < clusters.Length; c++) {
                 var cluster = clusters[c];
                 var nodes = cluster.Portals;
 
-                //DrawClusterConnections(nodes);
                 DrawClusterBoundaries(cluster);
+                DrawClusterConnections(nodes);
             }
         }
 
@@ -117,20 +141,20 @@ namespace FlowTiles.Examples {
 
         private static void DrawClusterBoundaries(PortalGraphSector cluster) {
             Debug.DrawLine(
-                new Vector3(cluster.Boundaries.Min.x, cluster.Boundaries.Min.y),
-                new Vector3(cluster.Boundaries.Max.x, cluster.Boundaries.Min.y),
+                new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Min.y - 0.5f),
+                new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Min.y - 0.5f),
                 Color.blue);
             Debug.DrawLine(
-                new Vector3(cluster.Boundaries.Min.x, cluster.Boundaries.Min.y),
-                new Vector3(cluster.Boundaries.Min.x, cluster.Boundaries.Max.y),
+                new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Min.y - 0.5f),
+                new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Max.y + 0.5f),
                 Color.blue);
             Debug.DrawLine(
-                new Vector3(cluster.Boundaries.Max.x, cluster.Boundaries.Max.y),
-                new Vector3(cluster.Boundaries.Max.x, cluster.Boundaries.Min.y),
+                new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Max.y + 0.5f),
+                new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Min.y - 0.5f),
                 Color.blue);
             Debug.DrawLine(
-                new Vector3(cluster.Boundaries.Max.x, cluster.Boundaries.Max.y),
-                new Vector3(cluster.Boundaries.Min.x, cluster.Boundaries.Max.y),
+                new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Max.y + 0.5f),
+                new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Max.y + 0.5f),
                 Color.blue);
         }
     }
