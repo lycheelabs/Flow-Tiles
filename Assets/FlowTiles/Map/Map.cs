@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace FlowTiles {
@@ -26,7 +27,7 @@ namespace FlowTiles {
 
 
         //Returns whether the tile is a valid free tile in the map or not
-        public bool IsFreeTile(GridTile tile) {
+        public bool IsFreeTile(int2 tile) {
             return tile.x >= 0 && tile.x < Width &&
                 tile.y >= 0 && tile.y < Height &&
                 !Obstacles[tile.y][tile.x];
@@ -101,8 +102,8 @@ namespace FlowTiles {
 
                 //Set boundaries according to width and height
                 map.Boundaries = new Boundaries {
-                    Min = new GridTile(0, 0),
-                    Max = new GridTile(map.Width - 1, map.Height - 1)
+                    Min = new int2(0, 0),
+                    Max = new int2(map.Width - 1, map.Height - 1)
                 };
 
                 //Line 4 to end : map

@@ -1,6 +1,7 @@
 using FlowTiles.PortalGraphs;
 using Priority_Queue;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace FlowTiles {
@@ -12,14 +13,14 @@ namespace FlowTiles {
         }
 
 
-        private static float EuclidianDistance(GridTile tile1, GridTile tile2) {
+        private static float EuclidianDistance(int2 tile1, int2 tile2) {
             return Mathf.Sqrt(Mathf.Pow(tile2.x - tile1.x, 2) + Mathf.Pow(tile2.y - tile1.y, 2));
         }
 
         public static LinkedList<PortalEdge> FindPath(Portal start, Portal dest, Boundaries boundaries = null) {
-            HashSet<GridTile> Visited = new HashSet<GridTile>();
-            Dictionary<GridTile, PortalEdge> Parent = new Dictionary<GridTile, PortalEdge>();
-            Dictionary<GridTile, float> gScore = new Dictionary<GridTile, float>();
+            HashSet<int2> Visited = new HashSet<int2>();
+            Dictionary<int2, PortalEdge> Parent = new Dictionary<int2, PortalEdge>();
+            Dictionary<int2, float> gScore = new Dictionary<int2, float>();
 
             SimplePriorityQueue<Portal, float> pq = new SimplePriorityQueue<Portal, float>();
 
@@ -65,15 +66,15 @@ namespace FlowTiles {
             return new LinkedList<PortalEdge>();
         }
 
-        private static bool IsOutOfGrid(GridTile pos, Boundaries boundaries) {
+        private static bool IsOutOfGrid(int2 pos, Boundaries boundaries) {
             return (pos.x < boundaries.Min.x || pos.x > boundaries.Max.x) ||
                    (pos.y < boundaries.Min.y || pos.y > boundaries.Max.y);
         }
 
         //Rebuild edges
-        private static LinkedList<PortalEdge> RebuildPath(Dictionary<GridTile, PortalEdge> Parent, Portal dest) {
+        private static LinkedList<PortalEdge> RebuildPath(Dictionary<int2, PortalEdge> Parent, Portal dest) {
             LinkedList<PortalEdge> res = new LinkedList<PortalEdge>();
-            GridTile current = dest.pos;
+            int2 current = dest.pos;
             PortalEdge e = null;
 
             while (Parent.TryGetValue(current, out e)) {

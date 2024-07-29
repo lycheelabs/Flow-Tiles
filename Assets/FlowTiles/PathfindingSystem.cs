@@ -77,9 +77,9 @@ namespace FlowTiles {
             [BurstCompile]
             private void Execute(DynamicBuffer<PathRequest> requests, [ChunkIndexInQuery] int sortKey) {
                 foreach (var request in requests) {
-                    UnityEngine.Debug.Log("REQUEST: " + request.destCell);
+                    //UnityEngine.Debug.Log("REQUEST: ");// + request.destCell.);
                 }
-                requests.Clear();
+                requests.Clear(); 
             }
         }
 

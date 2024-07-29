@@ -4,6 +4,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 
 namespace FlowTiles.Examples {
 
@@ -48,7 +49,7 @@ namespace FlowTiles.Examples {
 
             var map = Map.CreateMap(WallMap);
             Graph = new PortalGraph(map, Resolution);
-                        
+
         }
 
         void Update() {
@@ -74,6 +75,19 @@ namespace FlowTiles.Examples {
                     WallData[cellIndex] = flip;
                     WallMap[mouseCell.x, mouseCell.y] = flip;
                 }
+
+                // Find a path
+                var path = HierarchicalPathfinder.FindHierarchicalPath(Graph,
+                    new int2(0, 0),
+                    new int2(mouseCell.x, mouseCell.y));
+
+                foreach (var edge in path) {
+                    Debug.DrawLine(
+                        new Vector3(edge.start.pos.x, edge.start.pos.y),
+                        new Vector3(edge.end.pos.x, edge.end.pos.y),
+                            Color.green);
+                }
+
             }
 
             // Visualise the graph
@@ -82,12 +96,12 @@ namespace FlowTiles.Examples {
                 var cluster = clusters[c];
                 var nodes = cluster.Portals;
 
-                DrawClusterConnections(nodes);
+                //DrawClusterConnections(nodes);
                 DrawClusterBoundaries(cluster);
             }
         }
 
-        private static void DrawClusterConnections(Dictionary<GridTile, Portal> nodes) {
+        private static void DrawClusterConnections(Dictionary<int2, Portal> nodes) {
             foreach (var node in nodes.Values) {
                 for (int e = 0; e < node.edges.Count; e++) {
                     var edge = node.edges[e];

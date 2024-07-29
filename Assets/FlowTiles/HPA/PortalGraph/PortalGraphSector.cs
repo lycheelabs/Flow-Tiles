@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Mathematics;
 
 namespace FlowTiles.PortalGraphs {
 
@@ -9,17 +10,17 @@ namespace FlowTiles.PortalGraphs {
 
         //Boundaries of the cluster (with respect to the original map)
         public Boundaries Boundaries;
-        public Dictionary<GridTile, Portal> Portals;
+        public Dictionary<int2, Portal> Portals;
 
         public int Width;
         public int Height;
 
         public PortalGraphSector() {
             Boundaries = new Boundaries();
-            Portals = new Dictionary<GridTile, Portal>();
+            Portals = new Dictionary<int2, Portal>();
         }
 
-        public bool Contains(GridTile pos) {
+        public bool Contains(int2 pos) {
             return pos.x >= Boundaries.Min.x &&
                 pos.x <= Boundaries.Max.x &&
                 pos.y >= Boundaries.Min.y &&

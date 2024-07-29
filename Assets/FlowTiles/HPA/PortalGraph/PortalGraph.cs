@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace FlowTiles.PortalGraphs {
@@ -9,7 +10,7 @@ namespace FlowTiles.PortalGraphs {
         readonly int width;
         readonly int height;
 
-        public Dictionary<GridTile, Portal> portals;
+        public Dictionary<int2, Portal> portals;
         public List<PortalGraphSector> sectors;
 
         //We keep track of added nodes to remove them afterwards
@@ -38,34 +39,35 @@ namespace FlowTiles.PortalGraphs {
         /// <summary>
         /// Create the node-based representation of the map
         /// </summary>
-        private Dictionary<GridTile, Portal> CreateMapRepresentation(Map map) {
-            var mapnodes = new Dictionary<GridTile, Portal>(map.FreeTiles);
+        private Dictionary<int2, Portal> CreateMapRepresentation(Map map) {
+            var mapnodes = new Dictionary<int2, Portal>(map.FreeTiles);
             int i, j;
-            GridTile gridTile;
+            int2 gridTile;
 
             //1. Create all nodes necessary
             for (i = 0; i < map.Width; ++i)
                 for (j = 0; j < map.Height; ++j) {
                     if (!map.Obstacles[j][i]) {
-                        gridTile = new GridTile(i, j);
+                        gridTile = new int2(i, j);
                         mapnodes.Add(gridTile, new Portal(gridTile));
                     }
                 }
 
             //2. Create all possible edges
             foreach (Portal n in mapnodes.Values) {
+
                 //Look for straight edges
                 for (i = -1; i < 2; i += 2) {
                     SearchMapEdge(map, mapnodes, n, n.pos.x + i, n.pos.y, false);
-
                     SearchMapEdge(map, mapnodes, n, n.pos.x, n.pos.y + i, false);
                 }
 
                 //Look for diagonal edges
-                for (i = -1; i < 2; i += 2)
+                for (i = -1; i < 2; i += 2) {
                     for (j = -1; j < 2; j += 2) {
                         SearchMapEdge(map, mapnodes, n, n.pos.x + i, n.pos.y + j, true);
                     }
+                }
             }
 
             return mapnodes;
@@ -74,9 +76,9 @@ namespace FlowTiles.PortalGraphs {
         /// <summary>
         /// Add the edge to the node if it's a valid map edge
         /// </summary>
-        private void SearchMapEdge(Map map, Dictionary<GridTile, Portal> mapPortals, Portal n, int x, int y, bool diagonal) {
+        private void SearchMapEdge(Map map, Dictionary<int2, Portal> mapPortals, Portal n, int x, int y, bool diagonal) {
             var weight = diagonal ? SQRT2 : 1f;
-            GridTile gridTile = new GridTile();
+            int2 gridTile = 0;
 
             //Don't let diagonal movement occur when an obstacle is crossing the edge
             if (diagonal) {
@@ -105,7 +107,7 @@ namespace FlowTiles.PortalGraphs {
         /// <summary>
         /// Insert start and dest nodes in graph
         /// </summary>
-        public void InsertPortals(GridTile start, GridTile dest, out Portal nStart, out Portal nDest) {
+        public void InsertPortals(int2 start, int2 dest, out Portal nStart, out Portal nDest) {
             PortalGraphSector cStart, cDest;
             Portal newStart, newDest;
             nStart = portals[start];
@@ -164,7 +166,7 @@ namespace FlowTiles.PortalGraphs {
         /// Connect the grid tile to borders by creating a new node
         /// </summary>
         /// <returns>The node created</returns>
-        private Portal ConnectToBorder(GridTile pos, PortalGraphSector c, Portal child) {
+        private Portal ConnectToBorder(int2 pos, PortalGraphSector c, Portal child) {
             Portal newPortal;
 
             //If the position is an actual border node, then return it
@@ -174,7 +176,7 @@ namespace FlowTiles.PortalGraphs {
             //Otherwise create a node and pathfind through border nodes
             newPortal = new Portal(pos) { child = child };
 
-            foreach (KeyValuePair<GridTile, Portal> n in c.Portals) {
+            foreach (KeyValuePair<int2, Portal> n in c.Portals) {
                 ConnectPortals(newPortal, n.Value, c);
             }
 
@@ -254,8 +256,8 @@ namespace FlowTiles.PortalGraphs {
             for (i = 0; i < height; ++i) {
                 for (j = 0; j < width; ++j) {
                     sector = new PortalGraphSector();
-                    sector.Boundaries.Min = new GridTile(j * resolution, i * resolution);
-                    sector.Boundaries.Max = new GridTile(
+                    sector.Boundaries.Min = new int2(j * resolution, i * resolution);
+                    sector.Boundaries.Max = new int2(
                         Mathf.Min(sector.Boundaries.Min.x + resolution - 1, this.width - 1),
                         Mathf.Min(sector.Boundaries.Min.y + resolution - 1, this.height - 1));
 
@@ -316,8 +318,8 @@ namespace FlowTiles.PortalGraphs {
 
             int lineSize = 0;
             for (i = iMin; i < iMax; ++i) {
-                if (x && (portals.ContainsKey(new GridTile(c1.Boundaries.Max.x, i)) && portals.ContainsKey(new GridTile(c2.Boundaries.Min.x, i)))
-                    || !x && (portals.ContainsKey(new GridTile(i, c1.Boundaries.Max.y)) && portals.ContainsKey(new GridTile(i, c2.Boundaries.Min.y)))) {
+                if (x && (portals.ContainsKey(new int2(c1.Boundaries.Max.x, i)) && portals.ContainsKey(new int2(c2.Boundaries.Min.x, i)))
+                    || !x && (portals.ContainsKey(new int2(i, c1.Boundaries.Max.y)) && portals.ContainsKey(new int2(i, c2.Boundaries.Min.y)))) {
                     lineSize++;
                 }
                 else {
@@ -349,15 +351,15 @@ namespace FlowTiles.PortalGraphs {
 
         //Inter edges are edges that crosses sectors
         private void CreateConcreteInterEdge(PortalGraphSector c1, PortalGraphSector c2, bool x, int i) {
-            GridTile g1, g2;
+            int2 g1, g2;
             Portal n1, n2;
             if (x) {
-                g1 = new GridTile(c1.Boundaries.Max.x, i);
-                g2 = new GridTile(c2.Boundaries.Min.x, i);
+                g1 = new int2(c1.Boundaries.Max.x, i);
+                g2 = new int2(c2.Boundaries.Min.x, i);
             }
             else {
-                g1 = new GridTile(i, c1.Boundaries.Max.y);
-                g2 = new GridTile(i, c2.Boundaries.Min.y);
+                g1 = new int2(i, c1.Boundaries.Max.y);
+                g2 = new int2(i, c2.Boundaries.Min.y);
             }
 
             if (!c1.Portals.TryGetValue(g1, out n1)) {

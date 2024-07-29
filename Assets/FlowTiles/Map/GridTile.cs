@@ -1,12 +1,15 @@
 ﻿using UnityEngine;
 using System;
 using System.Diagnostics;
+using Unity.Mathematics;
 
 namespace FlowTiles {
-
+    /*
     [Serializable()]
     [DebuggerDisplay("({x}, {y})")]
     public class GridTile {
+
+        public int2 xy;
         public int x;
         public int y;
 
@@ -17,6 +20,7 @@ namespace FlowTiles {
         public GridTile(int x, int y) {
             this.x = x;
             this.y = y;
+            this.xy = new int2(x, y);
         }
 
         //Initialize a grid pos from a vector 3's x and y values
@@ -60,5 +64,5 @@ namespace FlowTiles {
         }
 
     }
-
+    */
 }

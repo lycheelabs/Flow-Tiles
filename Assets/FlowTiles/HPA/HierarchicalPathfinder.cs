@@ -1,13 +1,20 @@
 ﻿using FlowTiles.PortalGraphs;
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 
 namespace FlowTiles {
 
     public static class HierarchicalPathfinder {
 
-        public static LinkedList<PortalEdge> FindHierarchicalPath(PortalGraph graph, GridTile start, GridTile dest) {
+        public static LinkedList<PortalEdge> FindHierarchicalPath(PortalGraph graph, int2 start, int2 dest) {
             Portal nStart, nDest;
+
+            // Validity checks
+            if (!graph.portals.ContainsKey(start) || !graph.portals.ContainsKey(dest)) {
+                //UnityEngine.Debug.LogWarning("NO PATH FOUND");
+                return new LinkedList<PortalEdge>();
+            }
 
             //1. Insert nodes
             graph.InsertPortals(start, dest, out nStart, out nDest);
@@ -22,7 +29,7 @@ namespace FlowTiles {
             return path;
         }
 
-        public static LinkedList<PortalEdge> FindLowlevelPath(PortalGraph graph, GridTile start, GridTile dest) {
+        public static LinkedList<PortalEdge> FindLowlevelPath(PortalGraph graph, int2 start, int2 dest) {
             Portal nStart = graph.portals[start],
                 nDest = graph.portals[dest];
 
