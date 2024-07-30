@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
@@ -127,13 +128,28 @@ namespace FlowTiles.Examples {
 
                         if (i < path.Count - 1) {
                             var portal = sector.EdgePortals[pos.Cell];
-                            var cell = portal.Position.Cell - corner;
-                            goals = new Vector2Int[] { new Vector2Int(cell.x, cell.y) };
+                            var min = portal.LowerCorner - corner;
+                            var max = portal.UpperCorner - corner;
+                            var w = max.x - min.x + 1;
+                            var h = max.y - min.y + 1;
+                            var numGoals = w * h;
+                            goals = new Vector2Int[numGoals];
+                            int goal = 0;
+                            for (int x = min.x; x <= max.x; x++) {
+                                for (int y = min.y; y <= max.y; y++) {
+                                    goals[goal] = new Vector2Int(x, y);
+                                    goal++;
+                                }
+                            }
                             exitDirection = portal.Direction;
+
+                            //DrawPortalLink(path[i].Cell, path[i + 1].Cell);
+                            DrawPortal(portal.LowerCorner, portal.UpperCorner);
                         }
                         else {
                             var goal = pos.Cell - corner;
                             goals = new Vector2Int[] { new Vector2Int(goal.x, goal.y) };
+                            DrawPortal(pos.Cell, pos.Cell);
                         }
 
                         var flow = FlowCalculationController.RequestCalculation(sector.Costs, goals, exitDirection);
@@ -141,15 +157,9 @@ namespace FlowTiles.Examples {
                         // Visualise flow data
                         VisualiseFlowField(sector, flow);
 
-                        if (i < path.Count - 1) {
-                            DrawPortalLink(
-                                new Vector3(path[i].Cell.x, path[i].Cell.y),
-                                new Vector3(path[i + 1].Cell.x,
-                                path[i + 1].Cell.y));
-                        }
                     }
 
-                    DrawPortalLink(new Vector3(start.x, start.y), new Vector3(path[0].Cell.x, path[0].Cell.y));
+                    //DrawPortalLink(start, path[0].Cell);
 
                 }
 
@@ -211,14 +221,26 @@ namespace FlowTiles.Examples {
                 Color.blue);
         }
 
-        private static void DrawPortalLink (Vector3 pos1, Vector3 pos2) {
-            Debug.DrawLine(pos1, pos2, Color.green);
-
-            Debug.DrawLine(pos2 + new Vector3(-0.4f, -0.4f), pos2 + new Vector3(0.4f, -0.4f), Color.green);
-            Debug.DrawLine(pos2 + new Vector3(-0.4f, -0.4f), pos2 + new Vector3(-0.4f, 0.4f), Color.green);
-            Debug.DrawLine(pos2 + new Vector3(0.4f, 0.4f), pos2 + new Vector3(0.4f, -0.4f), Color.green);
-            Debug.DrawLine(pos2 + new Vector3(0.4f, 0.4f), pos2 + new Vector3(-0.4f, 0.4f), Color.green);
+        private static void DrawPortalLink(int2 from, int2 to) {
+            Debug.DrawLine(ToVector(from), ToVector(to), Color.green);
         }
+
+        private static void DrawPortal (int2 cornerA, int2 cornerB) {
+            //Debug.DrawLine(ToVector(from), ToVector(to), Color.green);
+
+            var pos00 = ToVector(cornerA.x, cornerA.y) + new Vector3(-0.4f, -0.4f);
+            var pos01 = ToVector(cornerA.x, cornerB.y) + new Vector3(-0.4f, 0.4f);
+            var pos10 = ToVector(cornerB.x, cornerA.y) + new Vector3(0.4f, -0.4f);
+            var pos11 = ToVector(cornerB.x, cornerB.y) + new Vector3(0.4f, 0.4f); 
+
+            Debug.DrawLine(pos00, pos01, Color.green);
+            Debug.DrawLine(pos00, pos10, Color.green);
+            Debug.DrawLine(pos11, pos01, Color.green);
+            Debug.DrawLine(pos11, pos10, Color.green);
+        }
+
+        private static Vector3 ToVector(int2 cell) => new Vector3(cell.x, cell.y);
+        private static Vector3 ToVector(int x, int y) => new Vector3(x, y);
 
     }
 

@@ -135,88 +135,86 @@ namespace FlowTiles.PortalGraphs {
 
         /// <summary>
         /// Create border nodes and attach them together.
-        /// We always pass the lower sector first (in c1).
+        /// We always pass the lower sector first (in sector1).
         /// </summary>
-        private void LinkAdjacentSectors(Sector c1, Sector c2, bool horizontal) {
+        private void LinkAdjacentSectors(Sector sector1, Sector sector2, bool horizontal) {
             int i, iMin, iMax;
             if (horizontal) {
-                iMin = c1.Boundaries.Min.y;
-                iMax = iMin + c1.Size.y;
+                iMin = sector1.Boundaries.Min.y;
+                iMax = iMin + sector1.Size.y;
             }
             else {
-                iMin = c1.Boundaries.Min.x;
-                iMax = iMin + c1.Size.x;
+                iMin = sector1.Boundaries.Min.x;
+                iMax = iMin + sector1.Size.x;
             }
 
             int lineSize = 0;
             for (i = iMin; i < iMax; ++i) {
-                if (horizontal && c1.IsOpenAt(new int2(c1.Boundaries.Max.x, i)) 
-                        && c2.IsOpenAt(new int2(c2.Boundaries.Min.x, i))) {
+                if (horizontal && sector1.IsOpenAt(new int2(sector1.Boundaries.Max.x, i)) 
+                        && sector2.IsOpenAt(new int2(sector2.Boundaries.Min.x, i))) {
                     lineSize++;
                 }
-                else if (!horizontal && c1.IsOpenAt(new int2(i, c1.Boundaries.Max.y)) 
-                        && c2.IsOpenAt(new int2(i, c2.Boundaries.Min.y))) {
+                else if (!horizontal && sector1.IsOpenAt(new int2(i, sector1.Boundaries.Max.y)) 
+                        && sector2.IsOpenAt(new int2(i, sector2.Boundaries.Min.y))) {
                     lineSize++;
                 }
                 else {
-                    CreateInterEdges(c1, c2, horizontal, ref lineSize, i);
+                    CreateInterEdges(sector1, sector2, horizontal, lineSize, i);
+                    lineSize = 0;
                 }
             }
 
             //If line size > 0 after looping, then we have another line to fill in
-            CreateInterEdges(c1, c2, horizontal, ref lineSize, i);
+            CreateInterEdges(sector1, sector2, horizontal, lineSize, i);
         }
 
         //i is the index at which we stopped (either its an obstacle or the end of the cluster
-        private void CreateInterEdges(Sector c1, Sector c2, bool x, ref int lineSize, int i) {
+        private void CreateInterEdges(Sector sector1, Sector sector2, bool horizontal, int lineSize, int i) {
             if (lineSize > 0) {
-                if (lineSize <= 5 || true) {
-                    //Line is too small, create 1 inter edges
-                    CreateInterEdge(c1, c2, x, i - (lineSize / 2 + 1));
-                }
-                else {
-                    //Create 2 inter edges
-                    CreateInterEdge(c1, c2, x, i - lineSize);
-                    CreateInterEdge(c1, c2, x, i - 1);
-                }
-
-                lineSize = 0;
+                CreateInterEdge(sector1, sector2, horizontal, i - lineSize, i - 1);// i - (lineSize / 2 + 1));
             }
         }
 
         //Inter edges are edges that crosses sectors
-        private void CreateInterEdge(Sector c1, Sector c2, bool x, int i) {
-            int2 g1, g2, dir;
-            Portal n1, n2;
-            if (x) {
-                g1 = new int2(c1.Boundaries.Max.x, i);
-                g2 = new int2(c2.Boundaries.Min.x, i);
+        private void CreateInterEdge(Sector sector1, Sector sector2, bool horizontal, int start, int end) {
+            int mid = (start + end) / 2;
+            int2 start1, start2, end1, end2, dir;
+            Portal portal1, portal2;
+            if (horizontal) {
+                start1 = new int2(sector1.Boundaries.Max.x, start);
+                end1 = new int2(sector1.Boundaries.Max.x, end);
+                start2 = new int2(sector2.Boundaries.Min.x, start);
+                end2 = new int2(sector2.Boundaries.Min.x, end);
                 dir = new int2(1, 0);
             }
             else {
-                g1 = new int2(i, c1.Boundaries.Max.y);
-                g2 = new int2(i, c2.Boundaries.Min.y);
+                start1 = new int2(start, sector1.Boundaries.Max.y);
+                end1 = new int2(end, sector1.Boundaries.Max.y);
+                start2 = new int2(start, sector2.Boundaries.Min.y);
+                end2 = new int2(end, sector2.Boundaries.Min.y);
                 dir = new int2(0, 1);
             }
 
-            if (!c1.EdgePortals.TryGetValue(g1, out n1)) {
-                n1 = new Portal(g1, c1.Index, dir);
-                c1.EdgePortals.Add(g1, n1);
+            var mid1 = (start1 + end1) / 2;
+            if (!sector1.EdgePortals.TryGetValue(mid1, out portal1)) {
+                portal1 = new Portal(start1, end1, sector1.Index, dir);
+                sector1.EdgePortals.Add(mid1, portal1);
             }
 
-            if (!c2.EdgePortals.TryGetValue(g2, out n2)) {
-                n2 = new Portal(g2, c2.Index, -dir);
-                c2.EdgePortals.Add(g2, n2);
+            var mid2 = (start2 + end2) / 2;
+            if (!sector2.EdgePortals.TryGetValue(mid2, out portal2)) {
+                portal2 = new Portal(start2, end2, sector2.Index, -dir);
+                sector2.EdgePortals.Add(mid2, portal2);
             }
 
-            n1.Edges.Add(new PortalEdge() {
-                start = n1.Position,
-                end = n2.Position,
+            portal1.Edges.Add(new PortalEdge() {
+                start = portal1.Position,
+                end = portal2.Position,
                 weight = 1 
             });
-            n2.Edges.Add(new PortalEdge() {
-                start = n2.Position,
-                end = n1.Position,
+            portal2.Edges.Add(new PortalEdge() {
+                start = portal2.Position,
+                end = portal1.Position,
                 weight = 1 
             });
         }
