@@ -14,7 +14,7 @@ namespace FlowTiles.PortalGraphs {
         readonly int widthSectors;
         readonly int heightSectors;
 
-        public PortalGraphSector[] sectors;
+        public Sector[] sectors;
 
         /// <summary>
         /// Construct a graph from the map
@@ -27,7 +27,7 @@ namespace FlowTiles.PortalGraphs {
 
             widthSectors = Mathf.CeilToInt((float)map.Width / resolution);
             heightSectors = Mathf.CeilToInt((float)map.Height / resolution);
-            sectors = new PortalGraphSector[widthSectors * heightSectors];
+            sectors = new Sector[widthSectors * heightSectors];
 
             //Set number of sectors in horizontal and vertical direction
             BuildSectors(resolution, widthSectors, heightSectors);
@@ -35,7 +35,7 @@ namespace FlowTiles.PortalGraphs {
             LinkSectors();
         }
 
-        public PortalGraphSector GetSector(int x, int y) {
+        public Sector GetSector(int x, int y) {
             var sectorX = x / resolution;
             var sectorY = y / resolution;
             var index = sectorX + widthSectors * sectorY;
@@ -72,7 +72,7 @@ namespace FlowTiles.PortalGraphs {
         /// Build all graph sectors
         /// </summary>
         private void BuildSectors(int resolution, int width, int height) {
-            PortalGraphSector sector;
+            Sector sector;
             int x, y;
 
             //Create sectors of this level
@@ -86,7 +86,7 @@ namespace FlowTiles.PortalGraphs {
                     var boundaries = new Boundaries { Min = min, Max = max };
 
                     var index = x + y * width;
-                    sector = new PortalGraphSector(index, boundaries);
+                    sector = new Sector(index, boundaries);
                     sectors[x + y * width] = sector;
                 }
             }
@@ -137,7 +137,7 @@ namespace FlowTiles.PortalGraphs {
         /// Create border nodes and attach them together.
         /// We always pass the lower sector first (in c1).
         /// </summary>
-        private void LinkAdjacentSectors(PortalGraphSector c1, PortalGraphSector c2, bool horizontal) {
+        private void LinkAdjacentSectors(Sector c1, Sector c2, bool horizontal) {
             int i, iMin, iMax;
             if (horizontal) {
                 iMin = c1.Boundaries.Min.y;
@@ -168,7 +168,7 @@ namespace FlowTiles.PortalGraphs {
         }
 
         //i is the index at which we stopped (either its an obstacle or the end of the cluster
-        private void CreateInterEdges(PortalGraphSector c1, PortalGraphSector c2, bool x, ref int lineSize, int i) {
+        private void CreateInterEdges(Sector c1, Sector c2, bool x, ref int lineSize, int i) {
             if (lineSize > 0) {
                 if (lineSize <= 5 || true) {
                     //Line is too small, create 1 inter edges
@@ -185,7 +185,7 @@ namespace FlowTiles.PortalGraphs {
         }
 
         //Inter edges are edges that crosses sectors
-        private void CreateInterEdge(PortalGraphSector c1, PortalGraphSector c2, bool x, int i) {
+        private void CreateInterEdge(Sector c1, Sector c2, bool x, int i) {
             int2 g1, g2;
             Portal n1, n2;
             if (x) {
@@ -207,24 +207,20 @@ namespace FlowTiles.PortalGraphs {
                 c2.EdgePortals.Add(g2, n2);
             }
 
-            n1.edges.Add(new PortalEdge() { 
-                startSector = n1.sector, 
-                startCell = n1.cell,
-                endSector = n2.sector, 
-                endCell = n2.cell,
+            n1.Edges.Add(new PortalEdge() {
+                start = n1.Position,
+                end = n2.Position,
                 weight = 1 
             });
-            n2.edges.Add(new PortalEdge() {
-                startSector = n2.sector,
-                startCell = n2.cell,
-                endSector = n1.sector,
-                endCell = n1.cell,
+            n2.Edges.Add(new PortalEdge() {
+                start = n2.Position,
+                end = n1.Position,
                 weight = 1 
             });
         }
 
         //Intra edges are edges that lives inside sectors
-        private void GenerateIntraEdges(PortalGraphSector c) {
+        private void GenerateIntraEdges(Sector c) {
             int i, j;
             Portal n1, n2;
 
@@ -236,7 +232,7 @@ namespace FlowTiles.PortalGraphs {
                 n1 = nodes[i];
                 for (j = i + 1; j < nodes.Count; ++j) {
                     n2 = nodes[j];
-                    if (n1.color == n2.color) {
+                    if (n1.Color == n2.Color) {
                         TryConnectPortals(n1, n2, c);
                     }
                 }
@@ -247,32 +243,28 @@ namespace FlowTiles.PortalGraphs {
         /// Connect two nodes by pathfinding between them. 
         /// </summary>
         /// <remarks>We assume they are different nodes. If the path returned is 0, then there is no path that connects them.</remarks>
-        private bool TryConnectPortals(Portal n1, Portal n2, PortalGraphSector c) {
+        private bool TryConnectPortals(Portal n1, Portal n2, Sector c) {
             PortalEdge e1, e2;
 
             var corner = c.Boundaries.Min;
             var pathCost = SectorPathfinder.FindTravelCost(
-                c.Costs, n1.cell - corner, n2.cell - corner);
+                c.Costs, n1.Position.Cell - corner, n2.Position.Cell - corner);
 
             if (pathCost > 0) {
                 e1 = new PortalEdge() {
-                    startSector = n1.sector,
-                    startCell = n1.cell,
-                    endSector = n2.sector,
-                    endCell = n2.cell,
+                    start = n1.Position,
+                    end = n2.Position,
                     weight = pathCost,
                 };
 
                 e2 = new PortalEdge() {
-                    startSector = n2.sector,
-                    startCell = n2.cell,
-                    endSector = n1.sector,
-                    endCell = n1.cell,
+                    start = n2.Position,
+                    end = n1.Position,
                     weight = pathCost,
                 };
 
-                n1.edges.Add(e1);
-                n2.edges.Add(e2);
+                n1.Edges.Add(e1);
+                n2.Edges.Add(e2);
 
                 return true;
             }

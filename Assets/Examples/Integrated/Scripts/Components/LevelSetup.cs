@@ -8,6 +8,7 @@ namespace FlowTiles.Examples {
         public int Size;
         public NativeArray<bool> Walls;
         public NativeArray<float4> Colors;
+        public NativeArray<float2> Flows;
 
     }
 

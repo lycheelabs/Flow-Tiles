@@ -1,7 +1,9 @@
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace FlowTiles.Examples {
 
@@ -15,15 +17,21 @@ namespace FlowTiles.Examples {
 
         public void OnUpdate(ref SystemState state) {
             var setup = SystemAPI.GetSingleton<LevelSetup>();
-            new Job {
+
+            new WallsJob {
                 LevelSize = setup.Size,
                 LevelWalls = setup.Walls,
                 LevelColors = setup.Colors,
             }.ScheduleParallel();
+
+            new FlowJob {
+                LevelSize = setup.Size,
+                LevelFlows = setup.Flows,
+            }.ScheduleParallel();
         }
 
         [BurstCompile]
-        public partial struct Job : IJobEntity {
+        public partial struct WallsJob : IJobEntity {
 
             public int2 LevelSize;
             [ReadOnly] public NativeArray<bool> LevelWalls;
@@ -42,21 +50,62 @@ namespace FlowTiles.Examples {
                     wall.Color *= LevelColors[index];
                 }
             }
+
+            public readonly partial struct Aspect : IAspect {
+
+                public readonly Entity Entity;
+                private readonly RefRW<WallData> _wall;
+                private readonly RefRW<ColorOverride> _color;
+
+                public int2 Cell => _wall.ValueRO.cell;
+
+                public float4 Color {
+                    get => _color.ValueRW.Value;
+                    set => _color.ValueRW.Value = value;
+                }
+
+            }
+
         }
 
-    }
+        [BurstCompile]
+        public partial struct FlowJob : IJobEntity {
 
-    public readonly partial struct Aspect : IAspect {
+            public int2 LevelSize;
+            [ReadOnly] public NativeArray<float2> LevelFlows;
 
-        public readonly Entity Entity;
-        private readonly RefRW<WallData> _wall;
-        private readonly RefRW<ColorOverride> _color;
+            [BurstCompile]
+            private void Execute(Aspect flow, [ChunkIndexInQuery] int sortKey) {
+                var cell = flow.Cell;
+                var index = cell.x + cell.y * LevelSize.x;
+                var data = LevelFlows[index];
 
-        public int2 Cell => _wall.ValueRO.cell;
+                flow.SetFlow(data);
+            }
 
-        public float4 Color {
-            get => _color.ValueRW.Value;
-            set => _color.ValueRW.Value = value;
+            public readonly partial struct Aspect : IAspect {
+
+                public readonly Entity Entity;
+                private readonly RefRW<FlowData> _flow;
+                private readonly RefRW<LocalTransform> _transform;
+
+                public int2 Cell => _flow.ValueRO.cell;
+
+                public void SetFlow(float2 newFlow) {
+                    if (math.length(newFlow) == 0) {
+                        _transform.ValueRW.Scale = 0;
+                    }
+                    else {
+                        var angle = math.atan2(newFlow.y, newFlow.x);
+                        _transform.ValueRW.Scale = 1;
+                        _transform.ValueRW.Rotation = quaternion.Euler(
+                            new float3(0, 0, angle)
+                        );
+                    }
+                }
+
+            }
+
         }
 
     }

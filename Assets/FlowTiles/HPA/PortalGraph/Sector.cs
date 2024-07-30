@@ -4,10 +4,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles.PortalGraphs {
 
-    /// <summary>
-    /// Domain-independent, rectangular clusters
-    /// </summary>
-    public class PortalGraphSector {
+    public class Sector {
 
         //Boundaries of the cluster (with respect to the original map)
         public Boundaries Boundaries;
@@ -21,7 +18,7 @@ namespace FlowTiles.PortalGraphs {
 
         public int2 CenterTile => new int2(Size.x / 2, Size.y / 2) + Boundaries.Min;
 
-        public PortalGraphSector(int index, Boundaries boundaries) {
+        public Sector (int index, Boundaries boundaries) {
             Index = index;
             Boundaries = new Boundaries();
             EdgePortals = new Dictionary<int2, Portal>();
@@ -61,10 +58,10 @@ namespace FlowTiles.PortalGraphs {
 
             for (int i = 0; i < nodes.Count; i++) {
                 var portal = nodes[i];
-                var tile = portal.cell - Boundaries.Min;
+                var tile = portal.Position.Cell - Boundaries.Min;
                 var color = Colors.GetColor(tile);
-                portal.color = color;
-                EdgePortals[portal.cell] = portal;
+                portal.Color = color;
+                EdgePortals[portal.Position.Cell] = portal;
             }
 
             // Wasteful...
@@ -72,16 +69,14 @@ namespace FlowTiles.PortalGraphs {
 
             for (int color = 1; color <= Colors.NumColors; color++) {
                 var colorPortal = new Portal(CenterTile, Index);
-                colorPortal.color = color;
+                colorPortal.Color = color;
 
                 for (int p = 0; p < nodes.Count; p++) {
                     var portal = nodes[p];
-                    if (portal.color == color) {
-                        colorPortal.edges.Add(new PortalEdge {
-                            startSector = colorPortal.sector,
-                            startCell = colorPortal.cell,
-                            endSector = portal.sector,
-                            endCell = portal.cell,
+                    if (portal.Color == color) {
+                        colorPortal.Edges.Add(new PortalEdge {
+                            start = colorPortal.Position,
+                            end = portal.Position,
                             weight = 0,
                         });
                     }

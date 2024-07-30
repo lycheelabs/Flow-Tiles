@@ -8,7 +8,7 @@ namespace FlowField {
     [BurstCompile]
     public struct FlowCalculationJob : IJob {
 
-        [ReadOnly] public NativeArray<double> Map;
+        [ReadOnly] public NativeArray<double> Speeds;
         [ReadOnly] public NativeArray<Vector2Int> Goals;
         [ReadOnly] public int Width;
         [ReadOnly] public int Height;
@@ -40,19 +40,31 @@ namespace FlowField {
             }
 
             // Initialise the goal wavefront
+            var sourcesCount = 0;
+
             for (int s = 0; s < Goals.Length; s++) {
-                var source = Goals[s];
-                source += new Vector2Int(1, 1);
+                var source = Goals[s] + new Vector2Int(1, 1);
 
                 Distance[GetIndex(source.x, source.y)] = 0;
                 Target[GetIndex(source.x, source.y)] = new double2(source.x, source.y);
                 processedPositions[GetIndex(source)] = true;
-                queue.Enqueue(source);
+
+                //queue.Enqueue(source);
+                var sourceSpeed = Speeds[GetIndex(source)];
+                for (var i = 0; i < NeighborsCount; i++) {
+                    if (TryGetNeighbor(source, i, out var neighbor) && !Goals.Contains(neighbor - new Vector2Int(1, 1))) {
+                        if (sourceSpeed == 0) sourcesCount++;
+                        var neighborSpeed = Speeds[GetIndex(neighbor)];
+                        var q = Speeds[GetIndex(neighbor)] > 0 ? queue : secondQueue;
+                        q.Enqueue(neighbor);
+                        processedPositions[GetIndex(neighbor)] = true;
+                    }
+                }
+
             }
 
             const int iterationLimit = 500000;
             var iterationsCount = 0;
-            var sourcesCount = queue.Count;
 
             // Iterate the wavefront expansion
             while ((queue.Count > 0 || secondQueue.Count > 0) && iterationsCount < iterationLimit) {
@@ -69,7 +81,7 @@ namespace FlowField {
                     for (var i = 0; i < NeighborsCount; i++) {
                         if (TryGetNeighbor(current, i, out var neighbor) &&
                             processedPositions[GetIndex(neighbor)] == false) {
-                            var q = Map[GetIndex(neighbor)] > 0f ? queue : secondQueue;
+                            var q = Speeds[GetIndex(neighbor)] > 0f ? queue : secondQueue;
                             processedPositions[GetIndex(neighbor)] = true;
                             q.Enqueue(neighbor);
                         }
@@ -82,7 +94,7 @@ namespace FlowField {
                     for (var i = 0; i < NeighborsCount; i++) {
                         if (TryGetNeighbor(current, i, out var neighbor) &&
                             processedPositions[GetIndex(neighbor)] == false) {
-                            var q = Map[GetIndex(neighbor)] > 0f ? queue : thirdQueue;
+                            var q = Speeds[GetIndex(neighbor)] > 0f ? queue : thirdQueue;
                             processedPositions[GetIndex(neighbor)] = true;
                             q.Enqueue(neighbor);
                         }
@@ -97,7 +109,7 @@ namespace FlowField {
 
         private double UpdatePoint(int x, int y) {
             var xyIndex = GetIndex(x, y);
-            var f = Map[xyIndex];
+            var f = Speeds[xyIndex];
 
             if (f == 0) f = ObstacleOverrideValue;
 

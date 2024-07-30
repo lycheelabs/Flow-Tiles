@@ -9,8 +9,8 @@ namespace FlowTiles {
 
     public class PortalPathfinder {
 
-        public static List<int2> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
-            var result = new List<int2>();
+        public static List<SectorCell> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
+            var result = new List<SectorCell>();
 
             // Find start and end clusters
             var startExists = graph.TryGetSectorRoot(start.x, start.y, out var startCluster);
@@ -20,8 +20,9 @@ namespace FlowTiles {
             }
 
             // Check whether start and dest clusters match
-            if (startCluster.cell.Equals (destCluster.cell) && startCluster.color == destCluster.color) {
-                result.Add(dest);
+            var destPosition = new SectorCell(destCluster.Position.SectorIndex, dest);
+            if (startCluster.IsInSameCluster(destCluster)) {
+                result.Add(destPosition);
                 return result;
             }
 
@@ -31,13 +32,13 @@ namespace FlowTiles {
                 return result;
             }
 
-            // Convert the path into portal coordinates
+            // Extract the portal positions as SectorCells
             for (var i = 0; i < path.Length; i ++) {
-                if (path[i].startSector != path[i].endSector) {
-                    result.Add(path[i].startCell);
+                if (path[i].start.SectorIndex != path[i].end.SectorIndex) {
+                    result.Add(path[i].start);
                 }
             }
-            result.Add(dest);
+            result.Add(destPosition);
             return result;
 
         }
@@ -51,38 +52,38 @@ namespace FlowTiles {
 
             float temp_gCost, prev_gCost;
 
-            gScore[startCluster.cell] = 0;
+            gScore[startCluster.Position.Cell] = 0;
             pq.Enqueue(startCluster, EuclidianDistance(startCluster, destCluster));
             Portal current;
 
             while (pq.Count > 0) {
                 current = pq.Dequeue();
 
-                if (current.sector.Equals(destCluster.sector) && current.color == destCluster.color) {
+                if (current.IsInSameCluster(destCluster)) {
                     //Rebuild path and return it
                     return RebuildPath(Parent, current);
                 }
 
-                Visited.Add(current.cell);
+                Visited.Add(current.Position.Cell);
 
                 // Visit all neighbours through edges going out of node
-                foreach (PortalEdge e in current.edges) {
-                    var nextSector = graph.sectors[e.endSector];
-                    var nextPortal = nextSector.EdgePortals[e.endCell];
+                foreach (PortalEdge e in current.Edges) {
+                    var nextSector = graph.sectors[e.end.SectorIndex];
+                    var nextPortal = nextSector.EdgePortals[e.end.Cell];
 
                     // Check if we visited the outer end of the edge
-                    if (Visited.Contains(e.endCell))
+                    if (Visited.Contains(e.end.Cell))
                         continue;
 
-                    temp_gCost = gScore[current.cell] + e.weight;
+                    temp_gCost = gScore[current.Position.Cell] + e.weight;
 
                     // If new value is not better then do nothing
-                    if (gScore.TryGetValue(e.endCell, out prev_gCost) && temp_gCost >= prev_gCost)
+                    if (gScore.TryGetValue(e.end.Cell, out prev_gCost) && temp_gCost >= prev_gCost)
                         continue;
 
                     // Otherwise store the new value and add the destination into the queue
-                    Parent[e.endCell] = e;
-                    gScore[e.endCell] = temp_gCost;
+                    Parent[e.end.Cell] = e;
+                    gScore[e.end.Cell] = temp_gCost;
 
                     pq.Enqueue(nextPortal, temp_gCost + EuclidianDistance(nextPortal, destCluster));
                 }
@@ -97,7 +98,7 @@ namespace FlowTiles {
         }
 
         private static float EuclidianDistance(Portal node1, Portal node2) {
-            return EuclidianDistance(node1.cell, node2.cell);
+            return EuclidianDistance(node1.Position.Cell, node2.Position.Cell);
         }
 
         private static float EuclidianDistance(int2 tile1, int2 tile2) {
@@ -107,11 +108,11 @@ namespace FlowTiles {
         //Rebuild edges
         private static LinkedList<PortalEdge> RebuildPath(Dictionary<int2, PortalEdge> Parent, Portal dest) {
             LinkedList<PortalEdge> res = new LinkedList<PortalEdge>();
-            int2 current = dest.cell;
+            int2 current = dest.Position.Cell;
 
             while (Parent.TryGetValue(current, out var e)) {
                 res.AddFirst(e);
-                current = e.startCell;
+                current = e.start.Cell;
             }
 
             return res;

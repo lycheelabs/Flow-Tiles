@@ -6,6 +6,7 @@ namespace FlowTiles.Examples {
 
         public Entity Wall;
         public Entity Agent;
+        public Entity Flow;
 
     }
 

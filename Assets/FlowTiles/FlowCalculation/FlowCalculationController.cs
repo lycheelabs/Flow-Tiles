@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using FlowTiles.PortalGraphs;
+using System.Diagnostics;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -8,6 +9,30 @@ namespace FlowField {
 
     public static class FlowCalculationController {
 
+        public static FlowFieldTile RequestCalculation(CostField costs, Vector2Int[] goal) {
+            var width = costs.size.x;
+            var height = costs.size.y;
+
+            var size = (width + 2) * (height + 2);
+            var speedData = new NativeArray<double>(size, Allocator.TempJob);
+            for (var x = 1; x <= width; x++) {
+                for (var y = 1; y <= height; y++) {
+                    speedData[y * (width + 2) + x] = 1;// 1f / costs.GetCost(x-1, y-1);
+                }
+            }
+
+            for (var x = 1; x <= width; x++) {
+                for (var y = 1; y <= height; y++) {
+                    var cost = costs.GetCost(x - 1, y - 1);
+                    var index = y * (width + 2) + x;
+                    speedData[index] = 1f / cost;
+                    if (cost == CostField.WALL) speedData[index] = -1;
+                }
+            }
+
+            return RequestCalculation(speedData, goal, width, height);
+        }
+
         public static FlowFieldTile RequestCalculation(float[,] speeds, Vector2Int[] goal, int width, int height) {
             var size = (width + 2) * (height + 2);
             var speedData = new NativeArray<double>(size, Allocator.TempJob);
@@ -16,6 +41,12 @@ namespace FlowField {
                     speedData[y * (width + 2) + x] = speeds[x, y];
                 }
             }
+
+            return RequestCalculation(speedData, goal, width, height);
+        }
+
+        public static FlowFieldTile RequestCalculation(NativeArray<double> speedData, Vector2Int[] goal, int width, int height) {
+            var size = (width + 2) * (height + 2);
 
             var directions = new NativeArray<double2>(size, Allocator.Persistent);
             var distances = new NativeArray<double>(size, Allocator.Persistent);
@@ -27,7 +58,7 @@ namespace FlowField {
             }
 
             var job = new FlowCalculationJob() {
-                Map = speedData,
+                Speeds = speedData,
                 Goals = goalData,
                 Height = height,
                 Width = width,

@@ -86,15 +86,14 @@ namespace FlowField {
                 speeds[0, i] = speeds[size + 1, i] = speeds[i, 0] = speeds[i, size + 1] = 0;
             }
 
-            var source = _flowFieldManager.Goal;
-
             if (_requiresDispose) {
                 _result.Dispose(); ;
             }
 
+            var goal = _flowFieldManager.Goal;
             _width = size;
             _height = size;
-            _result = FlowCalculationController.RequestCalculation(speeds, source, size, size);
+            _result = FlowCalculationController.RequestCalculation(speeds, goal, size, size);
 
             PerformanceText.SetText($"Calculated in {_result.GenerationTime:mm':'ss':'fff}");
             _requiresDispose = true;

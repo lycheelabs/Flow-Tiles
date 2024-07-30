@@ -7,6 +7,7 @@ namespace FlowTiles.Examples {
 
         public GameObject WallPrefab;
         public GameObject AgentPrefab;
+        public GameObject FlowPrefab;
 
         public class MyBaker : Baker<PrefabsAuthor> {
             public override void Bake(PrefabsAuthor authoring) {
@@ -14,6 +15,7 @@ namespace FlowTiles.Examples {
                 AddComponent(entity, new PrefabLinks {
                     Wall = GetEntity(authoring.WallPrefab, TransformUsageFlags.None),
                     Agent = GetEntity(authoring.AgentPrefab, TransformUsageFlags.Dynamic),
+                    Flow = GetEntity(authoring.FlowPrefab, TransformUsageFlags.Dynamic),
                 });
             }
         }

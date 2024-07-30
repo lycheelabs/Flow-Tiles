@@ -15,6 +15,11 @@ namespace FlowField {
             Gradients.Dispose();
         }
 
+        public float2 GetFlow (int x, int y) {
+            var index = (x + 1) + (y + 1) * (Size.x + 2);
+            return (float2)Directions[index];
+        }
+
     }
 
 }

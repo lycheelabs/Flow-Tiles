@@ -304,7 +304,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7597c95e460b4d2c83e9f574c9ec1598, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Size: 6
+  Size: 5
   Goal: []
   SizeField: {fileID: 1257451905}
   ClearButton: {fileID: 233930967}

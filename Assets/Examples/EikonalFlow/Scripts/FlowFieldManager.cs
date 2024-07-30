@@ -87,6 +87,7 @@ namespace FlowField {
             var edge = new Vector2Int[Size];
             for (int i = 0; i < Size; i++) {
                 edge[i] = new Vector2Int(i, 0);
+                //break;
             }
             SetSource(edge, withRefresh);
         }

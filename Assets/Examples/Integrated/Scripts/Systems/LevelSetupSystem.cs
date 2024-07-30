@@ -22,18 +22,30 @@ namespace FlowTiles.Examples {
             
             var setup = SystemAPI.GetSingleton<LevelSetup>();
             var prefabs = SystemAPI.GetSingleton<PrefabLinks>();
-            var wall = prefabs.Wall;
 
             for (int i = 0; i < setup.Size; i++) {
                 for (int j = 0; j < setup.Size; j++) {
-                    var entity = state.EntityManager.Instantiate(wall);
-                    state.EntityManager.SetComponentData(entity, new WallData {
+
+                    // Create wall
+                    var wall = state.EntityManager.Instantiate(prefabs.Wall);
+                    state.EntityManager.SetComponentData(wall, new WallData {
                         cell = new int2(i, j),
                     });
-                    state.EntityManager.SetComponentData(entity, new LocalTransform {
+                    state.EntityManager.SetComponentData(wall, new LocalTransform {
                         Position = new float3(i, j, 0),
                         Scale = 1,
                     });
+
+                    // Create flow marker
+                    var flow = state.EntityManager.Instantiate(prefabs.Flow);
+                    state.EntityManager.SetComponentData(flow, new FlowData {
+                        cell = new int2(i, j),
+                    });
+                    state.EntityManager.SetComponentData(flow, new LocalTransform {
+                        Position = new float3(i, j, -1),
+                        Scale = 0,
+                    });
+
                 }
             }
 

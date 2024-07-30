@@ -1,3 +1,4 @@
+using FlowField;
 using FlowTiles.PortalGraphs;
 using System.Collections.Generic;
 using Unity.Collections;
@@ -27,10 +28,25 @@ namespace FlowTiles.Examples {
         private bool[,] WallMap;
         private NativeArray<bool> WallData;
         private NativeArray<float4> ColorData;
+        private NativeArray<float2> FlowData;
         private PortalGraph Graph;
 
 
         void Start() {
+            WallData = new NativeArray<bool>(LevelSize * LevelSize, Allocator.Persistent);
+            ColorData = new NativeArray<float4>(LevelSize * LevelSize, Allocator.Persistent);
+            FlowData = new NativeArray<float2>(LevelSize * LevelSize, Allocator.Persistent);
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var singleton = em.CreateEntity();
+            em.AddComponent<LevelSetup>(singleton);
+            em.SetComponentData(singleton, new LevelSetup {
+                Size = LevelSize,
+                Walls = WallData,
+                Colors = ColorData,
+                Flows = FlowData,
+            });
+
             var halfViewedSize = (LevelSize - 1) / 2f;
             Camera.main.orthographicSize = LevelSize / 2f * 1.05f + 1;
             Camera.main.transform.position = new Vector3(halfViewedSize, halfViewedSize, -20);
@@ -38,29 +54,17 @@ namespace FlowTiles.Examples {
             WallMap = new bool[LevelSize, LevelSize];
             for (int i = 0; i < LevelSize; i++) {
                 for (int j = 0; j < LevelSize; j++) {
+                    if (i == 0 && j == 0) continue;
                     if (UnityEngine.Random.value < 0.2f) WallMap[i, j] = true;
                 }
             }
 
-            WallData = new NativeArray<bool>(LevelSize * LevelSize, Allocator.Persistent);
-            ColorData = new NativeArray<float4>(LevelSize * LevelSize, Allocator.Persistent);
             for (int i = 0; i < LevelSize; i++) {
                 for (int j = 0; j < LevelSize; j++) {
-                    if (i == 0 && j == 0) continue;
                     var index = i + j * LevelSize;
                     WallData[index] = WallMap[i, j];
                 }
             }
-
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-
-            var singleton = em.CreateEntity();
-            em.AddComponent<LevelSetup>(singleton);
-            em.SetComponentData(singleton, new LevelSetup {
-                Size = LevelSize,
-                Walls = WallData,
-                Colors = ColorData,
-            });
 
             var map = Map.CreateMap(WallMap);
             Graph = new PortalGraph(map, Resolution);
@@ -102,17 +106,42 @@ namespace FlowTiles.Examples {
                     WallMap[mouseCell.x, mouseCell.y] = flip;
                 }
 
+                for (int i = 0; i < LevelSize * LevelSize; i++) {
+                    FlowData[i] = 0;
+                }
+
                 // Find a path
                 var start = new int2(0, 0);
                 var dest = mouseCell;
                 var path = PortalPathfinder.FindPortalPath(Graph, start, dest);
 
-                // Visualise the path
                 if (path.Count > 0) {
-                    DrawPortalLink(new Vector3(start.x, start.y), new Vector3(path[0].x, path[0].y));
-                    for (int i = 0; i < path.Count - 1; i++) {
-                        DrawPortalLink(new Vector3(path[i].x, path[i].y),new Vector3(path[i + 1].x, path[i + 1].y));
+
+                    // Create flow tiles
+                    for (int i = 0; i < path.Count; i++) {
+                        var pos = path[i];
+                        var sector = Graph.sectors[pos.SectorIndex];
+                        //var portal = sector.EdgePortals[pos.Cell];
+                        var goal = pos.Cell - sector.Boundaries.Min;
+                        var goals = new Vector2Int[] { new Vector2Int(goal.x, goal.y) };
+                        //var goals = new Vector2Int[] { new Vector2Int(2, 2) };
+                        //var goals = new Vector2Int[] { 
+                        //    new Vector2Int(0,0),new Vector2Int(1,0),new Vector2Int(2,0),new Vector2Int(3,0),new Vector2Int(4,0) };
+                        var flow = FlowCalculationController.RequestCalculation(sector.Costs, goals);
+
+                        // Visualise flow data
+                        VisualiseFlowField(sector, flow);
+
+                        if (i < path.Count - 1) {
+                            DrawPortalLink(
+                                new Vector3(path[i].Cell.x, path[i].Cell.y),
+                                new Vector3(path[i + 1].Cell.x,
+                                path[i + 1].Cell.y));
+                        }
                     }
+
+                    DrawPortalLink(new Vector3(start.x, start.y), new Vector3(path[0].Cell.x, path[0].Cell.y));
+
                 }
 
             }
@@ -130,12 +159,22 @@ namespace FlowTiles.Examples {
             }
         }
 
+        private void VisualiseFlowField(Sector sector, FlowFieldTile flowField) {
+            for (int x = 0; x < sector.Size.x; x++) {
+                for (int y = 0; y < sector.Size.y; y++) {
+                    var mapIndex = (x + sector.Boundaries.Min.x) + (y + sector.Boundaries.Min.y) * LevelSize;
+                    var flow = flowField.GetFlow(x, y);
+                    FlowData[mapIndex] = flow;
+                }
+            }
+        }
+
         private static void DrawClusterConnections(Dictionary<int2, Portal> nodes) {
             foreach (var node in nodes.Values) {
-                for (int e = 0; e < node.edges.Length; e++) {
-                    var edge = node.edges[e];
-                    var pos1 = edge.startCell;
-                    var pos2 = edge.endCell;
+                for (int e = 0; e < node.Edges.Length; e++) {
+                    var edge = node.Edges[e];
+                    var pos1 = edge.start.Cell;
+                    var pos2 = edge.end.Cell;
                     Debug.DrawLine(
                         new Vector3(pos1.x, pos1.y),
                         new Vector3(pos2.x, pos2.y),
@@ -144,7 +183,7 @@ namespace FlowTiles.Examples {
             }
         }
 
-        private static void DrawClusterBoundaries(PortalGraphSector cluster) {
+        private static void DrawClusterBoundaries(Sector cluster) {
             Debug.DrawLine(
                 new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Min.y - 0.5f),
                 new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Min.y - 0.5f),

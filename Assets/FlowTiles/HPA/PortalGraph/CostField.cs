@@ -16,6 +16,10 @@ namespace FlowTiles.PortalGraphs {
             Costs = new NativeArray<byte> (size.x * size.y, Allocator.Persistent);
         }
 
+        public byte GetCost(int x, int y) {
+            return Costs[x + y * size.x];
+        }
+
         public byte GetCost(int2 cell) {
             return Costs[cell.x + cell.y * size.x];
         }
