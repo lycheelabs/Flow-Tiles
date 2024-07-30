@@ -68,7 +68,7 @@ namespace FlowTiles.Examples {
             for (int y = 0; y < LevelSize; y++) {
                 for (int x = 0; x < LevelSize; x++) {
                     var sector = Graph.GetSector(x, y);
-                    var color = sector.Colors[x % Resolution, y % Resolution];
+                    var color = sector.Colors.Colors[x % Resolution, y % Resolution];
                     var index = x + y * LevelSize;
                     if (color > 0) {
                         ColorData[index] = graphColorings[(color - 1) % graphColorings.Length];

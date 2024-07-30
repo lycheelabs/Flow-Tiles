@@ -11,11 +11,6 @@ namespace FlowTiles {
         public static List<int2> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
             var result = new List<int2>();
 
-            // Validity checks
-            if (!graph.portals.ContainsKey(start) || !graph.portals.ContainsKey(dest)) {
-                return result;
-            }
-
             //1. Find start and end nodes
             var startExists = graph.TryGetSectorRoot(start.x, start.y, out var startNode);
             var destExists = graph.TryGetSectorRoot(dest.x, dest.y, out var destNode);
@@ -23,13 +18,13 @@ namespace FlowTiles {
                 return result;
             }
 
-            //2. search for path in the highest level
+            //2. Search for the path through the portal graph
             var path = AstarPathfinder.FindPath(startNode, destNode).ToArray();
-
-            //3. process the path
             if (path.Length == 0) {
                 return result;
             }
+
+            //3. Convert the path into portal coordinates
             for (var i = 0; i < path.Length - 1; i+=2) {
                 result.Add(path[i].end.pos);
             }
@@ -38,10 +33,11 @@ namespace FlowTiles {
         }
 
         public static LinkedList<PortalEdge> FindLowlevelPath(PortalGraph graph, int2 start, int2 dest) {
-            Portal nStart = graph.portals[start],
+            /*Portal nStart = graph.portals[start],
                 nDest = graph.portals[dest];
 
-            return AstarPathfinder.FindPath(nStart, nDest);
+            return AstarPathfinder.FindPath(nStart, nDest);*/
+            return null;
         }
 
         public static LinkedList<PortalEdge> GetLayerPathFromHPA(LinkedList<PortalEdge> hpa, int layer) {
