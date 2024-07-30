@@ -47,7 +47,7 @@ namespace FlowTiles {
                     }
 
                     // Check if the cell is passable
-                    var cost = costs.Costs[next.x, next.y];
+                    var cost = costs.GetCost(next);
                     if (cost == CostField.WALL) {
                         continue;
                     }

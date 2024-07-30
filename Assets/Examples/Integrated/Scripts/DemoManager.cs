@@ -10,12 +10,12 @@ namespace FlowTiles.Examples {
     public class DemoManager : MonoBehaviour {
 
         private static float4[] graphColorings = new float4[] { 
-            new float4(1f, 0.5f, 0.5f, 1),
-            new float4(0.5f, 1f, 0.5f, 1),
-            new float4(0.5f, 0.5f, 1f, 1),
-            new float4(1f, 1f, 0.5f, 1),
-            new float4(0.5f, 1f, 1f, 1),
-            new float4(1f, 0.5f, 1f, 1),
+            new float4(0.8f, 1f, 0.8f, 1),
+            new float4(0.8f, 0.8f, 1f, 1),
+            new float4(1f, 1f, 0.8f, 1),
+            new float4(0.8f, 1f, 1f, 1),
+            new float4(1f, 0.8f, 1f, 1),
+            new float4(1f, 0.8f, 0.8f, 1),
         };
 
         // -----------------------------------------
@@ -68,7 +68,7 @@ namespace FlowTiles.Examples {
             for (int y = 0; y < LevelSize; y++) {
                 for (int x = 0; x < LevelSize; x++) {
                     var sector = Graph.GetSector(x, y);
-                    var color = sector.Colors.Colors[x % Resolution, y % Resolution];
+                    var color = sector.Colors.GetColor(x % Resolution, y % Resolution);
                     var index = x + y * LevelSize;
                     if (color > 0) {
                         ColorData[index] = graphColorings[(color - 1) % graphColorings.Length];
@@ -132,10 +132,10 @@ namespace FlowTiles.Examples {
 
         private static void DrawClusterConnections(Dictionary<int2, Portal> nodes) {
             foreach (var node in nodes.Values) {
-                for (int e = 0; e < node.edges.Count; e++) {
+                for (int e = 0; e < node.edges.Length; e++) {
                     var edge = node.edges[e];
-                    var pos1 = edge.start.pos;
-                    var pos2 = edge.end.pos;
+                    var pos1 = edge.startCell;
+                    var pos2 = edge.endCell;
                     Debug.DrawLine(
                         new Vector3(pos1.x, pos1.y),
                         new Vector3(pos2.x, pos2.y),

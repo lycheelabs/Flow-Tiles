@@ -3,6 +3,7 @@ using Unity.Mathematics;
 using UnityEngine;
 
 namespace FlowTiles.PortalGraphs {
+
     public class PortalGraph {
 
         public static float SQRT2 = Mathf.Sqrt(2f);
@@ -42,7 +43,7 @@ namespace FlowTiles.PortalGraphs {
         }
 
         public bool TryGetSectorRoot(int x, int y, out Portal node) {
-            node = null;
+            node = default;
 
             // Find sector
             var sectorX = x / resolution;
@@ -56,7 +57,7 @@ namespace FlowTiles.PortalGraphs {
             var sector = sectors[index];
             var tileX = x % resolution;
             var tileY = y % resolution;
-            var color = sector.Colors.Colors[tileX, tileY];
+            var color = sector.Colors.GetColor(tileX, tileY);
             if (color <= 0) {
                 return false;
             }
@@ -84,7 +85,8 @@ namespace FlowTiles.PortalGraphs {
                         Mathf.Min(min.y + resolution - 1, this.height - 1));
                     var boundaries = new Boundaries { Min = min, Max = max };
 
-                    sector = new PortalGraphSector(boundaries);
+                    var index = x + y * width;
+                    sector = new PortalGraphSector(index, boundaries);
                     sectors[x + y * width] = sector;
                 }
             }
@@ -196,17 +198,29 @@ namespace FlowTiles.PortalGraphs {
             }
 
             if (!c1.EdgePortals.TryGetValue(g1, out n1)) {
-                n1 = new Portal(g1);
+                n1 = new Portal(g1, c1.Index);
                 c1.EdgePortals.Add(g1, n1);
             }
 
             if (!c2.EdgePortals.TryGetValue(g2, out n2)) {
-                n2 = new Portal(g2);
+                n2 = new Portal(g2, c2.Index);
                 c2.EdgePortals.Add(g2, n2);
             }
 
-            n1.edges.Add(new PortalEdge() { start = n1, end = n2, type = PortalEdgeType.INTER, weight = 1 });
-            n2.edges.Add(new PortalEdge() { start = n2, end = n1, type = PortalEdgeType.INTER, weight = 1 });
+            n1.edges.Add(new PortalEdge() { 
+                startSector = n1.sector, 
+                startCell = n1.cell,
+                endSector = n2.sector, 
+                endCell = n2.cell,
+                weight = 1 
+            });
+            n2.edges.Add(new PortalEdge() {
+                startSector = n2.sector,
+                startCell = n2.cell,
+                endSector = n1.sector,
+                endCell = n1.cell,
+                weight = 1 
+            });
         }
 
         //Intra edges are edges that lives inside sectors
@@ -238,20 +252,22 @@ namespace FlowTiles.PortalGraphs {
 
             var corner = c.Boundaries.Min;
             var pathCost = SectorPathfinder.FindTravelCost(
-                c.Costs, n1.pos - corner, n2.pos - corner);
+                c.Costs, n1.cell - corner, n2.cell - corner);
 
             if (pathCost > 0) {
                 e1 = new PortalEdge() {
-                    start = n1,
-                    end = n2,
-                    type = PortalEdgeType.INTRA,
+                    startSector = n1.sector,
+                    startCell = n1.cell,
+                    endSector = n2.sector,
+                    endCell = n2.cell,
                     weight = pathCost,
                 };
 
                 e2 = new PortalEdge() {
-                    start = n2,
-                    end = n1,
-                    type = PortalEdgeType.INTRA,
+                    startSector = n2.sector,
+                    startCell = n2.cell,
+                    endSector = n1.sector,
+                    endCell = n1.cell,
                     weight = pathCost,
                 };
 

@@ -1,21 +1,17 @@
-
-using System.Collections.Generic;
+using Unity.Mathematics;
 
 namespace FlowTiles.PortalGraphs {
 
-    public class PortalEdge {
-        public Portal start;
-        public Portal end;
-        public PortalEdgeType type;
+    public struct PortalEdge {
+
+        public int startSector;
+        public int2 startCell;
+
+        public int endSector;
+        public int2 endCell;
+
         public float weight;
 
-        public LinkedList<PortalEdge> UnderlyingPath;
-    }
-
-
-    public enum PortalEdgeType {
-        INTRA,
-        INTER
     }
 
 }
