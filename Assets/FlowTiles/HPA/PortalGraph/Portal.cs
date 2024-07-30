@@ -7,7 +7,6 @@ namespace FlowTiles.PortalGraphs {
 
         public int2 pos;
         public List<PortalEdge> edges;
-        public Portal child;
         public Portal root;
         public int color;
 

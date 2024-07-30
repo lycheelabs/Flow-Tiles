@@ -112,7 +112,7 @@ namespace FlowTiles.PortalGraphs {
 
         //Boundaries of the cluster (with respect to the original map)
         public Boundaries Boundaries;
-        public Dictionary<int2, Portal> Portals;
+        public Dictionary<int2, Portal> EdgePortals;
         public List<Portal> RootPortals;
 
         public int2 Size;
@@ -121,7 +121,7 @@ namespace FlowTiles.PortalGraphs {
 
         public PortalGraphSector(Boundaries boundaries) {
             Boundaries = new Boundaries();
-            Portals = new Dictionary<int2, Portal>();
+            EdgePortals = new Dictionary<int2, Portal>();
             RootPortals = new List<Portal>();
 
             Boundaries = boundaries;
@@ -152,7 +152,7 @@ namespace FlowTiles.PortalGraphs {
         }
 
         public void CreateRootPortals () {
-            var nodes = new List<Portal>(Portals.Values);
+            var nodes = new List<Portal>(EdgePortals.Values);
 
             for (int i = 0; i < nodes.Count; i++) {
                 var portal = nodes[i];

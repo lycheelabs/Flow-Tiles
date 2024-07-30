@@ -66,7 +66,7 @@ namespace FlowTiles {
                 }
             }
 
-            return -1;
+            return 0;
         }
 
         private static float EuclidianDistance(int2 tile1, int2 tile2) {

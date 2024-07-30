@@ -2,9 +2,7 @@ using FlowTiles.PortalGraphs;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
-using Unity.VisualScripting;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
@@ -24,11 +22,13 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 1000;
         public int Resolution = 10;
-        public bool[,] WallMap;
-        public NativeArray<bool> WallData;
-        public NativeArray<float4> ColorData;
+        public bool VisualiseConnections;
 
+        private bool[,] WallMap;
+        private NativeArray<bool> WallData;
+        private NativeArray<float4> ColorData;
         private PortalGraph Graph;
+
 
         void Start() {
             var halfViewedSize = (LevelSize - 1) / 2f;
@@ -105,20 +105,13 @@ namespace FlowTiles.Examples {
                 // Find a path
                 var start = new int2(0, 0);
                 var dest = mouseCell;
-                var path = HierarchicalPathfinder.FindPortalPath(Graph, start, dest);
+                var path = PortalPathfinder.FindPortalPath(Graph, start, dest);
 
                 // Visualise the path
                 if (path.Count > 0) {
-                    Debug.DrawLine(
-                        new Vector3(start.x, start.y),
-                        new Vector3(path[0].x, path[0].y),
-                        Color.green);
-
+                    DrawPortalLink(new Vector3(start.x, start.y), new Vector3(path[0].x, path[0].y));
                     for (int i = 0; i < path.Count - 1; i++) {
-                        Debug.DrawLine(
-                            new Vector3(path[i].x, path[i].y),
-                            new Vector3(path[i + 1].x, path[i + 1].y),
-                            Color.green);
+                        DrawPortalLink(new Vector3(path[i].x, path[i].y),new Vector3(path[i + 1].x, path[i + 1].y));
                     }
                 }
 
@@ -128,10 +121,12 @@ namespace FlowTiles.Examples {
             var clusters = Graph.sectors;
             for (int c = 0;  c < clusters.Length; c++) {
                 var cluster = clusters[c];
-                var nodes = cluster.Portals;
+                var nodes = cluster.EdgePortals;
 
                 DrawClusterBoundaries(cluster);
-                //DrawClusterConnections(nodes);
+                if (VisualiseConnections) {
+                    DrawClusterConnections(nodes);
+                }
             }
         }
 
@@ -167,6 +162,16 @@ namespace FlowTiles.Examples {
                 new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Max.y + 0.5f),
                 Color.blue);
         }
+
+        private static void DrawPortalLink (Vector3 pos1, Vector3 pos2) {
+            Debug.DrawLine(pos1, pos2, Color.green);
+
+            Debug.DrawLine(pos2 + new Vector3(-0.4f, -0.4f), pos2 + new Vector3(0.4f, -0.4f), Color.green);
+            Debug.DrawLine(pos2 + new Vector3(-0.4f, -0.4f), pos2 + new Vector3(-0.4f, 0.4f), Color.green);
+            Debug.DrawLine(pos2 + new Vector3(0.4f, 0.4f), pos2 + new Vector3(0.4f, -0.4f), Color.green);
+            Debug.DrawLine(pos2 + new Vector3(0.4f, 0.4f), pos2 + new Vector3(-0.4f, 0.4f), Color.green);
+        }
+
     }
 
 }

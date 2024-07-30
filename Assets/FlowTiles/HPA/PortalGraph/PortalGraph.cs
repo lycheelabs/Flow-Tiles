@@ -34,15 +34,6 @@ namespace FlowTiles.PortalGraphs {
             LinkSectors();
         }
 
-        /// <summary>
-        /// Create the node-based representation of the map
-        /// </summary>
-        private void InitialiseSectors(Map map) {
-            for (int s = 0; s < sectors.Length; s++) {
-                sectors[s].Build(map);
-            }
-        }
-
         public PortalGraphSector GetSector(int x, int y) {
             var sectorX = x / resolution;
             var sectorY = y / resolution;
@@ -77,46 +68,6 @@ namespace FlowTiles.PortalGraphs {
         }
 
         /// <summary>
-        /// Connect two nodes by pathfinding between them. 
-        /// </summary>
-        /// <remarks>We assume they are different nodes. If the path returned is 0, then there is no path that connects them.</remarks>
-        private bool ConnectPortals(Portal n1, Portal n2, PortalGraphSector c) {
-            LinkedListNode<PortalEdge> iter;
-            PortalEdge e1, e2;
-
-            var corner = c.Boundaries.Min;
-            var pathCost = SectorPathfinder.FindTravelCost(
-                c.Costs, n1.pos - corner, n2.pos - corner);
-
-            if (pathCost >= 0) {
-                e1 = new PortalEdge() {
-                    start = n1,
-                    end = n2,
-                    type = PortalEdgeType.INTRA,
-                    weight = pathCost,
-                };
-
-                e2 = new PortalEdge() {
-                    start = n2,
-                    end = n1,
-                    type = PortalEdgeType.INTRA,
-                    weight = pathCost,
-                };
-
-                n1.edges.Add(e1);
-                n2.edges.Add(e2);
-
-                return true;
-            }
-            else {
-                //No path, return false
-                return false;
-            }
-        }
-
-        private delegate void CreateBorderPortals(PortalGraphSector c1, PortalGraphSector c2, bool x);
-
-        /// <summary>
         /// Build all graph sectors
         /// </summary>
         private void BuildSectors(int resolution, int width, int height) {
@@ -140,17 +91,32 @@ namespace FlowTiles.PortalGraphs {
         }
 
         /// <summary>
+        /// Cost and color each sector
+        /// </summary>
+        private void InitialiseSectors(Map map) {
+            for (int s = 0; s < sectors.Length; s++) {
+                sectors[s].Build(map);
+            }
+        }
+
+        /// <summary>
         /// Link all graph sectors
         /// </summary>
         private void LinkSectors() {
 
-            // TODO: improve linking method
-
             //Add border nodes for every adjacent pair of sectors
             for (int i = 0; i < sectors.Length; i++) {
-                for (int j = i + 1; j < sectors.Length; ++j) {
-                    LinkAdjacentSectors(sectors[i], sectors[j]);
+
+                var x = i % widthSectors;
+                if (x < widthSectors - 1) {
+                    LinkAdjacentSectors(sectors[i], sectors[i + 1], true);
                 }
+
+                var y = i / widthSectors;
+                if (y < heightSectors - 1) {
+                    LinkAdjacentSectors(sectors[i], sectors[i + widthSectors], false);
+                }
+
             }
 
             //Add Intra edges for every border nodes and pathfind between them
@@ -158,38 +124,20 @@ namespace FlowTiles.PortalGraphs {
                 GenerateIntraEdges(sectors[i]);
             }
 
-            // Create root nodes allowing each start tile to reach start portals
+            // Create root portals allowing each start tile to reach the same-colored edge portals
             for (int s = 0; s < sectors.Length; s++) {
                 sectors[s].CreateRootPortals();
             }
 
         }
 
-        private void LinkAdjacentSectors(PortalGraphSector c1, PortalGraphSector c2) {
-            //Check if both sectors are adjacent
-            if (c1.Boundaries.Min.x == c2.Boundaries.Min.x) {
-                if (c1.Boundaries.Max.y + 1 == c2.Boundaries.Min.y)
-                    CreateConcreteBorderPortals(c1, c2, false);
-                else if (c2.Boundaries.Max.y + 1 == c1.Boundaries.Min.y)
-                    CreateConcreteBorderPortals(c2, c1, false);
-
-            }
-            else if (c1.Boundaries.Min.y == c2.Boundaries.Min.y) {
-                if (c1.Boundaries.Max.x + 1 == c2.Boundaries.Min.x)
-                    CreateConcreteBorderPortals(c1, c2, true);
-                else if (c2.Boundaries.Max.x + 1 == c1.Boundaries.Min.x)
-                    CreateConcreteBorderPortals(c2, c1, true);
-            }
-        }
-
         /// <summary>
         /// Create border nodes and attach them together.
         /// We always pass the lower sector first (in c1).
-        /// Adjacent index : if x == true, then c1.BottomRight.x else c1.BottomRight.y
         /// </summary>
-        private void CreateConcreteBorderPortals(PortalGraphSector c1, PortalGraphSector c2, bool x) {
+        private void LinkAdjacentSectors(PortalGraphSector c1, PortalGraphSector c2, bool horizontal) {
             int i, iMin, iMax;
-            if (x) {
+            if (horizontal) {
                 iMin = c1.Boundaries.Min.y;
                 iMax = iMin + c1.Size.y;
             }
@@ -200,25 +148,21 @@ namespace FlowTiles.PortalGraphs {
 
             int lineSize = 0;
             for (i = iMin; i < iMax; ++i) {
-                if (x && c1.IsOpenAt(new int2(c1.Boundaries.Max.x, i)) 
+                if (horizontal && c1.IsOpenAt(new int2(c1.Boundaries.Max.x, i)) 
                         && c2.IsOpenAt(new int2(c2.Boundaries.Min.x, i))) {
                     lineSize++;
                 }
-                else if (!x && c1.IsOpenAt(new int2(i, c1.Boundaries.Max.y)) 
+                else if (!horizontal && c1.IsOpenAt(new int2(i, c1.Boundaries.Max.y)) 
                         && c2.IsOpenAt(new int2(i, c2.Boundaries.Min.y))) {
                     lineSize++;
                 }
                 else {
-                    CreateInterEdges(c1, c2, x, ref lineSize, i);
+                    CreateInterEdges(c1, c2, horizontal, ref lineSize, i);
                 }
-                /*if (x && (portals.ContainsKey(new int2(c1.Boundaries.Max.x, i)) && portals.ContainsKey(new int2(c2.Boundaries.Min.x, i)))
-                    || !x && (portals.ContainsKey(new int2(i, c1.Boundaries.Max.y)) && portals.ContainsKey(new int2(i, c2.Boundaries.Min.y)))) {
-                    lineSize++;
-                }*/
             }
 
             //If line size > 0 after looping, then we have another line to fill in
-            CreateInterEdges(c1, c2, x, ref lineSize, i);
+            CreateInterEdges(c1, c2, horizontal, ref lineSize, i);
         }
 
         //i is the index at which we stopped (either its an obstacle or the end of the cluster
@@ -251,16 +195,14 @@ namespace FlowTiles.PortalGraphs {
                 g2 = new int2(i, c2.Boundaries.Min.y);
             }
 
-            if (!c1.Portals.TryGetValue(g1, out n1)) {
+            if (!c1.EdgePortals.TryGetValue(g1, out n1)) {
                 n1 = new Portal(g1);
-                c1.Portals.Add(g1, n1);
-                //n1.child = portals[g1];
+                c1.EdgePortals.Add(g1, n1);
             }
 
-            if (!c2.Portals.TryGetValue(g2, out n2)) {
+            if (!c2.EdgePortals.TryGetValue(g2, out n2)) {
                 n2 = new Portal(g2);
-                c2.Portals.Add(g2, n2);
-                //n2.child = portals[g2];
+                c2.EdgePortals.Add(g2, n2);
             }
 
             n1.edges.Add(new PortalEdge() { start = n1, end = n2, type = PortalEdgeType.INTER, weight = 1 });
@@ -272,18 +214,53 @@ namespace FlowTiles.PortalGraphs {
             int i, j;
             Portal n1, n2;
 
-            /* We do this so that we can iterate through pairs once, 
-             * by keeping the second index always higher than the first */
-            var nodes = new List<Portal>(c.Portals.Values);
-
+            // We do this so that we can iterate through pairs once, 
+            // by keeping the second index always higher than the first.
+            // For a path to exit, both portals must have matching color.        
+            var nodes = new List<Portal>(c.EdgePortals.Values);
             for (i = 0; i < nodes.Count; ++i) {
                 n1 = nodes[i];
                 for (j = i + 1; j < nodes.Count; ++j) {
                     n2 = nodes[j];
-
-                    ConnectPortals(n1, n2, c);
+                    if (n1.color == n2.color) {
+                        TryConnectPortals(n1, n2, c);
+                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// Connect two nodes by pathfinding between them. 
+        /// </summary>
+        /// <remarks>We assume they are different nodes. If the path returned is 0, then there is no path that connects them.</remarks>
+        private bool TryConnectPortals(Portal n1, Portal n2, PortalGraphSector c) {
+            PortalEdge e1, e2;
+
+            var corner = c.Boundaries.Min;
+            var pathCost = SectorPathfinder.FindTravelCost(
+                c.Costs, n1.pos - corner, n2.pos - corner);
+
+            if (pathCost > 0) {
+                e1 = new PortalEdge() {
+                    start = n1,
+                    end = n2,
+                    type = PortalEdgeType.INTRA,
+                    weight = pathCost,
+                };
+
+                e2 = new PortalEdge() {
+                    start = n2,
+                    end = n1,
+                    type = PortalEdgeType.INTRA,
+                    weight = pathCost,
+                };
+
+                n1.edges.Add(e1);
+                n2.edges.Add(e2);
+
+                return true;
+            }
+            return false;
         }
 
     }
