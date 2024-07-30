@@ -121,13 +121,22 @@ namespace FlowTiles.Examples {
                     for (int i = 0; i < path.Count; i++) {
                         var pos = path[i];
                         var sector = Graph.sectors[pos.SectorIndex];
-                        //var portal = sector.EdgePortals[pos.Cell];
-                        var goal = pos.Cell - sector.Boundaries.Min;
-                        var goals = new Vector2Int[] { new Vector2Int(goal.x, goal.y) };
-                        //var goals = new Vector2Int[] { new Vector2Int(2, 2) };
-                        //var goals = new Vector2Int[] { 
-                        //    new Vector2Int(0,0),new Vector2Int(1,0),new Vector2Int(2,0),new Vector2Int(3,0),new Vector2Int(4,0) };
-                        var flow = FlowCalculationController.RequestCalculation(sector.Costs, goals);
+                        var corner = sector.Boundaries.Min;
+                        Vector2Int[] goals;
+                        int2 exitDirection = 0;
+
+                        if (i < path.Count - 1) {
+                            var portal = sector.EdgePortals[pos.Cell];
+                            var cell = portal.Position.Cell - corner;
+                            goals = new Vector2Int[] { new Vector2Int(cell.x, cell.y) };
+                            exitDirection = portal.Direction;
+                        }
+                        else {
+                            var goal = pos.Cell - corner;
+                            goals = new Vector2Int[] { new Vector2Int(goal.x, goal.y) };
+                        }
+
+                        var flow = FlowCalculationController.RequestCalculation(sector.Costs, goals, exitDirection);
 
                         // Visualise flow data
                         VisualiseFlowField(sector, flow);

@@ -68,7 +68,7 @@ namespace FlowTiles.PortalGraphs {
             nodes = new List<Portal>(EdgePortals.Values);
 
             for (int color = 1; color <= Colors.NumColors; color++) {
-                var colorPortal = new Portal(CenterTile, Index);
+                var colorPortal = new Portal(CenterTile, Index, 0);
                 colorPortal.Color = color;
 
                 for (int p = 0; p < nodes.Count; p++) {

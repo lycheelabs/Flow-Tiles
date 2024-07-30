@@ -186,24 +186,26 @@ namespace FlowTiles.PortalGraphs {
 
         //Inter edges are edges that crosses sectors
         private void CreateInterEdge(Sector c1, Sector c2, bool x, int i) {
-            int2 g1, g2;
+            int2 g1, g2, dir;
             Portal n1, n2;
             if (x) {
                 g1 = new int2(c1.Boundaries.Max.x, i);
                 g2 = new int2(c2.Boundaries.Min.x, i);
+                dir = new int2(1, 0);
             }
             else {
                 g1 = new int2(i, c1.Boundaries.Max.y);
                 g2 = new int2(i, c2.Boundaries.Min.y);
+                dir = new int2(0, 1);
             }
 
             if (!c1.EdgePortals.TryGetValue(g1, out n1)) {
-                n1 = new Portal(g1, c1.Index);
+                n1 = new Portal(g1, c1.Index, dir);
                 c1.EdgePortals.Add(g1, n1);
             }
 
             if (!c2.EdgePortals.TryGetValue(g2, out n2)) {
-                n2 = new Portal(g2, c2.Index);
+                n2 = new Portal(g2, c2.Index, -dir);
                 c2.EdgePortals.Add(g2, n2);
             }
 

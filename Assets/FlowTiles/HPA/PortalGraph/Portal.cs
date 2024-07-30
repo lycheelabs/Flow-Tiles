@@ -7,11 +7,13 @@ namespace FlowTiles.PortalGraphs {
 
         public readonly SectorCell Position;
         public readonly NativeList<PortalEdge> Edges;
+        public readonly int2 Direction;
         public int Color;
 
-        public Portal(int2 cell, int sector) {
+        public Portal(int2 cell, int sector, int2 direction) {
             Position = new SectorCell(sector, cell);
             Edges = new NativeList<PortalEdge>(10, Allocator.Persistent);
+            Direction = direction;
             Color = -1;
         }
 

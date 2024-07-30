@@ -9,28 +9,22 @@ namespace FlowField {
 
     public static class FlowCalculationController {
 
-        public static FlowFieldTile RequestCalculation(CostField costs, Vector2Int[] goal) {
-            var width = costs.size.x;
-            var height = costs.size.y;
+        public static FlowFieldTile RequestCalculation(CostField costs, Vector2Int[] goal, int2 exitDirection) {
+            var w = costs.size.x;
+            var h = costs.size.y;
+            var size = (w + 2) * (h + 2);
 
-            var size = (width + 2) * (height + 2);
             var speedData = new NativeArray<double>(size, Allocator.TempJob);
-            for (var x = 1; x <= width; x++) {
-                for (var y = 1; y <= height; y++) {
-                    speedData[y * (width + 2) + x] = 1;// 1f / costs.GetCost(x-1, y-1);
-                }
-            }
-
-            for (var x = 1; x <= width; x++) {
-                for (var y = 1; y <= height; y++) {
+            for (var x = 1; x <= w; x++) {
+                for (var y = 1; y <= h; y++) {
                     var cost = costs.GetCost(x - 1, y - 1);
-                    var index = y * (width + 2) + x;
+                    var index = y * (w + 2) + x;
                     speedData[index] = 1f / cost;
                     if (cost == CostField.WALL) speedData[index] = -1;
                 }
             }
 
-            return RequestCalculation(speedData, goal, width, height);
+            return RequestCalculation(costs.size, speedData, goal, exitDirection);
         }
 
         public static FlowFieldTile RequestCalculation(float[,] speeds, Vector2Int[] goal, int width, int height) {
@@ -42,30 +36,30 @@ namespace FlowField {
                 }
             }
 
-            return RequestCalculation(speedData, goal, width, height);
+            return RequestCalculation(new int2(width, height), speedData, goal, 0);
         }
 
-        public static FlowFieldTile RequestCalculation(NativeArray<double> speedData, Vector2Int[] goal, int width, int height) {
-            var size = (width + 2) * (height + 2);
+        public static FlowFieldTile RequestCalculation(int2 size, NativeArray<double> speedData, Vector2Int[] goals, int2 exitDirection) {
+            var totalCells = (size.x + 2) * (size.y + 2);
 
-            var directions = new NativeArray<double2>(size, Allocator.Persistent);
-            var distances = new NativeArray<double>(size, Allocator.Persistent);
-            var targets = new NativeArray<double2>(size, Allocator.Persistent);
+            var directions = new NativeArray<double2>(totalCells, Allocator.Persistent);
+            var distances = new NativeArray<double>(totalCells, Allocator.Persistent);
+            var targets = new NativeArray<double2>(totalCells, Allocator.Persistent);
 
-            var goalData = new NativeArray<Vector2Int>(goal.Length, Allocator.Persistent);
-            for (var i = 0; i < goal.Length; i++) {
-                goalData[i] = goal[i];
+            var goalData = new NativeArray<Vector2Int>(goals.Length, Allocator.Persistent);
+            for (var i = 0; i < goals.Length; i++) {
+                goalData[i] = goals[i];
             }
 
             var job = new FlowCalculationJob() {
+                Size = size,
                 Speeds = speedData,
                 Goals = goalData,
-                Height = height,
-                Width = width,
+                ExitDirection = exitDirection,
 
-                Direction = directions,
-                Distance = distances,
-                Target = targets
+                Directions = directions,
+                Distances = distances,
+                Targets = targets
             };
 
             var stopwatch = new Stopwatch();
@@ -81,7 +75,7 @@ namespace FlowField {
             goalData.Dispose();
 
             return new FlowFieldTile {
-                Size = new int2(width, height),
+                Size = size,
                 Directions = directions,
                 Gradients = distances,
                 GenerationTime = stopwatch.Elapsed,
