@@ -1,8 +1,9 @@
 using FlowTiles.PortalGraphs;
-using NUnit.Framework.Internal;
 using Priority_Queue;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -10,8 +11,8 @@ namespace FlowTiles {
 
     public static partial class PortalPathfinder {
 
-        public static List<PortalPathNode> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
-            var result = new List<PortalPathNode>();
+        public static UnsafeList<PortalPathNode> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
+            var result = new UnsafeList<PortalPathNode>(32, Allocator.Persistent);
 
             // Find start and end clusters
             var startExists = graph.TryGetSectorRoot(start.x, start.y, out var startCluster);

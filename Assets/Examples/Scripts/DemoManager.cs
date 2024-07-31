@@ -67,11 +67,15 @@ namespace FlowTiles.Examples {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var singleton = em.CreateEntity();
             em.AddComponent<LevelSetup>(singleton);
+            em.AddComponent<GlobalPathfindingData>(singleton);
             em.SetComponentData(singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = Map.Obstacles,
                 Colors = ColorData,
                 Flows = FlowData,
+            }); 
+            em.SetComponentData(singleton, new GlobalPathfindingData {
+                Graph = Graph,
             });
 
             // Position the camera
@@ -109,13 +113,13 @@ namespace FlowTiles.Examples {
                 }
 
                 // Find a path
-                var start = new int2(0, 0);
+                /*var start = new int2(0, 0);
                 var dest = mouseCell;
                 var path = PortalPathfinder.FindPortalPath(Graph, start, dest);
 
-                if (path.Count > 0) {
+                if (path.Length > 0) {
 
-                    for (int i = 0; i < path.Count; i++) {
+                    for (int i = 0; i < path.Length; i++) {
                         var node = path[i];
                         var sector = Graph.sectors[node.Position.SectorIndex];
 
@@ -127,7 +131,7 @@ namespace FlowTiles.Examples {
 
                     }
 
-                }
+                }*/
 
             }
 
