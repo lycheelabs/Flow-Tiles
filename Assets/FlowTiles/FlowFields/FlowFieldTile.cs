@@ -2,7 +2,7 @@
 using Unity.Collections;
 using Unity.Mathematics;
 
-namespace FlowField {
+namespace FlowTiles {
     public struct FlowFieldTile {
 
         public int2 Size;

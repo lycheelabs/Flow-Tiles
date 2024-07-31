@@ -4,9 +4,8 @@ using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
-using FlowTiles;
 
-namespace FlowField {
+namespace FlowTiles.FlowField {
 
     public static class FlowCalculationController {
 

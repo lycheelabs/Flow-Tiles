@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FlowField;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
@@ -7,7 +8,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace FlowField {
+namespace FlowTiles.FlowField {
     public class FlowCalculationViewController : MonoBehaviour {
 
         public MeshFilter FlowMeshFilter;

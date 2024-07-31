@@ -4,7 +4,7 @@ using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowField {
+namespace FlowTiles.FlowField {
     [BurstCompile]
     public struct FlowCalculationJob : IJob {
 
