@@ -5,7 +5,7 @@ using Unity.Mathematics;
 using UnityEngine;
 
 namespace FlowTiles {
-    public class SectorPathfinder {
+    public static class SectorPathfinder {
 
         private static int2[] Offsets = new int2[] {
             new int2 (1, 0),new int2 (-1, 0),new int2 (0, 1),new int2 (0, -1),

@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace FlowTiles {
 
-    public class PortalPathfinder {
+    public static class PortalPathfinder {
 
         public struct PortalPathNode {
             public SectorCell Position;
@@ -56,7 +56,7 @@ namespace FlowTiles {
                 var edge = path[i];
                 if (edge.SpansTwoSectors) {
                     var sector = graph.sectors[edge.start.SectorIndex];
-                    var portal = sector.EdgePortals[edge.start.Cell];
+                    var portal = sector.GetExitPortalAt(edge.start.Cell);
                     result.Add(new PortalPathNode {
                         Position = edge.start,
                         GoalBounds = portal.Bounds,
@@ -96,7 +96,7 @@ namespace FlowTiles {
                 // Visit all neighbours through edges going out of node
                 foreach (PortalEdge e in current.Edges) {
                     var nextSector = graph.sectors[e.end.SectorIndex];
-                    var nextPortal = nextSector.EdgePortals[e.end.Cell];
+                    var nextPortal = nextSector.GetExitPortalAt(e.end.Cell);
 
                     // Check if we visited the outer end of the edge
                     if (Visited.Contains(e.end.Cell))

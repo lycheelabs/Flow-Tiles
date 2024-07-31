@@ -1,39 +1,41 @@
-using System.Collections.Generic;
-using System.Drawing;
+using Unity.Collections;
 using Unity.Mathematics;
 
 namespace FlowTiles.PortalGraphs {
 
-    public class Sector {
+    public struct Sector {
 
-        //Boundaries of the cluster (with respect to the original map)
-        public Boundaries Bounds;
-        public Dictionary<int2, Portal> EdgePortals;
-        public List<Portal> RootPortals;
+        // Index of the sector, as stored in the graph
+        public readonly int Index;
 
-        public int Index;
-        public int2 Size;
+        // Boundaries of the sector, relative to the level
+        public readonly Boundaries Bounds;
+
+        // Portals within this sector
+        public NativeList<Portal> RootPortals;
+        public NativeList<Portal> ExitPortals;
+        public NativeHashMap<int2, int> ExitPortalLookup;
+
+        // Cost and color fields for this sector
         public CostField Costs;
         public ColorField Colors;
-
-        public int2 CenterTile => new int2(Size.x / 2, Size.y / 2) + Bounds.Min;
 
         public Sector (int index, Boundaries boundaries) {
             Index = index;
             Bounds = new Boundaries();
-            EdgePortals = new Dictionary<int2, Portal>();
-            RootPortals = new List<Portal>();
+            RootPortals = new NativeList<Portal>(Constants.EXPECTED_MAX_COLORS, Allocator.Persistent);
+            ExitPortals = new NativeList<Portal>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
+            ExitPortalLookup = new NativeHashMap<int2, int>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
 
             Bounds = boundaries;
-            Size = Bounds.Max - Bounds.Min + 1;
-
-            Costs = new CostField(Size);
-            Colors = new ColorField(Size);
+            Costs = new CostField(Bounds.Size);
+            Colors = new ColorField(Bounds.Size);
         }
 
-        public void Build(Map map) {
+        public Sector Build(Map map) {
             Costs.Initialise(map, Bounds.Min);
             Colors.Recolor(Costs);
+            return this;
         }
 
         public bool Contains(int2 pos) {
@@ -51,28 +53,39 @@ namespace FlowTiles.PortalGraphs {
             return false;
         }
 
+        public bool HasExitPortalAt(int2 pos) {
+            return ExitPortalLookup.ContainsKey(pos);
+        }
+
+        public Portal GetExitPortalAt(int2 pos) {
+            var index = ExitPortalLookup[pos];
+            return ExitPortals[index];
+        }
+
+
+        public void AddExitPortal (Portal portal) {
+            ExitPortalLookup.Add(portal.Position.Cell, ExitPortals.Length);
+            ExitPortals.Add(portal);
+        }
+
         public void CreateRootPortals () {
 
-            // Wasteful...
-            var nodes = new List<Portal>(EdgePortals.Values);
-
-            for (int i = 0; i < nodes.Count; i++) {
-                var portal = nodes[i];
+            // Color the edge portals
+            for (int i = 0; i < ExitPortals.Length; i++) {
+                var portal = ExitPortals[i];
                 var tile = portal.Position.Cell - Bounds.Min;
                 var color = Colors.GetColor(tile);
                 portal.Color = color;
-                EdgePortals[portal.Position.Cell] = portal;
+                ExitPortals[i] = portal;
             }
 
-            // Wasteful...
-            nodes = new List<Portal>(EdgePortals.Values);
-
+            // Create the color roots
             for (int color = 1; color <= Colors.NumColors; color++) {
-                var colorPortal = new Portal(CenterTile, Index, 0);
+                var colorPortal = new Portal(Bounds.CentreCell, Index, 0);
                 colorPortal.Color = color;
 
-                for (int p = 0; p < nodes.Count; p++) {
-                    var portal = nodes[p];
+                for (int p = 0; p < ExitPortals.Length; p++) {
+                    var portal = ExitPortals[p];
                     if (portal.Color == color) {
                         colorPortal.Edges.Add(new PortalEdge {
                             start = colorPortal.Position,

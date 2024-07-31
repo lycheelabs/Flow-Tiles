@@ -12,8 +12,9 @@ namespace FlowField {
 
         public static FlowFieldTile RequestCalculation(Sector sector, Boundaries goalBounds, int2 exitDirection) {
             var sectorBounds = sector.Bounds;
-            var w = sector.Size.x;
-            var h = sector.Size.y;
+            var size = sectorBounds.Size;
+            var w = size.x;
+            var h = size.y;
 
             var goalMin = goalBounds.Min - sectorBounds.Min;
             var goalMax = goalBounds.Max - sectorBounds.Min;
@@ -45,7 +46,7 @@ namespace FlowField {
                 }
             }
 
-            return RequestCalculation(sector.Size, speedData, goalData, exitDirection);
+            return RequestCalculation(size, speedData, goalData, exitDirection);
         }
 
         public static FlowFieldTile RequestCalculation(float[,] speeds, Vector2Int[] goals, int width, int height) {

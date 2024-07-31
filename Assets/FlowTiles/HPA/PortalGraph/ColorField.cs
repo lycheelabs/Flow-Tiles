@@ -7,7 +7,7 @@ namespace FlowTiles.PortalGraphs {
 
     public struct ColorField {
 
-        public int2 size;
+        public readonly int2 size;
         public NativeArray<short> Colors;
         public short NumColors;
 
@@ -79,7 +79,6 @@ namespace FlowTiles.PortalGraphs {
                     }
                 }
             }
-
         }
 
         // Flood fill using the scanline method

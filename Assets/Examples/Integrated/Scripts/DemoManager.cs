@@ -140,7 +140,7 @@ namespace FlowTiles.Examples {
             var clusters = Graph.sectors;
             for (int c = 0;  c < clusters.Length; c++) {
                 var cluster = clusters[c];
-                var nodes = cluster.EdgePortals;
+                var nodes = cluster.ExitPortals;
 
                 DrawClusterBoundaries(cluster);
                 if (VisualiseConnections) {
@@ -163,8 +163,9 @@ namespace FlowTiles.Examples {
             }
         }
 
-        private static void DrawClusterConnections(Dictionary<int2, Portal> nodes) {
-            foreach (var node in nodes.Values) {
+        private static void DrawClusterConnections(NativeList<Portal> nodes) {
+            for (int n = 0; n < nodes.Length; n++) { 
+                var node = nodes[n];
                 for (int e = 0; e < node.Edges.Length; e++) {
                     var edge = node.Edges[e];
                     var pos1 = edge.start.Cell;

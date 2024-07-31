@@ -8,7 +8,7 @@ namespace FlowTiles.PortalGraphs {
         public const byte WALL = 255;
         public const byte OPEN = 1;
 
-        public int2 size;
+        public readonly int2 size;
         public NativeArray<byte> Costs;
 
         public CostField(int2 size) {
