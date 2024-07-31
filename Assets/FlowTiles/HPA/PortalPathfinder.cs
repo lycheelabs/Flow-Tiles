@@ -14,14 +14,16 @@ namespace FlowTiles {
             public SectorCell Position;
             public Boundaries GoalBounds;
             public int2 Direction;
+            public int Color;
 
             public int4 CacheKey => new int4(Position.Cell, Direction);
 
-            public static PortalPathNode NewDestNode(int destSector, int2 destCell) {
+            public static PortalPathNode NewDestNode(Portal cluster, int2 cell) {
                 return new PortalPathNode {
-                    Position = new SectorCell(destSector, destCell),
-                    GoalBounds = new Boundaries(destCell,destCell),
+                    Position = new SectorCell(cluster.Position.SectorIndex, cell),
+                    GoalBounds = new Boundaries(cell, cell),
                     Direction = 0,
+                    Color = cluster.Color,
                 };
             }
         }
@@ -37,7 +39,7 @@ namespace FlowTiles {
             }
 
             // Check whether start and dest clusters match
-            var destNode = PortalPathNode.NewDestNode(destCluster.Position.SectorIndex, dest);
+            var destNode = PortalPathNode.NewDestNode(destCluster, dest);
             if (startCluster.IsInSameCluster(destCluster)) {
                 result.Add(destNode);
                 return result;
@@ -58,7 +60,8 @@ namespace FlowTiles {
                     result.Add(new PortalPathNode {
                         Position = edge.start,
                         GoalBounds = portal.Bounds,
-                        Direction = edge.Span
+                        Direction = edge.Span,
+                        Color = portal.Color,
                     });
                 }
             }

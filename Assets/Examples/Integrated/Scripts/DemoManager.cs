@@ -4,20 +4,21 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
 
     public class DemoManager : MonoBehaviour {
 
+        private const float ColorFading = 0.7f; 
+
         private static float4[] graphColorings = new float4[] { 
-            new float4(0.8f, 1f, 0.8f, 1),
-            new float4(0.8f, 0.8f, 1f, 1),
-            new float4(1f, 1f, 0.8f, 1),
-            new float4(0.8f, 1f, 1f, 1),
-            new float4(1f, 0.8f, 1f, 1),
-            new float4(1f, 0.8f, 0.8f, 1),
+            new float4(ColorFading, 1f, ColorFading, 1),
+            new float4(ColorFading, ColorFading, 1f, 1),
+            new float4(1f, 1f, ColorFading, 1),
+            new float4(ColorFading, 1f, 1f, 1),
+            new float4(1f, ColorFading, 1f, 1),
+            new float4(1f, ColorFading, ColorFading, 1),
         };
 
         // -----------------------------------------
@@ -37,6 +38,7 @@ namespace FlowTiles.Examples {
             WallData = new NativeArray<bool>(LevelSize * LevelSize, Allocator.Persistent);
             ColorData = new NativeArray<float4>(LevelSize * LevelSize, Allocator.Persistent);
             FlowData = new NativeArray<float2>(LevelSize * LevelSize, Allocator.Persistent);
+            for (int i = 0; i < LevelSize * LevelSize; i++) ColorData[i] = 1f;
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var singleton = em.CreateEntity();
@@ -126,52 +128,9 @@ namespace FlowTiles.Examples {
 
                         //DrawPortalLink(path[i].Cell, path[i + 1].Cell);
                         DrawPortal(node.GoalBounds);
-                        VisualiseFlowField(sector.Bounds, flow);
+                        VisualiseFlowField(sector, node.Color, flow);
 
                     }
-
-                    // Create flow tiles
-                    /*for (int i = 0; i < path.Count; i++) {
-                        var pos = path[i];
-                        var sector = Graph.sectors[pos.SectorIndex];
-                        var corner = sector.Boundaries.Min;
-                        Vector2Int[] goals;
-                        int2 exitDirection = 0;
-
-                        if (i < path.Count - 1) {
-                            var portal = sector.EdgePortals[pos.Cell];
-                            var min = portal.LowerCorner - corner;
-                            var max = portal.UpperCorner - corner;
-                            var w = max.x - min.x + 1;
-                            var h = max.y - min.y + 1;
-                            var numGoals = w * h;
-                            goals = new Vector2Int[numGoals];
-                            int goal = 0;
-                            for (int x = min.x; x <= max.x; x++) {
-                                for (int y = min.y; y <= max.y; y++) {
-                                    goals[goal] = new Vector2Int(x, y);
-                                    goal++;
-                                }
-                            }
-                            exitDirection = portal.Direction;
-
-                            //DrawPortalLink(path[i].Cell, path[i + 1].Cell);
-                            DrawPortal(portal.LowerCorner, portal.UpperCorner);
-                        }
-                        else {
-                            var goal = pos.Cell - corner;
-                            goals = new Vector2Int[] { new Vector2Int(goal.x, goal.y) };
-                            DrawPortal(pos.Cell, pos.Cell);
-                        }
-
-                        var flow = FlowCalculationController.RequestCalculation(sector.Costs, goals, exitDirection);
-
-                        // Visualise flow data
-                        VisualiseFlowField(sector, flow);
-
-                    }*/
-
-                    //DrawPortalLink(start, path[0].Cell);
 
                 }
 
@@ -190,12 +149,16 @@ namespace FlowTiles.Examples {
             }
         }
 
-        private void VisualiseFlowField(Boundaries bounds, FlowFieldTile flowField) {
+        private void VisualiseFlowField(Sector sector, int color, FlowFieldTile flowField) {
+            var bounds = sector.Bounds;
             for (int x = 0; x < bounds.Size.x; x++) {
                 for (int y = 0; y < bounds.Size.y; y++) {
                     var mapIndex = (x + bounds.Min.x) + (y + bounds.Min.y) * LevelSize;
                     var flow = flowField.GetFlow(x, y);
-                    FlowData[mapIndex] = flow;
+                    var cellColor = sector.Colors.GetColor(x, y);
+                    if (FlowData[mapIndex].Equals(new float2(0)) || cellColor == color) {
+                        FlowData[mapIndex] = flow;
+                    }
                 }
             }
         }
