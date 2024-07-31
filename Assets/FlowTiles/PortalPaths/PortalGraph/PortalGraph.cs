@@ -1,10 +1,17 @@
-﻿using Unity.Collections;
+﻿using Unity.Burst;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace FlowTiles.PortalGraphs {
 
+    [BurstCompile]
     public struct PortalGraph {
+
+        [BurstCompile]
+        public static void StaticBuild (ref PortalGraph graph, ref Map map) {
+            graph.Build (map);
+        }
 
         public readonly int2 sizeCells;
         public readonly int2 sizeSectors;
@@ -15,20 +22,14 @@ namespace FlowTiles.PortalGraphs {
         /// <summary>
         /// Construct a graph from the map
         /// </summary>
-        public PortalGraph(Map map, int resolution) {
-
+        public PortalGraph(int2 sizeCells, int resolution) {
+            this.sizeCells = sizeCells;
             this.resolution = resolution;
-            sizeCells = new int2(map.Width, map.Height);
 
-            var sectorsW = Mathf.CeilToInt((float)map.Width / resolution);
-            var sectorsH = Mathf.CeilToInt((float)map.Height / resolution);
+            var sectorsW = Mathf.CeilToInt((float)sizeCells.x / resolution);
+            var sectorsH = Mathf.CeilToInt((float)sizeCells.y / resolution);
             sizeSectors = new int2(sectorsW, sectorsH);
             sectors = new NativeArray<Sector>(sectorsW * sectorsH, Allocator.Persistent);
-
-            //Set number of sectors in horizontal and vertical direction
-            BuildSectors(resolution, sectorsW, sectorsH);
-            InitialiseSectors(map);
-            LinkSectors();
         }
 
         public Sector GetSector(int x, int y) {
@@ -64,16 +65,15 @@ namespace FlowTiles.PortalGraphs {
 
         }
 
-        /// <summary>
-        /// Build all graph sectors
-        /// </summary>
-        private void BuildSectors(int resolution, int width, int height) {
-            Sector sector;
-            int x, y;
+        public void Build(Map map) {
+            BuildSectors();
+            InitialiseSectors(map);
+            LinkSectors();
+        }
 
-            //Create sectors of this level
-            for (x = 0; x < width; ++x) {
-                for (y = 0; y < height; ++y) {
+        private void BuildSectors() {
+            for (int x = 0; x < sizeSectors.x; x++) {
+                for (int y = 0; y < sizeSectors.y; y++) {
 
                     var min = new int2(x * resolution, y * resolution);
                     var max = new int2(
@@ -81,25 +81,18 @@ namespace FlowTiles.PortalGraphs {
                         Mathf.Min(min.y + resolution - 1, sizeCells.y - 1));
                     var boundaries = new Boundaries { Min = min, Max = max };
 
-                    var index = x + y * width;
-                    sector = new Sector(index, boundaries);
-                    sectors[x + y * width] = sector;
+                    var index = x + y * sizeSectors.x;
+                    sectors[index] = new Sector(index, boundaries);
                 }
             }
         }
 
-        /// <summary>
-        /// Cost and color each sector
-        /// </summary>
         private void InitialiseSectors(Map map) {
             for (int s = 0; s < sectors.Length; s++) {
                 sectors[s] = sectors[s].Build(map);
             }
         }
 
-        /// <summary>
-        /// Link all graph sectors
-        /// </summary>
         private void LinkSectors() {
 
             //Add border nodes for every adjacent pair of sectors
@@ -118,8 +111,9 @@ namespace FlowTiles.PortalGraphs {
             }
 
             //Add Intra edges for every border nodes and pathfind between them
+            var pathfinder = new SectorPathfinder(resolution * resolution, Allocator.Temp);
             for (int i = 0; i < sectors.Length; ++i) {
-                GenerateIntraEdges(sectors[i]);
+                GenerateIntraEdges(sectors[i], pathfinder);
             }
 
             // Create root portals allowing each start tile to reach the same-colored edge portals
@@ -219,7 +213,7 @@ namespace FlowTiles.PortalGraphs {
         }
 
         //Intra edges are edges that lives inside sectors
-        private void GenerateIntraEdges(Sector sector) {
+        private void GenerateIntraEdges(Sector sector, SectorPathfinder pathfinder) {
             int i, j;
             Portal n1, n2;
 
@@ -231,7 +225,7 @@ namespace FlowTiles.PortalGraphs {
                 for (j = i + 1; j < sector.ExitPortals.Length; ++j) {
                     n2 = sector.ExitPortals[j];
                     if (n1.Color == n2.Color) {
-                        TryConnectPortals(n1, n2, sector);
+                        TryConnectPortals(n1, n2, sector, pathfinder);
                     }
                 }
             }
@@ -241,11 +235,11 @@ namespace FlowTiles.PortalGraphs {
         /// Connect two nodes by pathfinding between them. 
         /// </summary>
         /// <remarks>We assume they are different nodes. If the path returned is 0, then there is no path that connects them.</remarks>
-        private bool TryConnectPortals(Portal n1, Portal n2, Sector sector) {
+        private bool TryConnectPortals(Portal n1, Portal n2, Sector sector, SectorPathfinder pathfinder) {
             PortalEdge e1, e2;
 
             var corner = sector.Bounds.Min;
-            var pathCost = SectorPathfinder.FindTravelCost(
+            var pathCost = pathfinder.FindTravelCost(
                 sector.Costs, n1.Position.Cell - corner, n2.Position.Cell - corner);
 
             if (pathCost > 0) {

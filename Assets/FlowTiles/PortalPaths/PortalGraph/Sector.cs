@@ -8,7 +8,7 @@ namespace FlowTiles.PortalGraphs {
         // Index of the sector, as stored in the graph
         public readonly int Index;
 
-        // Boundaries of the sector, relative to the level
+        // Bounds of the sector, relative to the level
         public readonly Boundaries Bounds;
 
         // Portals within this sector

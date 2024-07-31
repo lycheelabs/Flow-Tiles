@@ -48,23 +48,6 @@ namespace FlowTiles.FlowField {
             return RequestCalculation(size, speedData, goalData, exitDirection);
         }
 
-        public static FlowFieldTile RequestCalculation(float[,] speeds, Vector2Int[] goals, int width, int height) {
-            var size = (width + 2) * (height + 2);
-            var speedData = new NativeArray<double>(size, Allocator.TempJob);
-            for (var x = 0; x <= width + 1; x++) {
-                for (var y = 0; y <= height + 1; y++) {
-                    speedData[y * (width + 2) + x] = speeds[x, y];
-                }
-            }
-
-            var goalData = new NativeArray<Vector2Int>(goals.Length, Allocator.Persistent);
-            for (var i = 0; i < goals.Length; i++) {
-                goalData[i] = goals[i];
-            }
-
-            return RequestCalculation(new int2(width, height), speedData, goalData, 0);
-        }
-
         public static FlowFieldTile RequestCalculation(int2 size, NativeArray<double> speedData, NativeArray<Vector2Int> goalData, int2 exitDirection) {
             var totalCells = (size.x + 2) * (size.y + 2);
             var directions = new NativeArray<double2>(totalCells, Allocator.Persistent);

@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using UnityEngine;
 
 namespace FlowTiles.FlowField {
+
     [BurstCompile]
     public struct FlowCalculationJob : IJob {
 

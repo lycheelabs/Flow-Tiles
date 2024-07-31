@@ -26,61 +26,58 @@ namespace FlowTiles.Examples {
         public int Resolution = 10;
         public bool VisualiseConnections;
 
-        private bool[,] WallMap;
-        private NativeArray<bool> WallData;
+        private Map Map;
         private NativeArray<float4> ColorData;
         private NativeArray<float2> FlowData;
         private PortalGraph Graph;
 
-
         void Start() {
-            WallData = new NativeArray<bool>(LevelSize * LevelSize, Allocator.Persistent);
+
+            // Initialise the map
+            Map = new Map(LevelSize, LevelSize);
+            Map.InitialiseRandomObstacles();
+
+            // Create the graph
+            var stopwatch = new System.Diagnostics.Stopwatch();
+            stopwatch.Start();
+            Graph = new PortalGraph(Map.Bounds.Size, Resolution);
+            //Graph.Build(Map);
+            PortalGraph.StaticBuild(ref Graph, ref Map);
+            stopwatch.Stop();
+            Debug.Log(string.Format ("Portal graph created in: {0} ms", (int)stopwatch.Elapsed.TotalMilliseconds));
+
+            // Allocate visualisation data
             ColorData = new NativeArray<float4>(LevelSize * LevelSize, Allocator.Persistent);
             FlowData = new NativeArray<float2>(LevelSize * LevelSize, Allocator.Persistent);
-            for (int i = 0; i < LevelSize * LevelSize; i++) ColorData[i] = 1f;
-
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var singleton = em.CreateEntity();
-            em.AddComponent<LevelSetup>(singleton);
-            em.SetComponentData(singleton, new LevelSetup {
-                Size = LevelSize,
-                Walls = WallData,
-                Colors = ColorData,
-                Flows = FlowData,
-            });
-
-            var halfViewedSize = (LevelSize - 1) / 2f;
-            Camera.main.orthographicSize = LevelSize / 2f * 1.05f + 1;
-            Camera.main.transform.position = new Vector3(halfViewedSize, halfViewedSize, -20);
-
-            WallMap = new bool[LevelSize, LevelSize];
-            for (int i = 0; i < LevelSize; i++) {
-                for (int j = 0; j < LevelSize; j++) {
-                    if (i == 0 && j == 0) continue;
-                    if (UnityEngine.Random.value < 0.2f) WallMap[i, j] = true;
-                }
-            }
-
-            for (int i = 0; i < LevelSize; i++) {
-                for (int j = 0; j < LevelSize; j++) {
-                    var index = i + j * LevelSize;
-                    WallData[index] = WallMap[i, j];
-                }
-            }
-
-            var map = Map.CreateMap(WallMap);
-            Graph = new PortalGraph(map, Resolution);
 
             for (int y = 0; y < LevelSize; y++) {
                 for (int x = 0; x < LevelSize; x++) {
+                    var index = x + y * LevelSize;
                     var sector = Graph.GetSector(x, y);
                     var color = sector.Colors.GetColor(x % Resolution, y % Resolution);
-                    var index = x + y * LevelSize;
+                    
+                    ColorData[index] = 1f;
                     if (color > 0) {
                         ColorData[index] = graphColorings[(color - 1) % graphColorings.Length];
                     }
                 }
             }
+
+            // Initialise the ECS simulation
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var singleton = em.CreateEntity();
+            em.AddComponent<LevelSetup>(singleton);
+            em.SetComponentData(singleton, new LevelSetup {
+                Size = LevelSize,
+                Walls = Map.Obstacles,
+                Colors = ColorData,
+                Flows = FlowData,
+            });
+
+            // Position the camera
+            var halfViewedSize = (LevelSize - 1) / 2f;
+            Camera.main.orthographicSize = LevelSize / 2f * 1.05f + 1;
+            Camera.main.transform.position = new Vector3(halfViewedSize, halfViewedSize, -20);
 
         }
 
@@ -103,9 +100,8 @@ namespace FlowTiles.Examples {
                 // Modify the grid
                 if (Input.GetMouseButtonDown(0)) {
                     var cellIndex = mouseCell.x + mouseCell.y * LevelSize;
-                    var flip = !WallMap[mouseCell.x, mouseCell.y];
-                    WallData[cellIndex] = flip;
-                    WallMap[mouseCell.x, mouseCell.y] = flip;
+                    var flip = !Map.Obstacles[cellIndex];
+                    Map.Obstacles[cellIndex] = flip;
                 }
 
                 for (int i = 0; i < LevelSize * LevelSize; i++) {
@@ -201,8 +197,6 @@ namespace FlowTiles.Examples {
         }
 
         private static void DrawPortal (Boundaries bounds) {
-            //Debug.DrawLine(ToVector(from), ToVector(to), Color.green);
-
             var pos00 = ToVector(bounds.Min.x, bounds.Min.y) + new Vector3(-0.4f, -0.4f);
             var pos01 = ToVector(bounds.Min.x, bounds.Max.y) + new Vector3(-0.4f, 0.4f);
             var pos10 = ToVector(bounds.Max.x, bounds.Min.y) + new Vector3(0.4f, -0.4f);

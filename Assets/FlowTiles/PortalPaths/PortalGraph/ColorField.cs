@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using Unity.Collections;
 using Unity.Mathematics;
 
@@ -81,10 +80,10 @@ namespace FlowTiles.PortalGraphs {
             }
         }
 
-        // Flood fill using the scanline method
+        // Flood fill using the scanline method. Based on...
         // https://simpledevcode.wordpress.com/2015/12/29/flood-fill-algorithm-using-c-net/
         private void FloodFill(int2 startPoint, short oldColorIndex, short newColorIndex) {
-            Stack<int2> points = new Stack<int2>();
+            NativeStack<int2> points = new NativeStack<int2>(100, Allocator.Temp);
             points.Push(startPoint);
 
             while (points.Count != 0) {
