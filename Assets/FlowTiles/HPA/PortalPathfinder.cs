@@ -1,4 +1,5 @@
 using FlowTiles.PortalGraphs;
+using NUnit.Framework.Internal;
 using Priority_Queue;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,8 +10,24 @@ namespace FlowTiles {
 
     public class PortalPathfinder {
 
-        public static List<SectorCell> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
-            var result = new List<SectorCell>();
+        public struct PortalPathNode {
+            public SectorCell Position;
+            public Boundaries GoalBounds;
+            public int2 Direction;
+
+            public int4 CacheKey => new int4(Position.Cell, Direction);
+
+            public static PortalPathNode NewDestNode(int destSector, int2 destCell) {
+                return new PortalPathNode {
+                    Position = new SectorCell(destSector, destCell),
+                    GoalBounds = new Boundaries(destCell,destCell),
+                    Direction = 0,
+                };
+            }
+        }
+
+        public static List<PortalPathNode> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
+            var result = new List<PortalPathNode>();
 
             // Find start and end clusters
             var startExists = graph.TryGetSectorRoot(start.x, start.y, out var startCluster);
@@ -20,9 +37,9 @@ namespace FlowTiles {
             }
 
             // Check whether start and dest clusters match
-            var destPosition = new SectorCell(destCluster.Position.SectorIndex, dest);
+            var destNode = PortalPathNode.NewDestNode(destCluster.Position.SectorIndex, dest);
             if (startCluster.IsInSameCluster(destCluster)) {
-                result.Add(destPosition);
+                result.Add(destNode);
                 return result;
             }
 
@@ -32,13 +49,20 @@ namespace FlowTiles {
                 return result;
             }
 
-            // Extract the portal positions as SectorCells
+            // Convert the sector-spanning edges into PortalPathNodes
             for (var i = 0; i < path.Length; i ++) {
-                if (path[i].start.SectorIndex != path[i].end.SectorIndex) {
-                    result.Add(path[i].start);
+                var edge = path[i];
+                if (edge.SpansTwoSectors) {
+                    var sector = graph.sectors[edge.start.SectorIndex];
+                    var portal = sector.EdgePortals[edge.start.Cell];
+                    result.Add(new PortalPathNode {
+                        Position = edge.start,
+                        GoalBounds = portal.Bounds,
+                        Direction = edge.Span
+                    });
                 }
             }
-            result.Add(destPosition);
+            result.Add(destNode);
             return result;
 
         }

@@ -140,22 +140,22 @@ namespace FlowTiles.PortalGraphs {
         private void LinkAdjacentSectors(Sector sector1, Sector sector2, bool horizontal) {
             int i, iMin, iMax;
             if (horizontal) {
-                iMin = sector1.Boundaries.Min.y;
+                iMin = sector1.Bounds.Min.y;
                 iMax = iMin + sector1.Size.y;
             }
             else {
-                iMin = sector1.Boundaries.Min.x;
+                iMin = sector1.Bounds.Min.x;
                 iMax = iMin + sector1.Size.x;
             }
 
             int lineSize = 0;
             for (i = iMin; i < iMax; ++i) {
-                if (horizontal && sector1.IsOpenAt(new int2(sector1.Boundaries.Max.x, i)) 
-                        && sector2.IsOpenAt(new int2(sector2.Boundaries.Min.x, i))) {
+                if (horizontal && sector1.IsOpenAt(new int2(sector1.Bounds.Max.x, i)) 
+                        && sector2.IsOpenAt(new int2(sector2.Bounds.Min.x, i))) {
                     lineSize++;
                 }
-                else if (!horizontal && sector1.IsOpenAt(new int2(i, sector1.Boundaries.Max.y)) 
-                        && sector2.IsOpenAt(new int2(i, sector2.Boundaries.Min.y))) {
+                else if (!horizontal && sector1.IsOpenAt(new int2(i, sector1.Bounds.Max.y)) 
+                        && sector2.IsOpenAt(new int2(i, sector2.Bounds.Min.y))) {
                     lineSize++;
                 }
                 else {
@@ -181,17 +181,17 @@ namespace FlowTiles.PortalGraphs {
             int2 start1, start2, end1, end2, dir;
             Portal portal1, portal2;
             if (horizontal) {
-                start1 = new int2(sector1.Boundaries.Max.x, start);
-                end1 = new int2(sector1.Boundaries.Max.x, end);
-                start2 = new int2(sector2.Boundaries.Min.x, start);
-                end2 = new int2(sector2.Boundaries.Min.x, end);
+                start1 = new int2(sector1.Bounds.Max.x, start);
+                end1 = new int2(sector1.Bounds.Max.x, end);
+                start2 = new int2(sector2.Bounds.Min.x, start);
+                end2 = new int2(sector2.Bounds.Min.x, end);
                 dir = new int2(1, 0);
             }
             else {
-                start1 = new int2(start, sector1.Boundaries.Max.y);
-                end1 = new int2(end, sector1.Boundaries.Max.y);
-                start2 = new int2(start, sector2.Boundaries.Min.y);
-                end2 = new int2(end, sector2.Boundaries.Min.y);
+                start1 = new int2(start, sector1.Bounds.Max.y);
+                end1 = new int2(end, sector1.Bounds.Max.y);
+                start2 = new int2(start, sector2.Bounds.Min.y);
+                end2 = new int2(end, sector2.Bounds.Min.y);
                 dir = new int2(0, 1);
             }
 
@@ -246,7 +246,7 @@ namespace FlowTiles.PortalGraphs {
         private bool TryConnectPortals(Portal n1, Portal n2, Sector c) {
             PortalEdge e1, e2;
 
-            var corner = c.Boundaries.Min;
+            var corner = c.Bounds.Min;
             var pathCost = SectorPathfinder.FindTravelCost(
                 c.Costs, n1.Position.Cell - corner, n2.Position.Cell - corner);
 

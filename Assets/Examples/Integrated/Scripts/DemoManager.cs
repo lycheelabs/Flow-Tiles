@@ -118,8 +118,20 @@ namespace FlowTiles.Examples {
 
                 if (path.Count > 0) {
 
-                    // Create flow tiles
                     for (int i = 0; i < path.Count; i++) {
+                        var node = path[i];
+                        var sector = Graph.sectors[node.Position.SectorIndex];
+
+                        var flow = FlowCalculationController.RequestCalculation(sector, node.GoalBounds, node.Direction);
+
+                        //DrawPortalLink(path[i].Cell, path[i + 1].Cell);
+                        DrawPortal(node.GoalBounds);
+                        VisualiseFlowField(sector.Bounds, flow);
+
+                    }
+
+                    // Create flow tiles
+                    /*for (int i = 0; i < path.Count; i++) {
                         var pos = path[i];
                         var sector = Graph.sectors[pos.SectorIndex];
                         var corner = sector.Boundaries.Min;
@@ -157,7 +169,7 @@ namespace FlowTiles.Examples {
                         // Visualise flow data
                         VisualiseFlowField(sector, flow);
 
-                    }
+                    }*/
 
                     //DrawPortalLink(start, path[0].Cell);
 
@@ -178,10 +190,10 @@ namespace FlowTiles.Examples {
             }
         }
 
-        private void VisualiseFlowField(Sector sector, FlowFieldTile flowField) {
-            for (int x = 0; x < sector.Size.x; x++) {
-                for (int y = 0; y < sector.Size.y; y++) {
-                    var mapIndex = (x + sector.Boundaries.Min.x) + (y + sector.Boundaries.Min.y) * LevelSize;
+        private void VisualiseFlowField(Boundaries bounds, FlowFieldTile flowField) {
+            for (int x = 0; x < bounds.Size.x; x++) {
+                for (int y = 0; y < bounds.Size.y; y++) {
+                    var mapIndex = (x + bounds.Min.x) + (y + bounds.Min.y) * LevelSize;
                     var flow = flowField.GetFlow(x, y);
                     FlowData[mapIndex] = flow;
                 }
@@ -204,20 +216,20 @@ namespace FlowTiles.Examples {
 
         private static void DrawClusterBoundaries(Sector cluster) {
             Debug.DrawLine(
-                new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Min.y - 0.5f),
-                new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Min.y - 0.5f),
+                new Vector3(cluster.Bounds.Min.x - 0.5f, cluster.Bounds.Min.y - 0.5f),
+                new Vector3(cluster.Bounds.Max.x + 0.5f, cluster.Bounds.Min.y - 0.5f),
                 Color.blue);
             Debug.DrawLine(
-                new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Min.y - 0.5f),
-                new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Max.y + 0.5f),
+                new Vector3(cluster.Bounds.Min.x - 0.5f, cluster.Bounds.Min.y - 0.5f),
+                new Vector3(cluster.Bounds.Min.x - 0.5f, cluster.Bounds.Max.y + 0.5f),
                 Color.blue);
             Debug.DrawLine(
-                new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Max.y + 0.5f),
-                new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Min.y - 0.5f),
+                new Vector3(cluster.Bounds.Max.x + 0.5f, cluster.Bounds.Max.y + 0.5f),
+                new Vector3(cluster.Bounds.Max.x + 0.5f, cluster.Bounds.Min.y - 0.5f),
                 Color.blue);
             Debug.DrawLine(
-                new Vector3(cluster.Boundaries.Max.x + 0.5f, cluster.Boundaries.Max.y + 0.5f),
-                new Vector3(cluster.Boundaries.Min.x - 0.5f, cluster.Boundaries.Max.y + 0.5f),
+                new Vector3(cluster.Bounds.Max.x + 0.5f, cluster.Bounds.Max.y + 0.5f),
+                new Vector3(cluster.Bounds.Min.x - 0.5f, cluster.Bounds.Max.y + 0.5f),
                 Color.blue);
         }
 
@@ -225,13 +237,13 @@ namespace FlowTiles.Examples {
             Debug.DrawLine(ToVector(from), ToVector(to), Color.green);
         }
 
-        private static void DrawPortal (int2 cornerA, int2 cornerB) {
+        private static void DrawPortal (Boundaries bounds) {
             //Debug.DrawLine(ToVector(from), ToVector(to), Color.green);
 
-            var pos00 = ToVector(cornerA.x, cornerA.y) + new Vector3(-0.4f, -0.4f);
-            var pos01 = ToVector(cornerA.x, cornerB.y) + new Vector3(-0.4f, 0.4f);
-            var pos10 = ToVector(cornerB.x, cornerA.y) + new Vector3(0.4f, -0.4f);
-            var pos11 = ToVector(cornerB.x, cornerB.y) + new Vector3(0.4f, 0.4f); 
+            var pos00 = ToVector(bounds.Min.x, bounds.Min.y) + new Vector3(-0.4f, -0.4f);
+            var pos01 = ToVector(bounds.Min.x, bounds.Max.y) + new Vector3(-0.4f, 0.4f);
+            var pos10 = ToVector(bounds.Max.x, bounds.Min.y) + new Vector3(0.4f, -0.4f);
+            var pos11 = ToVector(bounds.Max.x, bounds.Max.y) + new Vector3(0.4f, 0.4f); 
 
             Debug.DrawLine(pos00, pos01, Color.green);
             Debug.DrawLine(pos00, pos10, Color.green);

@@ -2,15 +2,19 @@
 
 namespace FlowTiles {
 
-    public class Boundaries {
+    public struct Boundaries {
 
-        //Top left corner (minimum corner)
         public int2 Min;
-
-        //Bottom right corner (maximum corner)
         public int2 Max;
 
-        public float2 CentrePoint => new float2(Min.x + Max.x, Min.y + Max.y) / 2f;
+        public int2 Size => Max - Min + 1;
+        public int2 CentreCell => (Min + Max) / 2;
+        public float2 CentrePoint => (float2)(Min + Max + 1) / 2f;
+
+        public Boundaries (int2 min, int2 max) {
+            Min = min; 
+            Max = max;
+        }
 
     }
 

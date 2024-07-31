@@ -8,6 +8,9 @@ namespace FlowTiles.PortalGraphs {
         public SectorCell end;
         public float weight;
 
+        public bool SpansTwoSectors => end.SectorIndex != start.SectorIndex;
+        public int2 Span => end.Cell - start.Cell;
+
     }
 
 }

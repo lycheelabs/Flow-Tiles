@@ -7,7 +7,7 @@ namespace FlowTiles.PortalGraphs {
     public class Sector {
 
         //Boundaries of the cluster (with respect to the original map)
-        public Boundaries Boundaries;
+        public Boundaries Bounds;
         public Dictionary<int2, Portal> EdgePortals;
         public List<Portal> RootPortals;
 
@@ -16,36 +16,36 @@ namespace FlowTiles.PortalGraphs {
         public CostField Costs;
         public ColorField Colors;
 
-        public int2 CenterTile => new int2(Size.x / 2, Size.y / 2) + Boundaries.Min;
+        public int2 CenterTile => new int2(Size.x / 2, Size.y / 2) + Bounds.Min;
 
         public Sector (int index, Boundaries boundaries) {
             Index = index;
-            Boundaries = new Boundaries();
+            Bounds = new Boundaries();
             EdgePortals = new Dictionary<int2, Portal>();
             RootPortals = new List<Portal>();
 
-            Boundaries = boundaries;
-            Size = Boundaries.Max - Boundaries.Min + 1;
+            Bounds = boundaries;
+            Size = Bounds.Max - Bounds.Min + 1;
 
             Costs = new CostField(Size);
             Colors = new ColorField(Size);
         }
 
         public void Build(Map map) {
-            Costs.Initialise(map, Boundaries.Min);
+            Costs.Initialise(map, Bounds.Min);
             Colors.Recolor(Costs);
         }
 
         public bool Contains(int2 pos) {
-            return pos.x >= Boundaries.Min.x &&
-                pos.x <= Boundaries.Max.x &&
-                pos.y >= Boundaries.Min.y &&
-                pos.y <= Boundaries.Max.y;
+            return pos.x >= Bounds.Min.x &&
+                pos.x <= Bounds.Max.x &&
+                pos.y >= Bounds.Min.y &&
+                pos.y <= Bounds.Max.y;
         }
 
         public bool IsOpenAt(int2 pos) {
             if (Contains(pos) 
-                && Costs.GetCost(pos - Boundaries.Min) != CostField.WALL) {
+                && Costs.GetCost(pos - Bounds.Min) != CostField.WALL) {
                 return true;
             }
             return false;
@@ -58,7 +58,7 @@ namespace FlowTiles.PortalGraphs {
 
             for (int i = 0; i < nodes.Count; i++) {
                 var portal = nodes[i];
-                var tile = portal.Position.Cell - Boundaries.Min;
+                var tile = portal.Position.Cell - Bounds.Min;
                 var color = Colors.GetColor(tile);
                 portal.Color = color;
                 EdgePortals[portal.Position.Cell] = portal;
