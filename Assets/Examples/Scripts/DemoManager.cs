@@ -44,7 +44,7 @@ namespace FlowTiles.Examples {
 
                 // Modify the grid
                 if (Input.GetMouseButtonDown(0)) {
-                    Level.FlipWallAt(mouseCell);
+                    //Level.FlipWallAt(mouseCell);
                 }
 
                 Level.VisualiseTestPath(default, mouseCell, true);

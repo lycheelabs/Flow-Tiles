@@ -43,8 +43,7 @@ namespace FlowTiles.Examples {
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
             Graph = new PortalGraph(Map.Bounds.SizeCells, Resolution);
-            //Graph.Build(PathableMap);
-            PortalGraph.StaticBuild(ref Graph, ref Map);
+            PortalGraph.BurstBuild(ref Graph, ref Map);
             stopwatch.Stop();
             Debug.Log(string.Format("Portal graph created in: {0} ms", (int)stopwatch.Elapsed.TotalMilliseconds));
 
@@ -54,8 +53,8 @@ namespace FlowTiles.Examples {
 
             for (int y = 0; y < LevelSize; y++) {
                 for (int x = 0; x < LevelSize; x++) {
-                    var sector = Graph.GetSector(x, y);
-                    var color = sector.Colors.GetColor(x % Resolution, y % Resolution);
+                    var colors = Graph.GetColorField(x, y);
+                    var color = colors.GetColor(x % Resolution, y % Resolution);
                     if (color > 0) {
                         ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
                     }
@@ -99,7 +98,7 @@ namespace FlowTiles.Examples {
             if (path.Length > 0) {
                 for (int i = 0; i < path.Length; i++) {
                     var node = path[i];
-                    var sector = Graph.sectors[node.Position.SectorIndex];
+                    var sector = Graph.MapSectors[node.Position.SectorIndex];
 
                     var flow = FlowCalculationController.RequestCalculation(sector, node.GoalBounds, node.Direction);
 
@@ -115,7 +114,7 @@ namespace FlowTiles.Examples {
 
         }
 
-        private void CopyFlowVisualisationData(Sector sector, int color, FlowFieldTile flowField) {
+        private void CopyFlowVisualisationData(MapSector sector, int color, FlowFieldTile flowField) {
             var bounds = sector.Bounds;
             for (int x = 0; x < bounds.SizeCells.x; x++) {
                 for (int y = 0; y < bounds.SizeCells.y; y++) {

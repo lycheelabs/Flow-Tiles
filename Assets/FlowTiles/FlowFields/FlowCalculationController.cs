@@ -10,7 +10,7 @@ namespace FlowTiles.FlowField {
 
     public static class FlowCalculationController {
 
-        public static FlowFieldTile RequestCalculation(Sector sector, CellRect goalBounds, int2 exitDirection) {
+        public static FlowFieldTile RequestCalculation(MapSector sector, CellRect goalBounds, int2 exitDirection) {
             var sectorBounds = sector.Bounds;
             var size = sectorBounds.SizeCells;
             var w = size.x;
