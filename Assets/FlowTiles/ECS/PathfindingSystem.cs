@@ -52,6 +52,7 @@ namespace FlowTiles {
                 PathCache = PathCache.Cache,
                 FlowCache = FlowCache.Cache,
                 Requests = PathRequests,
+                PortalGraph = portalGraph,
                 ECB = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
             }.Schedule();
 
@@ -70,9 +71,11 @@ namespace FlowTiles {
             public EntityCommandBuffer.ParallelWriter ECB;
             public NativeParallelHashMap<int4, PortalPath> PathCache;
             public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
+            public PortalGraphs.PortalGraph PortalGraph;
 
             [BurstCompile]
             private void Execute(PathfindingData agent, [ChunkIndexInQuery] int sortKey) {
+                //var color = PortalGraph.GetColor(agent.OriginCell.x, agent.OriginCell.y);
                 var request = new int4(agent.OriginCell, agent.DestCell);
                 var cacheHit = PathCache.ContainsKey(request);
 

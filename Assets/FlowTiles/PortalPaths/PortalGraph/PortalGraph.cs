@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
+using static UnityEditor.PlayerSettings;
 
 namespace FlowTiles.PortalGraphs {
 
@@ -218,19 +219,28 @@ namespace FlowTiles.PortalGraphs {
                 sector2.AddExitPortal(portal2);
             }
 
-            portal1 = sector1.GetExitPortalAt(mid1);
-            portal2 = sector2.GetExitPortalAt(mid2);
+            var portalIndex1 = sector1.ExitPortalLookup[mid1];
+            portal1 = sector1.ExitPortals[portalIndex1];
+            
+            var portalIndex2 = sector2.ExitPortalLookup[mid2];
+            portal2 = sector2.ExitPortals[portalIndex2];
 
             portal1.Edges.Add(new PortalEdge() {
                 start = portal1.Position,
                 end = portal2.Position,
                 weight = 1 
             });
+            sector1.ExitPortals[portalIndex1] = portal1;
+
             portal2.Edges.Add(new PortalEdge() {
                 start = portal2.Position,
                 end = portal1.Position,
                 weight = 1 
             });
+            sector2.ExitPortals[portalIndex2] = portal2;
+
+            GraphSectors[index1] = sector1;
+            GraphSectors[index2] = sector2;
         }
 
     }
