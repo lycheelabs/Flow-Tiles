@@ -6,13 +6,15 @@ namespace FlowTiles.PortalGraphs {
 
     public struct CostSector {
 
+        public readonly int Index;
         public readonly CellRect Bounds;
 
         public UnsafeField<byte> Costs;
         public UnsafeField<short> Colors;
         public short NumColors;
 
-        public CostSector(CellRect boundaries) {
+        public CostSector(int index, CellRect boundaries) {
+            Index = index;
             Bounds = new CellRect();
 
             Bounds = boundaries;

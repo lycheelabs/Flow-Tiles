@@ -5,6 +5,8 @@ using Unity.Mathematics;
 namespace FlowTiles {
     public struct FlowFieldTile {
 
+        public int SectorIndex;
+        public short Color;
         public int2 Size;
         public UnsafeField<float2> Directions;
         public TimeSpan GenerationTime;

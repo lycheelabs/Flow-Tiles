@@ -44,14 +44,14 @@ namespace FlowTiles {
                 //UnityEngine.Debug.Log("Creating path: " + request.cacheKey);
                 var path = PortalPathfinder.FindPortalPath(pathGraph, request.originCell, request.destCell);
                 PathCache.Cache[request.cacheKey] = new PortalPath {
-                    Path = path
+                    Nodes = path
                 };
             }
             PathRequests.Clear();
 
             // TODO: Process flow field requests, and cache the results
             foreach (var request in FlowRequests) {
-                //UnityEngine.Debug.Log("Requested flow: " + request.cacheKey);
+                UnityEngine.Debug.Log("Requested flow: " + request.cacheKey);
                 var goal = request.goalCell;
                 var goalBounds = new CellRect(goal, goal);
                 if (!request.goalDirection.Equals(0)) {
@@ -65,20 +65,26 @@ namespace FlowTiles {
                 FlowCalculator.BurstCalculate(ref calculator);
 
                 FlowCache.Cache[request.cacheKey] = new FlowFieldTile {
+                    SectorIndex = sector.Index,
+                    Color = calculator.Color,
                     Size = sector.Bounds.SizeCells,
                     Directions = calculator.Flow,
                 };
             }
             FlowRequests.Clear();
 
-            // Search for entity paths
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            new RequestPathsJob {
+            //var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            
+            new FollowPathsJob {
                 CostMap = pathGraph.Costs,
                 PathCache = PathCache.Cache,
                 FlowCache = FlowCache.Cache,
                 PathRequests = PathRequests,
                 FlowRequests = FlowRequests,
+            }.Schedule();
+
+            new DebugPathsJob {
+                FlowCache = FlowCache.Cache,
             }.Schedule();
 
         }
@@ -91,7 +97,7 @@ namespace FlowTiles {
         }
 
         [BurstCompile]
-        public partial struct RequestPathsJob : IJobEntity {
+        public partial struct FollowPathsJob : IJobEntity {
 
             public CostMap CostMap;
             public NativeParallelHashMap<int4, PortalPath> PathCache;
@@ -101,53 +107,169 @@ namespace FlowTiles {
             public NativeList<FlowRequest> FlowRequests;
 
             [BurstCompile]
-            private void Execute(PathfindingGoal agent, PathfindingResult result, [ChunkIndexInQuery] int sortKey) {
-                var origin = agent.OriginCell;
-                var originSector = CostMap.GetSectorIndex(origin.x, origin.y);
-                var originColor = CostMap.GetColor(origin.x, origin.y);
+            private void Execute(
+                    FlowPosition position, 
+                    FlowGoal goal, 
+                    ref FlowProgress progress,
+                    ref FlowDirection result, 
+                    [ChunkIndexInQuery] int sortKey) {
 
-                var dest = agent.DestCell;
-                var destCell = CostMap.GetCellIndex(dest.x, dest.y);
-                var destColor = CostMap.GetColor(dest.x, dest.y);
+                result.Direction = 0;
 
-                // Search for a cached path
-                var pathKey = new int4(originSector, originColor, destCell, destColor);
-                var pathCacheHit = PathCache.ContainsKey(pathKey);
-                if (!pathCacheHit) {
-
-                    // Request a path be generated
-                    PathRequests.Add(new PathRequest {
-                        originCell = agent.OriginCell,
-                        destCell = agent.DestCell,
-                        cacheKey = pathKey,
-                    });
+                if (!goal.HasGoal) {
+                    progress.HasPath = false;
+                    progress.HasFlow = false;
                     return;
                 }
 
-                var pathNodes = PathCache[pathKey].Path;
-                if (pathNodes.Length > 0) {
-                    var firstNode = pathNodes[0];
-                    var flowKey = firstNode.CacheKey;
+                var current = position.Position;
+                var currentSector = CostMap.GetSectorIndex(current.x, current.y);
+                var currentColor = CostMap.GetColor(current.x, current.y);
+
+                var dest = goal.Goal;
+                var destCell = CostMap.GetCellIndex(dest.x, dest.y);
+                var destColor = CostMap.GetColor(dest.x, dest.y);
+
+                // Attach to a path
+                if (!progress.HasPath) {
+
+                    // Search for a cached path
+                    var pathKey = new int4(currentSector, currentColor, destCell, destColor);
+                    var pathCacheHit = PathCache.ContainsKey(pathKey);
+                    if (!pathCacheHit) {
+
+                        // Request a path be generated
+                        PathRequests.Add(new PathRequest {
+                            originCell = current,
+                            destCell = goal.Goal,
+                            cacheKey = pathKey,
+                        });
+                        return;
+                    }
+
+                    progress.HasPath = true;
+                    progress.PathKey = pathKey;
+                    progress.NodeIndex = 0;
+                }
+
+                // Read current path
+                if (progress.HasPath) {
+
+                    // Check destination hasn't changed
+                    if (destCell != progress.PathKey.z || destColor != progress.PathKey.w) {
+                        progress.HasPath = false;
+                        progress.HasFlow = false;
+                        return;
+                    }
+
+                    // Check path still exists
+                    var pathFound = PathCache.TryGetValue(progress.PathKey, out var path);
+                    if (!pathFound || path.Nodes.Length == 0) {
+                        progress.HasPath = false;
+                        progress.HasFlow = false;
+                        return;
+                    }
+
+                    // Check for sector change
+                    var nodeIsValid = false;
+                    if (progress.NodeIndex >= 0 && progress.NodeIndex < path.Nodes.Length) {
+                        var node = path.Nodes[progress.NodeIndex];
+                        var nodeCell = node.Position.Cell;
+                        var nodeSector = CostMap.GetSectorIndex(nodeCell.x, nodeCell.y);
+                        var nodeColor = CostMap.GetColor(nodeCell.x, nodeCell.y);
+                        nodeIsValid = nodeSector == currentSector && nodeColor == currentColor;
+                    }
+                    if (!nodeIsValid) {
+                        var foundNode = false;
+
+                        // Check next sector
+                        if (progress.NodeIndex < path.Nodes.Length - 1) {
+                            var newIndex = progress.NodeIndex + 1;
+                            var newNode = path.Nodes[newIndex];
+                            var newCell = newNode.Position.Cell;
+                            var newSector = CostMap.GetSectorIndex(newCell.x, newCell.y);
+                            var newColor = CostMap.GetColor(newCell.x, newCell.y);
+                            if (newSector == currentSector && newColor == currentColor) {
+                                progress.NodeIndex = newIndex;
+                                foundNode = true;
+                            }
+                        }
+
+                        // Fallback: Check all sectors
+                        if (!foundNode) {
+                            for (int index = 0; index < path.Nodes.Length; index++) {
+                                var newNode = path.Nodes[index];
+                                var newCell = newNode.Position.Cell;
+                                var newSector = CostMap.GetSectorIndex(newCell.x, newCell.y);
+                                var newColor = CostMap.GetColor(newCell.x, newCell.y);
+                                if (newSector == currentSector && newColor == currentColor) {
+                                    progress.NodeIndex = index;
+                                    foundNode = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Fallback: Cancel path
+                        if (!foundNode) {
+                            progress.HasPath = false;
+                            progress.HasFlow = false;
+                            return;
+                        }
+
+                    }
+
+                    // Search for a cached flow
+                    var pathNode = path.Nodes[progress.NodeIndex];
+                    var flowKey = pathNode.CacheKey;
                     var flowCacheHit = FlowCache.ContainsKey(flowKey);
                     if (!flowCacheHit) {
 
                         // Request a flow be generated
                         FlowRequests.Add(new FlowRequest {
-                            goalCell = firstNode.Position.Cell,
-                            goalDirection = firstNode.Direction,
+                            goalCell = pathNode.Position.Cell,
+                            goalDirection = pathNode.Direction,
                         });
+                        progress.HasFlow = false;
                         return;
                     }
 
+                    progress.HasFlow = true;
+                    progress.FlowKey = flowKey;
+
+                    // Save the flow direction
+                    var pos = position.Position - CostMap.Sectors[currentSector].Bounds.MinCell;
                     var flow = FlowCache[flowKey];
-                    UnityEngine.Debug.Log("Retrieved flow");
-                    var direction = flow.GetFlow(origin.x, origin.y);
-                    result.PathDirection = direction;
-                    UnityEngine.Debug.Log(result.PathDirection);
+                    var direction = flow.GetFlow(pos.x, pos.y);
+                    result.Direction = direction;
+
+
                 }
 
             }
         }
+
+        [BurstCompile]
+        public partial struct DebugPathsJob : IJobEntity {
+
+            public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
+
+            [BurstCompile]
+            private void Execute(FlowProgress progress, ref FlowDebugData debug) {
+                debug.CurrentFlowTile = default;
+
+                if (!progress.HasFlow) {
+                    return;
+                }
+                var foundFlow = FlowCache.TryGetValue(progress.FlowKey, out var flow);
+                if (!foundFlow) {
+                    return;
+                }
+
+                debug.CurrentFlowTile = flow;
+            }
+        }
+
     }
 
 }

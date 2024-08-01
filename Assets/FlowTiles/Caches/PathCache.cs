@@ -20,7 +20,7 @@ namespace FlowTiles {
 
     public struct PortalPath {
 
-        public UnsafeList<PortalPathNode> Path;
+        public UnsafeList<PortalPathNode> Nodes;
 
     }
 

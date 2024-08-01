@@ -4,12 +4,13 @@ using FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
     public class DemoLevel {
 
-        private const float ColorFading = 0.7f;
+        private const float ColorFading = 0.4f;
 
         private static float4[] graphColorings = new float4[] {
             new float4(ColorFading, 1f, ColorFading, 1),
@@ -78,6 +79,23 @@ namespace FlowTiles.Examples {
 
         }
 
+        public void SpawnAgentAt (int2 cell, bool addDebugData = false) {
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            if (TryGetSingleton(out PrefabLinks prefabs)) {
+                var agent = em.Instantiate(prefabs.Agent);
+                em.SetComponentData(agent, new LocalTransform {
+                    Position = new float3(cell, -1),
+                    Scale = 1,
+                });
+                em.SetComponentData(agent, new FlowPosition {
+                    Position = cell,
+                });
+                if (addDebugData) {
+                    em.AddComponent<FlowDebugData>(agent);
+                }
+            }
+        }
+
         public void FlipWallAt(int2 cell) {
             Map.Obstacles[cell.x, cell.y] = !Map.Obstacles[cell.x, cell.y];
         }
@@ -99,12 +117,11 @@ namespace FlowTiles.Examples {
                 for (int i = 0; i < path.Length; i++) {
                     var node = path[i];
                     var sector = Graph.Costs.Sectors[node.Position.SectorIndex];
-
                     var flow = FlowCalculationController.RequestCalculation(sector, node.GoalBounds, node.Direction);
 
                     Visualisation.DrawPortal(node.GoalBounds);
                     if (showFlow) {
-                        CopyFlowVisualisationData(sector, node.Color, flow);
+                        CopyFlowVisualisationData(flow);
                     } else {
                         Visualisation.DrawPortalLink(path[i].GoalBounds.CentrePoint, path[i + 1].GoalBounds.CentrePoint);
                     }
@@ -114,18 +131,54 @@ namespace FlowTiles.Examples {
 
         }
 
-        private void CopyFlowVisualisationData(CostSector sector, int color, FlowFieldTile flowField) {
+        public void VisualiseAgentFlows() {
+            FlowData.InitialiseTo(0);
+            
+            var datas = GetComponentArray<FlowDebugData>();
+            foreach (var data in datas) {
+                CopyFlowVisualisationData(data.CurrentFlowTile);
+            }
+        }
+
+        private void CopyFlowVisualisationData(FlowFieldTile flowField) {
+            if (!flowField.Directions.IsCreated) return;
+
+            var sector = Graph.Costs.Sectors[flowField.SectorIndex];
             var bounds = sector.Bounds;
             for (int x = 0; x < bounds.SizeCells.x; x++) {
                 for (int y = 0; y < bounds.SizeCells.y; y++) {
                     var mapCell = new int2(x + bounds.MinCell.x, y + bounds.MinCell.y);
                     var flow = flowField.GetFlow(x, y);
                     var cellColor = sector.Colors[x, y];
-                    if (FlowData[mapCell.x, mapCell.y].Equals(new float2(0)) || cellColor == color) {
+                    if (FlowData[mapCell.x, mapCell.y].Equals(new float2(0)) || cellColor == flowField.Color) {
                         FlowData[mapCell.x, mapCell.y] = flow;
                     }
                 }
             }
+        }
+
+        public bool TryGetSingleton<T> (out T data) where T : unmanaged, IComponentData {
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var query = em.CreateEntityQuery(new ComponentType[] { typeof(T) });
+            if (query.TryGetSingletonEntity<T>(out Entity singleton)) {
+                data = em.GetComponentData<T>(singleton);
+                return true;
+            } else {
+                data = default;
+                return true;
+            }
+        }
+
+        public NativeArray<Entity> GetEntityArray<T>() where T : unmanaged, IComponentData {
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var query = em.CreateEntityQuery(new ComponentType[] { typeof(T) });
+            return query.ToEntityArray(Allocator.Temp);
+        }
+
+        public NativeArray<T> GetComponentArray<T>() where T : unmanaged, IComponentData {
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var query = em.CreateEntityQuery(new ComponentType[] { typeof(T) });
+            return query.ToComponentDataArray<T>(Allocator.Temp);
         }
 
     }

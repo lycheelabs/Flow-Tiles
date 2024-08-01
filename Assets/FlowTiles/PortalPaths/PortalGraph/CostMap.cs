@@ -35,7 +35,7 @@ namespace FlowTiles.PortalGraphs {
                 for (int y = 0; y < Layout.SizeSectors.y; y++) {
                     var index = Layout.IndexOfSector(x, y);
                     var bounds = Layout.GetSectorBounds(x, y);
-                    var sector = new CostSector(bounds);
+                    var sector = new CostSector(index, bounds);
                     sector.Build(map);
                     Sectors[index] = sector;
                 }

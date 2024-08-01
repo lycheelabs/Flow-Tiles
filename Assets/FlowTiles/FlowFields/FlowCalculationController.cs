@@ -21,6 +21,8 @@ namespace FlowTiles.FlowField {
             stopwatch.Stop();
 
             return new FlowFieldTile {
+                SectorIndex = sector.Index,
+                Color = calculator.Color,
                 Size = calculator.Size,
                 Directions = calculator.Flow,
                 GenerationTime = stopwatch.Elapsed,

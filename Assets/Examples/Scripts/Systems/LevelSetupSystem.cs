@@ -42,10 +42,9 @@ namespace FlowTiles.Examples {
                         cell = new int2(i, j),
                     });
                     state.EntityManager.SetComponentData(flow, new LocalTransform {
-                        Position = new float3(i, j, -1),
+                        Position = new float3(i, j, -0.5f),
                         Scale = 0,
                     });
-
                 }
             }
 

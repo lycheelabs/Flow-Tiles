@@ -8,8 +8,11 @@ namespace FlowTiles.Examples {
             public override void Bake(AgentAuthor authoring) {
                 var entity = GetEntity(TransformUsageFlags.None);
                 AddComponent(entity, new AgentData { });
-                AddComponent(entity, new PathfindingGoal { });
-                AddComponent(entity, new PathfindingResult { });
+
+                AddComponent(entity, new FlowPosition { });
+                AddComponent(entity, new FlowGoal { });
+                AddComponent(entity, new FlowProgress { });
+                AddComponent(entity, new FlowDirection { });
             }
         }
 

@@ -9,7 +9,7 @@ namespace FlowTiles.Examples {
 
     public partial struct LevelUpdateSystem : ISystem {
 
-        public const bool VISUALISE_GRAPH_COLORS = true;
+        public const bool VISUALISE_GRAPH_COLORS = false;
 
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<LevelSetup>();

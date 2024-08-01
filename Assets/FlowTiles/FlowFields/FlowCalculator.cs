@@ -1,5 +1,6 @@
 using FlowTiles.PortalGraphs;
 using FlowTiles.Utils;
+using System.Drawing;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -29,6 +30,7 @@ namespace FlowTiles.FlowField {
 
         // Result
         public UnsafeField<float2> Flow;
+        public short Color;
 
         public FlowCalculator(CostSector sector, CellRect goalBounds, int2 exitDirection) {
             Size = sector.Bounds.SizeCells;
@@ -36,6 +38,7 @@ namespace FlowTiles.FlowField {
             GoalBounds = goalBounds;
             ExitDirection = exitDirection;
             Flow = new UnsafeField<float2>(Size + 2, Allocator.Persistent);
+            Color = 0;
         }
 
         public void Calculate() {
@@ -47,7 +50,7 @@ namespace FlowTiles.FlowField {
 
             var goalMin = GoalBounds.MinCell - sectorBounds.MinCell;
             var goalMax = GoalBounds.MaxCell - sectorBounds.MinCell;
-            var goalColor = Sector.Colors[goalMin.x, goalMin.y];
+            Color = Sector.Colors[goalMin.x, goalMin.y];
 
             var speeds = new NativeField<float>(size + 2, Allocator.Temp);
             var targets = new NativeField<float2>(Size + 2, Allocator.Temp);
@@ -63,7 +66,7 @@ namespace FlowTiles.FlowField {
                     var cost = Sector.Costs[x - 1, y - 1];
                     var color = Sector.Colors[x - 1, y - 1];
                     speeds[x, y] = 1f / cost;
-                    if (cost == PathableLevel.WALL_COST || color != goalColor) {
+                    if (cost == PathableLevel.WALL_COST || color != Color) {
                         speeds[x, y] = -1;
                     }
                 }
@@ -85,7 +88,8 @@ namespace FlowTiles.FlowField {
                     var sourceSpeed = speeds[source.x, source.y];
                     for (var i = 0; i < NeighborsCount; i++) {
                         if (TryGetNeighbor(source, i, out var neighbor)) {
-                            if (GoalBounds.ContainsCell(neighbor - 1)) {
+                            var neighborWorldCell = neighbor - 1 + Sector.Bounds.MinCell;
+                            if (GoalBounds.ContainsCell(neighborWorldCell)) {
                                 continue;
                             }
 
