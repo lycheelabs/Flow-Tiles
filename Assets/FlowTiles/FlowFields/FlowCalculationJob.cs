@@ -1,8 +1,13 @@
-﻿using Unity.Burst;
+﻿using FlowTiles.Utils;
+using System.Drawing;
+using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
 namespace FlowTiles.FlowField {
 
@@ -10,24 +15,26 @@ namespace FlowTiles.FlowField {
     public struct FlowCalculationJob : IJob {
 
         [ReadOnly] public int2 Size;
-        [ReadOnly] public NativeArray<double> Speeds;
+        [ReadOnly] public NativeArray<float> Speeds;
         [ReadOnly] public NativeArray<Vector2Int> Goals;
         [ReadOnly] public float2 ExitDirection;
 
-        // Direction of the flow.
-        public NativeArray<double2> Directions;
         // Distance from the closest goal.
-        public NativeArray<double> Distances;
+        public UnsafeField<float> Distances;
         // Position towards which the flow is directed (approximately).
-        public NativeArray<double2> Targets;
+        public UnsafeField<float2> Targets;
+        // Direction of the flow.
+        public UnsafeField<float2> Flow;
 
-        private static double Inf => 1000000000;
-        private static double ObstacleStep => 10000;
-        private static double ObstacleOverrideValue => 1;
+        private static float Inf => 1000000000;
+        private static float ObstacleStep => 10000;
+        private static float ObstacleOverrideValue => 1;
 
         private const int NeighborsCount = 4;
 
         public void Execute() {
+            Targets = new UnsafeField<float2>(Size + 2, Allocator.TempJob);
+            Distances = new UnsafeField<float>(Size + 2, Allocator.TempJob);
 
             var queue = new NativeQueue<Vector2Int>(Allocator.Temp);
             var secondQueue = new NativeQueue<Vector2Int>(Allocator.Temp);
@@ -36,7 +43,7 @@ namespace FlowTiles.FlowField {
 
             for (var x = 0; x < Size.x + 2; x++) {
                 for (var y = 0; y < Size.y + 2; y++) {
-                    Distances[GetIndex(x, y)] = Inf;
+                    Distances[x, y] = Inf;
                 }
             }
 
@@ -47,9 +54,9 @@ namespace FlowTiles.FlowField {
                 var source = Goals[s] + new Vector2Int(1, 1);
                 var index = GetIndex(source.x, source.y);
 
-                Distances[index] = 0;
-                Targets[index] = new double2(source.x, source.y);
-                Directions[index] = ExitDirection;
+                Distances[source.x, source.y] = 0;
+                Targets[source.x, source.y] = new float2(source.x, source.y);
+                Flow[source.x, source.y] = ExitDirection;
                 processedPositions[index] = true;
 
                 //queue.Enqueue(source);
@@ -73,12 +80,12 @@ namespace FlowTiles.FlowField {
             while ((queue.Count > 0 || secondQueue.Count > 0) && iterationsCount < iterationLimit) {
                 while (queue.Count > 0 && iterationsCount++ < iterationLimit) {
                     var current = queue.Dequeue();
-                    Distances[GetIndex(current)] = UpdatePoint(current.x, current.y);
+                    Distances[current.x, current.y] = UpdatePoint(current.x, current.y);
 
                     if (sourcesCount > 0) {
                         sourcesCount--;
-                        Directions[GetIndex(current)] = double2.zero;
-                        Targets[GetIndex(current)] = new double2(current.x, current.y);
+                        Flow[current.x, current.y] = float2.zero;
+                        Targets[current.x, current.y] = new float2(current.x, current.y);
                     }
 
                     for (var i = 0; i < NeighborsCount; i++) {
@@ -93,7 +100,7 @@ namespace FlowTiles.FlowField {
 
                 while (secondQueue.Count > 0 && iterationsCount++ < iterationLimit) {
                     var current = secondQueue.Dequeue();
-                    Distances[GetIndex(current)] = UpdatePoint(current.x, current.y) + ObstacleStep;
+                    Distances[current.x, current.y] = UpdatePoint(current.x, current.y) + ObstacleStep;
                     for (var i = 0; i < NeighborsCount; i++) {
                         if (TryGetNeighbor(current, i, out var neighbor) &&
                             processedPositions[GetIndex(neighbor)] == false) {
@@ -108,78 +115,82 @@ namespace FlowTiles.FlowField {
 
                 sourcesCount = queue.Count;
             }
+
+            Targets.Dispose();
+            Distances.Dispose();
         }
 
-        private double UpdatePoint(int x, int y) {
+        private float UpdatePoint(int x, int y) {
             var xyIndex = GetIndex(x, y);
             var f = Speeds[xyIndex];
 
             if (f == 0) f = ObstacleOverrideValue;
 
-            var minX = math.min(Distances[GetIndex(x - 1, y)], Distances[GetIndex(x + 1, y)]);
-            var minY = math.min(Distances[GetIndex(x, y - 1)], Distances[GetIndex(x, y + 1)]);
+            var minX = math.min(Distances[x - 1, y], Distances[x + 1, y]);
+            var minY = math.min(Distances[x, y - 1], Distances[x, y + 1]);
 
             if (math.abs(minX - minY) >= 1 / f) {
                 var result = math.min(minX + 1 / f, minY + 1 / f);
                 if (minX < minY) {
-                    Directions[xyIndex] = Distances[GetIndex(x - 1, y)] < Distances[GetIndex(x + 1, y)]
-                        ? new double2(-1, 0)
-                        : new double2(1, 0);
+                    Flow[x, y] = Distances[x - 1, y] < Distances[x + 1, y]
+                        ? new float2(-1, 0)
+                        : new float2(1, 0);
                 }
                 else {
-                    Directions[xyIndex] = Distances[GetIndex(x, y - 1)] < Distances[GetIndex(x, y + 1)]
-                        ? new double2(0, -1)
-                        : new double2(0, 1);
+                    Flow[x, y] = Distances[x, y - 1] < Distances[x, y + 1]
+                        ? new float2(0, -1)
+                        : new float2(0, 1);
                 }
 
-                var dir = Directions[xyIndex];
-                var prevIndex = GetIndex(new Vector2Int(x, y) + new Vector2Int((int)dir.x, (int)dir.y));
+                var dir = Flow[x, y];
+                var prev = new Vector2Int(x, y) + new Vector2Int((int)dir.x, (int)dir.y);
 
-                if (Directions[xyIndex].Equals(Directions[prevIndex])) {
-                    Targets[xyIndex] = Targets[prevIndex];
+                if (Flow[x, y].Equals(Flow[prev.x, prev.y])) {
+                    Targets[x, y] = Targets[prev.x, prev.y];
                 }
                 else {
-                    Targets[xyIndex] = new double2(x, y) + dir;
+                    Targets[x, y] = new float2(x, y) + dir;
                 }
 
                 return result;
             }
             else {
-                var usedX = Distances[GetIndex(x - 1, y)] < Distances[GetIndex(x + 1, y)] ? x - 1 : x + 1;
-                var usedY = Distances[GetIndex(x, y - 1)] < Distances[GetIndex(x, y + 1)] ? y - 1 : y + 1;
+                var usedX = Distances[x - 1, y] < Distances[x + 1, y] ? x - 1 : x + 1;
+                var usedY = Distances[x, y - 1] < Distances[x, y + 1] ? y - 1 : y + 1;
 
-                var directionX = Directions[GetIndex(usedX, y)];
-                var directionY = Directions[GetIndex(x, usedY)];
+                var directionX = Flow[usedX, y];
+                var directionY = Flow[x, usedY];
 
-                if (TryIntersectRays(new double2(usedX, y), directionX, new double2(x, usedY),
+                if (TryIntersectRays(new float2(usedX, y), directionX, new float2(x, usedY),
                         directionY, out var intersectionPoint) == false) {
                     var r1 = math.min(minX + 1 / f, minY + 1 / f);
                     if (minX < minY) {
-                        Directions[xyIndex] = Distances[GetIndex(x - 1, y)] < Distances[GetIndex(x + 1, y)]
-                            ? new double2(-1, 0)
-                            : new double2(1, 0);
+                        Flow[x, y] = Distances[x - 1, y] < Distances[x + 1, y]
+                            ? new float2(-1, 0)
+                            : new float2(1, 0);
                     }
                     else {
-                        Directions[xyIndex] = Distances[GetIndex(x, y - 1)] < Distances[GetIndex(x, y + 1)]
-                            ? new double2(0, -1)
-                            : new double2(0, 1);
+                        Flow[x, y] = Distances[x, y - 1] < Distances[x, y + 1]
+                            ? new float2(0, -1)
+                            : new float2(0, 1);
                     }
 
-                    var dir = Directions[xyIndex];
-                    Targets[xyIndex] = Targets[GetIndex(new Vector2Int(x, y) + new Vector2Int((int)dir.x, (int)dir.y))];
+                    var dir = Flow[x, y];
+                    var target = new Vector2Int(x, y) + new Vector2Int((int)dir.x, (int)dir.y);
+                    Targets[x, y] = Targets[target.x, target.y];
                     return r1;
                 }
 
-                var result = (minX + minY + math.sqrt((minX + minY) * (minX + minY) - 2 * (minX * minX + minY * minY - 1.0 / (f * f)))) * 0.5;
+                var result = (minX + minY + (float)math.sqrt((minX + minY) * (minX + minY) - 2f * (minX * minX + minY * minY - 1.0 / (f * f)))) * 0.5f;
 
-                var vec = new double2(minX - result, minY - result);
-                if (math.abs(Distances[GetIndex(x - 1, y)]) > math.abs(Distances[GetIndex(x + 1, y)]))
+                var vec = new float2(minX - result, minY - result);
+                if (math.abs(Distances[x - 1, y]) > math.abs(Distances[x + 1, y]))
                     vec.x *= -1;
-                if (math.abs(Distances[GetIndex(x, y - 1)]) > math.abs(Distances[GetIndex(x, y + 1)]))
+                if (math.abs(Distances[x, y - 1]) > math.abs(Distances[x, y + 1]))
                     vec.y *= -1;
 
-                Directions[xyIndex] = math.normalize(vec);
-                Targets[xyIndex] = intersectionPoint;
+                Flow[x, y] = math.normalize(vec);
+                Targets[x, y] = intersectionPoint;
 
                 return result;
             }
@@ -220,9 +231,9 @@ namespace FlowTiles.FlowField {
             return y * (Size.x + 2) + x;
         }
 
-        private static bool TryIntersectRays(double2 rayOrigin1, double2 rayDirection1, double2 rayOrigin2,
-            double2 rayDirection2, out double2 intersectionPoint) {
-            intersectionPoint = double2.zero;
+        private static bool TryIntersectRays(float2 rayOrigin1, float2 rayDirection1, float2 rayOrigin2,
+            float2 rayDirection2, out float2 intersectionPoint) {
+            intersectionPoint = float2.zero;
 
             var crossProduct = rayDirection1.x * rayDirection2.y - rayDirection1.y * rayDirection2.x;
 
@@ -243,4 +254,5 @@ namespace FlowTiles.FlowField {
         }
 
     }
+
 }

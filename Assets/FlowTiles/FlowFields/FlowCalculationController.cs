@@ -1,4 +1,5 @@
 ﻿using FlowTiles.PortalGraphs;
+using FlowTiles.Utils;
 using System.Diagnostics;
 using Unity.Collections;
 using Unity.Jobs;
@@ -24,7 +25,7 @@ namespace FlowTiles.FlowField {
 
             // Initialise flow speeds
             var numFlowCells = (w + 2) * (h + 2);
-            var speedData = new NativeArray<double>(numFlowCells, Allocator.TempJob);
+            var speedData = new NativeArray<float>(numFlowCells, Allocator.TempJob);
             for (var x = 1; x <= w; x++) {
                 for (var y = 1; y <= h; y++) {
                     var cost = sector.Costs.GetCost(x - 1, y - 1);
@@ -45,42 +46,30 @@ namespace FlowTiles.FlowField {
                 }
             }
 
-            return RequestCalculation(size, speedData, goalData, exitDirection);
-        }
-
-        public static FlowFieldTile RequestCalculation(int2 size, NativeArray<double> speedData, NativeArray<Vector2Int> goalData, int2 exitDirection) {
-            var totalCells = (size.x + 2) * (size.y + 2);
-            var directions = new NativeArray<double2>(totalCells, Allocator.Persistent);
-            var distances = new NativeArray<double>(totalCells, Allocator.Persistent);
-            var targets = new NativeArray<double2>(totalCells, Allocator.Persistent);
-
+            // Initialise the job
+            var flow = new UnsafeField<float2>(size + 2, Allocator.Persistent);
             var job = new FlowCalculationJob() {
                 Size = size,
                 Speeds = speedData,
                 Goals = goalData,
                 ExitDirection = exitDirection,
-
-                Directions = directions,
-                Distances = distances,
-                Targets = targets
+                Flow = flow,
             };
 
+            // Execute and time the job
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-
             var handle = job.Schedule();
             handle.Complete();
-
             stopwatch.Stop();
 
-            targets.Dispose();
+            // Dispose of temporary data
             speedData.Dispose();
             goalData.Dispose();
 
             return new FlowFieldTile {
                 Size = size,
-                Directions = directions,
-                Gradients = distances,
+                Directions = flow,
                 GenerationTime = stopwatch.Elapsed,
             };
         }

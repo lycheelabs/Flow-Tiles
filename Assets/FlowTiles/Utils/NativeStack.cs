@@ -15,7 +15,8 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 
-namespace Unity.Collections {
+namespace FlowTiles.Utils {
+
     public unsafe struct NativeStack<T> : IDisposable where T : struct {
         private NativeArray<T> m_Array;
         [NativeDisableUnsafePtrRestriction] int* m_Counter;

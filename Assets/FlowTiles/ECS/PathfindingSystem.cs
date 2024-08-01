@@ -1,33 +1,31 @@
-using NUnit.Framework.Internal;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.VisualScripting;
 
 namespace FlowTiles {
 
     public partial struct PathfindingSystem : ISystem {
 
-        private Entity CacheSingleton;
-        private PathCache Cache;
+        private PathCache PathCache;
+        private FlowCache FlowCache;
 
         //private Entity BufferSingleton;
-        private NativeList<PathRequest> Requests;
+        private NativeList<PathRequest> PathRequests;
 
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<GlobalPathfindingData>();
 
-            // Build the cache
-            Cache = new PathCache {
-                Cache = new NativeParallelHashMap<int4, CachedPath>(1000, Allocator.Persistent) 
+            // Build the caches
+            PathCache = new PathCache {
+                Cache = new NativeParallelHashMap<int4, PortalPath>(1000, Allocator.Persistent) 
             };
-            CacheSingleton = state.EntityManager.CreateEntity();
-            state.EntityManager.AddComponent<PathCache>(CacheSingleton);
-            state.EntityManager.SetComponentData(CacheSingleton, Cache);
+            FlowCache = new FlowCache {
+                Cache = new NativeParallelHashMap<int4, FlowFieldTile>(1000, Allocator.Persistent)
+            };
 
             // Build the request buffers
-            Requests = new NativeList<PathRequest>(1000, Allocator.Persistent);
+            PathRequests = new NativeList<PathRequest>(1000, Allocator.Persistent);
 
         }
 
@@ -37,29 +35,32 @@ namespace FlowTiles {
             var globalData = SystemAPI.GetSingleton<GlobalPathfindingData>();
             var portalGraph = globalData.Graph;
 
-            // Process queued requests, and cache the paths
-            foreach (var request in Requests) {
+            // Process pathfinding requests, and cache the results
+            foreach (var request in PathRequests) {
                 var path = PortalPathfinder.FindPortalPath(portalGraph, request.originCell, request.destCell);
-                Cache.Cache[request.cacheKey] = new CachedPath {
+                PathCache.Cache[request.cacheKey] = new PortalPath {
                     Path = path
                 };
             }
-            Requests.Clear();
+            PathRequests.Clear();
+
+            // TODO: Process flow field requests, and cache the results
 
             // Search for entity paths
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             new RequestPathsJob {
-                Cache = Cache.Cache,
-                Requests = Requests,
+                PathCache = PathCache.Cache,
+                FlowCache = FlowCache.Cache,
+                Requests = PathRequests,
                 ECB = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
             }.Schedule();
 
         }
 
         public void OnDestroy (ref SystemState state) {
-            state.EntityManager.DestroyEntity(CacheSingleton);
-            Cache.Cache.Dispose();
-            Requests.Dispose();
+            PathCache.Cache.Dispose();
+            FlowCache.Cache.Dispose();
+            PathRequests.Dispose();
         }
 
         [BurstCompile]
@@ -67,12 +68,13 @@ namespace FlowTiles {
 
             public NativeList<PathRequest> Requests;
             public EntityCommandBuffer.ParallelWriter ECB;
-            public NativeParallelHashMap<int4, CachedPath> Cache;
+            public NativeParallelHashMap<int4, PortalPath> PathCache;
+            public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
 
             [BurstCompile]
             private void Execute(PathfindingData agent, [ChunkIndexInQuery] int sortKey) {
                 var request = new int4(agent.OriginCell, agent.DestCell);
-                var cacheHit = Cache.ContainsKey(request);
+                var cacheHit = PathCache.ContainsKey(request);
 
                 if (!cacheHit) {
                     Requests.Add(new PathRequest {
@@ -81,8 +83,8 @@ namespace FlowTiles {
                     });
                 }
                 else {
-                    var nodes = Cache[request].Path;
-                    UnityEngine.Debug.Log("Retrieved path: " + nodes.Length);
+                    var nodes = PathCache[request].Path;
+                    //UnityEngine.Debug.Log("Retrieved path: " + nodes.Length);
                 }
             }
         }

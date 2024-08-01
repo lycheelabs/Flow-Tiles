@@ -1,5 +1,6 @@
 using FlowTiles.FlowField;
 using FlowTiles.PortalGraphs;
+using FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -113,7 +114,7 @@ namespace FlowTiles.Examples {
                 }
 
                 // Find a path
-                /*var start = new int2(0, 0);
+                var start = new int2(0, 0);
                 var dest = mouseCell;
                 var path = PortalPathfinder.FindPortalPath(Graph, start, dest);
 
@@ -131,7 +132,7 @@ namespace FlowTiles.Examples {
 
                     }
 
-                }*/
+                }
 
             }
 
@@ -162,7 +163,7 @@ namespace FlowTiles.Examples {
             }
         }
 
-        private static void DrawClusterConnections(NativeList<Portal> nodes) {
+        private static void DrawClusterConnections(INativeList<Portal> nodes) {
             for (int n = 0; n < nodes.Length; n++) { 
                 var node = nodes[n];
                 for (int e = 0; e < node.Edges.Length; e++) {

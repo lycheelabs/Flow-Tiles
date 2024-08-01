@@ -1,20 +1,23 @@
-using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Collections;
-using static FlowTiles.PortalPathfinder;
 using Unity.Collections.LowLevel.Unsafe;
+using FlowTiles.PortalGraphs;
 
 namespace FlowTiles {
 
-    public struct PathCache : IComponentData {
+    public struct PathCache {
 
-        // int4 = (source.xy, dest.xy)
-        public NativeParallelHashMap<int4, CachedPath> Cache;
+        public NativeParallelHashMap<int4, PortalPath> Cache;
         
+    }
+
+    public struct FlowCache {
+
+        public NativeParallelHashMap<int4, FlowFieldTile> Cache;
 
     }
 
-    public struct CachedPath {
+    public struct PortalPath {
 
         public UnsafeList<PortalPathNode> Path;
 
