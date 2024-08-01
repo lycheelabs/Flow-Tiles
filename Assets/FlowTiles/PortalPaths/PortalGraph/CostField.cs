@@ -24,17 +24,11 @@ namespace FlowTiles.PortalGraphs {
             return Costs[cell.x + cell.y * size.x];
         }
 
-        public void Initialise(Map map, int2 corner) {
-            var mapWidth = map.Bounds.Width;
+        public void Initialise(PathableMap map, int2 corner) {
             for (int x = 0; x < size.x; x++) {
                 for (var y = 0; y < size.y; y++) {
-                    var mapIndex = (corner.x + x) + (corner.y + y) * mapWidth;
                     var sectorIndex = x + y * size.x;
-                    Costs[sectorIndex] = map.Costs[mapIndex];
-
-                    if (map.Obstacles[mapIndex]) {
-                        Costs[sectorIndex] = WALL;
-                    }
+                    Costs[sectorIndex] = map.GetCostAt(corner.x + x, corner.y + y);
                 }
             }
         }

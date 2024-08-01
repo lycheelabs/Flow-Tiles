@@ -10,14 +10,14 @@ namespace FlowTiles.FlowField {
 
     public static class FlowCalculationController {
 
-        public static FlowFieldTile RequestCalculation(Sector sector, Boundaries goalBounds, int2 exitDirection) {
+        public static FlowFieldTile RequestCalculation(Sector sector, CellRect goalBounds, int2 exitDirection) {
             var sectorBounds = sector.Bounds;
-            var size = sectorBounds.Size;
+            var size = sectorBounds.SizeCells;
             var w = size.x;
             var h = size.y;
 
-            var goalMin = goalBounds.Min - sectorBounds.Min;
-            var goalMax = goalBounds.Max - sectorBounds.Min;
+            var goalMin = goalBounds.MinCell - sectorBounds.MinCell;
+            var goalMax = goalBounds.MaxCell - sectorBounds.MinCell;
             var goalW = goalMax.x - goalMin.x + 1;
             var goalH = goalMax.y - goalMin.y + 1;
             var numGoals = goalW * goalH;

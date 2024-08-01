@@ -1,3 +1,4 @@
+using FlowTiles.Utils;
 using System;
 using Unity.Burst;
 using Unity.Collections;
@@ -34,20 +35,19 @@ namespace FlowTiles.Examples {
         public partial struct WallsJob : IJobEntity {
 
             public int2 LevelSize;
-            [ReadOnly] public NativeArray<bool> LevelWalls;
-            [ReadOnly] public NativeArray<float4> LevelColors;
+            [ReadOnly] public UnsafeField<bool> LevelWalls;
+            [ReadOnly] public UnsafeField<float4> LevelColors;
 
             [BurstCompile]
             private void Execute(Aspect wall, [ChunkIndexInQuery] int sortKey) {
                 var cell = wall.Cell;
-                var index = cell.x + cell.y * LevelSize.x;
-                var data = LevelWalls[index];
+                var data = LevelWalls[cell.x, cell.y];
 
                 var brightness = data ? 0f : 1;
                 wall.Color = new float4(brightness);
 
                 if (VISUALISE_GRAPH_COLORS) {
-                    wall.Color *= LevelColors[index];
+                    wall.Color *= LevelColors[cell.x, cell.y];
                 }
             }
 
@@ -72,13 +72,12 @@ namespace FlowTiles.Examples {
         public partial struct FlowJob : IJobEntity {
 
             public int2 LevelSize;
-            [ReadOnly] public NativeArray<float2> LevelFlows;
+            [ReadOnly] public UnsafeField<float2> LevelFlows;
 
             [BurstCompile]
             private void Execute(Aspect flow, [ChunkIndexInQuery] int sortKey) {
                 var cell = flow.Cell;
-                var index = cell.x + cell.y * LevelSize.x;
-                var data = LevelFlows[index];
+                var data = LevelFlows[cell.x, cell.y];
 
                 flow.SetFlow(data);
             }

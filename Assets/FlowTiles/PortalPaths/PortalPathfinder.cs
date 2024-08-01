@@ -102,9 +102,9 @@ namespace FlowTiles {
             return new LinkedList<PortalEdge>();
         }
 
-        private static bool IsOutOfGrid(int2 pos, Boundaries boundaries) {
-            return (pos.x < boundaries.Min.x || pos.x > boundaries.Max.x) ||
-                   (pos.y < boundaries.Min.y || pos.y > boundaries.Max.y);
+        private static bool IsOutOfGrid(int2 pos, CellRect boundaries) {
+            return (pos.x < boundaries.MinCell.x || pos.x > boundaries.MaxCell.x) ||
+                   (pos.y < boundaries.MinCell.y || pos.y > boundaries.MaxCell.y);
         }
 
         private static float EuclidianDistance(Portal node1, Portal node2) {

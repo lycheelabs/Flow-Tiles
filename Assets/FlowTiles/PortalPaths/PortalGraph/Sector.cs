@@ -9,7 +9,7 @@ namespace FlowTiles.PortalGraphs {
         public readonly int Index;
 
         // Bounds of the sector, relative to the level
-        public readonly Boundaries Bounds;
+        public readonly CellRect Bounds;
 
         // Portals within this sector
         public NativeList<Portal> RootPortals;
@@ -20,34 +20,34 @@ namespace FlowTiles.PortalGraphs {
         public CostField Costs;
         public ColorField Colors;
 
-        public Sector (int index, Boundaries boundaries) {
+        public Sector (int index, CellRect boundaries) {
             Index = index;
-            Bounds = new Boundaries();
+            Bounds = new CellRect();
             RootPortals = new NativeList<Portal>(Constants.EXPECTED_MAX_COLORS, Allocator.Persistent);
             ExitPortals = new NativeList<Portal>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
             ExitPortalLookup = new NativeHashMap<int2, int>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
 
             Bounds = boundaries;
-            Costs = new CostField(Bounds.Size);
-            Colors = new ColorField(Bounds.Size);
+            Costs = new CostField(Bounds.SizeCells);
+            Colors = new ColorField(Bounds.SizeCells);
         }
 
-        public Sector Build(Map map) {
-            Costs.Initialise(map, Bounds.Min);
+        public Sector Build(PathableMap map) {
+            Costs.Initialise(map, Bounds.MinCell);
             Colors.Recolor(Costs);
             return this;
         }
 
         public bool Contains(int2 pos) {
-            return pos.x >= Bounds.Min.x &&
-                pos.x <= Bounds.Max.x &&
-                pos.y >= Bounds.Min.y &&
-                pos.y <= Bounds.Max.y;
+            return pos.x >= Bounds.MinCell.x &&
+                pos.x <= Bounds.MaxCell.x &&
+                pos.y >= Bounds.MinCell.y &&
+                pos.y <= Bounds.MaxCell.y;
         }
 
         public bool IsOpenAt(int2 pos) {
             if (Contains(pos) 
-                && Costs.GetCost(pos - Bounds.Min) != CostField.WALL) {
+                && Costs.GetCost(pos - Bounds.MinCell) != CostField.WALL) {
                 return true;
             }
             return false;
@@ -73,7 +73,7 @@ namespace FlowTiles.PortalGraphs {
             // Color the edge portals
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
-                var tile = portal.Position.Cell - Bounds.Min;
+                var tile = portal.Position.Cell - Bounds.MinCell;
                 var color = Colors.GetColor(tile);
                 portal.Color = color;
                 ExitPortals[i] = portal;

@@ -5,7 +5,7 @@ namespace FlowTiles.PortalGraphs {
     public struct PortalPathNode {
 
         public SectorCell Position;
-        public Boundaries GoalBounds;
+        public CellRect GoalBounds;
         public int2 Direction;
         public int Color;
 
@@ -14,7 +14,7 @@ namespace FlowTiles.PortalGraphs {
         public static PortalPathNode NewDestNode(Portal cluster, int2 cell) {
             return new PortalPathNode {
                 Position = new SectorCell(cluster.Position.SectorIndex, cell),
-                GoalBounds = new Boundaries(cell, cell),
+                GoalBounds = new CellRect(cell, cell),
                 Direction = 0,
                 Color = cluster.Color,
             };

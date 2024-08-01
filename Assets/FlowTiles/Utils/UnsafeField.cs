@@ -10,13 +10,17 @@ namespace FlowTiles.Utils {
         public int FlatSize;
         private UnsafeList<T> data;
 
-        public UnsafeField(int2 size, Allocator allocator) {
+        public UnsafeField(int2 size, Allocator allocator, T initialiseTo = default) {
             Size = size;
             FlatSize = size.x * size.y;
             data = new UnsafeList<T>(FlatSize, allocator);
             data.Length = FlatSize;
+            InitialiseTo(initialiseTo);
+        }
+
+        public void InitialiseTo (T value) {
             for (int i = 0; i < FlatSize; i++) {
-                data[i] = default;
+                data[i] = value;
             }
         }
 
