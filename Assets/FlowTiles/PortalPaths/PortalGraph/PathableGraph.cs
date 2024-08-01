@@ -43,9 +43,13 @@ namespace FlowTiles.PortalGraphs {
             return Portals.GetSector(cellX, cellY);
         }
 
-        public bool TryGetPortalCluster(int cellX, int cellY, out Portal cluster) {
+        public bool TryGetRootPortal(int cellX, int cellY, out Portal portal) {
             var color = Costs.GetColor(cellX, cellY);
-            return Portals.TryGetClusterRoot(cellX, cellY, color, out cluster);
+            return Portals.TryGetRootPortal(cellX, cellY, color, out portal);
+        }
+
+        public bool TryGetExitPortal(int cellX, int cellY, out Portal portal) {
+            return Portals.TryGetExitPortal(cellX, cellY, out portal);
         }
 
     }

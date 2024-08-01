@@ -36,7 +36,7 @@ namespace FlowTiles.Examples {
                 var em = World.DefaultGameObjectInjectionWorld.EntityManager;
                 var agents = em.CreateEntityQuery(new ComponentType[] { typeof(AgentData) });
                 if (agents.TryGetSingletonEntity<AgentData>(out Entity agent)) {
-                    em.SetComponentData(agent, new PathfindingData {
+                    em.SetComponentData(agent, new PathfindingGoal {
                         OriginCell = 0,
                         DestCell = mouseCell
                     });

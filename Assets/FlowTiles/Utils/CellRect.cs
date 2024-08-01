@@ -1,4 +1,6 @@
-﻿using Unity.Mathematics;
+﻿using System.Drawing;
+using Unity.Mathematics;
+using UnityEngine;
 
 namespace FlowTiles {
 
@@ -21,6 +23,11 @@ namespace FlowTiles {
         public int2 SizeCells => MaxCell - MinCell + 1;
         public int2 CentreCell => (MinCell + MaxCell) / 2;
         public float2 CentrePoint => (float2)(MinCell + MaxCell + 1) / 2f;
+
+        public bool ContainsCell (int2 cell) {
+            return cell.x >= MinCell.x && cell.y >= MinCell.y 
+                && cell.x <= MaxCell.x && cell.y <= MaxCell.y;
+        }
 
     }
 

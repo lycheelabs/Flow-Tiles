@@ -1,5 +1,5 @@
+using FlowTiles.FlowField;
 using FlowTiles.PortalGraphs;
-using System.Linq;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -37,12 +37,12 @@ namespace FlowTiles {
 
             // Access the global data
             var globalData = SystemAPI.GetSingleton<GlobalPathfindingData>();
-            var portalGraph = globalData.Graph;
+            var pathGraph = globalData.Graph;
 
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
                 //UnityEngine.Debug.Log("Creating path: " + request.cacheKey);
-                var path = PortalPathfinder.FindPortalPath(portalGraph, request.originCell, request.destCell);
+                var path = PortalPathfinder.FindPortalPath(pathGraph, request.originCell, request.destCell);
                 PathCache.Cache[request.cacheKey] = new PortalPath {
                     Path = path
                 };
@@ -51,14 +51,30 @@ namespace FlowTiles {
 
             // TODO: Process flow field requests, and cache the results
             foreach (var request in FlowRequests) {
-                UnityEngine.Debug.Log("Requested flow: " + request.cacheKey);
+                //UnityEngine.Debug.Log("Requested flow: " + request.cacheKey);
+                var goal = request.goalCell;
+                var goalBounds = new CellRect(goal, goal);
+                if (!request.goalDirection.Equals(0)) {
+                    if (pathGraph.TryGetExitPortal(goal.x, goal.y, out var portal)) {
+                        goalBounds = portal.Bounds;
+                    }
+                }
+                var sector = pathGraph.GetCostSector(goal.x, goal.y);
+                var goalDir = request.goalDirection;
+                var calculator = new FlowCalculator(sector, goalBounds, goalDir);
+                FlowCalculator.BurstCalculate(ref calculator);
+
+                FlowCache.Cache[request.cacheKey] = new FlowFieldTile {
+                    Size = sector.Bounds.SizeCells,
+                    Directions = calculator.Flow,
+                };
             }
             FlowRequests.Clear();
 
             // Search for entity paths
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             new RequestPathsJob {
-                CostMap = portalGraph.Costs,
+                CostMap = pathGraph.Costs,
                 PathCache = PathCache.Cache,
                 FlowCache = FlowCache.Cache,
                 PathRequests = PathRequests,
@@ -85,7 +101,7 @@ namespace FlowTiles {
             public NativeList<FlowRequest> FlowRequests;
 
             [BurstCompile]
-            private void Execute(PathfindingData agent, [ChunkIndexInQuery] int sortKey) {
+            private void Execute(PathfindingGoal agent, PathfindingResult result, [ChunkIndexInQuery] int sortKey) {
                 var origin = agent.OriginCell;
                 var originSector = CostMap.GetSectorIndex(origin.x, origin.y);
                 var originColor = CostMap.GetColor(origin.x, origin.y);
@@ -125,6 +141,9 @@ namespace FlowTiles {
 
                     var flow = FlowCache[flowKey];
                     UnityEngine.Debug.Log("Retrieved flow");
+                    var direction = flow.GetFlow(origin.x, origin.y);
+                    result.PathDirection = direction;
+                    UnityEngine.Debug.Log(result.PathDirection);
                 }
 
             }

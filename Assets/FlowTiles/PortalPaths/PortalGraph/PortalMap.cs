@@ -18,13 +18,25 @@ namespace FlowTiles.PortalGraphs {
             return Sectors[Layout.CellToSectorIndex(cellX, cellY)];
         }
 
-        public bool TryGetClusterRoot(int cellX, int cellY, int color, out Portal cluster) {
-            if (color <= 0) {
-                cluster = default;
+        public bool TryGetExitPortal(int cellX, int cellY, out Portal portal) {
+            var sector = GetSector(cellX, cellY);
+            var key = new int2(cellX, cellY);
+            if (!sector.ExitPortalLookup.ContainsKey(key)) {
+                portal = default;
                 return false;
             }
-            var graphSector = GetSector(cellX, cellY);
-            cluster = graphSector.RootPortals[color - 1];
+            var index = sector.ExitPortalLookup[key];
+            portal = sector.ExitPortals[index];
+            return true;
+        }
+
+        public bool TryGetRootPortal(int cellX, int cellY, int color, out Portal portal) {
+            if (color <= 0) {
+                portal = default;
+                return false;
+            }
+            var sector = GetSector(cellX, cellY);
+            portal = sector.RootPortals[color - 1];
             return true;
         }
 

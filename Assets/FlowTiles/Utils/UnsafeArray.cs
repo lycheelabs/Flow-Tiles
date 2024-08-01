@@ -5,11 +5,11 @@ namespace FlowTiles.Utils {
 
     public struct UnsafeArray<T>  where T : unmanaged {
 
-        public readonly int Size;
+        public readonly int Length;
         private UnsafeList<T> data;
 
         public UnsafeArray(int size, Allocator allocator) {
-            Size = size;
+            Length = size;
             data = new UnsafeList<T>(size, allocator);
             data.Length = size;
             for (int i = 0; i < size; i++) {
