@@ -11,12 +11,16 @@ namespace FlowTiles.PortalGraphs {
             Sectors = new NativeArray<CostSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
         }
 
+        public int GetCellIndex(int cellX, int cellY) {
+            return Layout.IndexOfCell(cellX, cellY);
+        }
+
         public int GetSectorIndex(int cellX, int cellY) {
-            return Layout.TileToIndex(cellX, cellY);
+            return Layout.CellToSectorIndex(cellX, cellY);
         }
 
         public CostSector GetSector(int cellX, int cellY) {
-            return Sectors[Layout.TileToIndex(cellX, cellY)];
+            return Sectors[Layout.CellToSectorIndex(cellX, cellY)];
         }
 
         public int GetColor(int cellX, int cellY) {
@@ -29,7 +33,7 @@ namespace FlowTiles.PortalGraphs {
         public void Build(PathableLevel map) {
             for (int x = 0; x < Layout.SizeSectors.x; x++) {
                 for (int y = 0; y < Layout.SizeSectors.y; y++) {
-                    var index = Layout.SectorToIndex(x, y);
+                    var index = Layout.IndexOfSector(x, y);
                     var bounds = Layout.GetSectorBounds(x, y);
                     var sector = new CostSector(bounds);
                     sector.Build(map);

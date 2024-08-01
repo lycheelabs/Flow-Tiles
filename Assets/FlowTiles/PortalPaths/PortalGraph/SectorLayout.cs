@@ -20,28 +20,36 @@ namespace FlowTiles.PortalGraphs {
         public int NumSectorsInLevel => SizeSectors.x * SizeSectors.y;
         public int NumCellsInSector => Resolution * Resolution;
 
-        public int TileToIndex(int2 tile) {
-            return SectorToIndex(TileToSector(tile));
+        public int IndexOfCell (int2 cell) {
+            return cell.x + SizeCells.x * cell.y;
         }
 
-        public int TileToIndex(int tileX, int tileY) {
-            return SectorToIndex(TileToSector(tileX, tileY));
+        public int IndexOfCell(int cellX, int cellY) {
+            return cellX + SizeCells.x * cellY;
         }
 
-        public int2 TileToSector(int2 tile) {
-            return new int2(tile.x / Resolution, tile.y / Resolution);
-        }
-
-        public int2 TileToSector (int tileX, int tileY) {
-            return new int2(tileX / Resolution, tileY / Resolution);
-        }
-
-        public int SectorToIndex(int2 sector) {
+        public int IndexOfSector(int2 sector) {
             return sector.x + SizeSectors.x * sector.y;
         }
 
-        public int SectorToIndex (int sectorX, int sectorY) {
+        public int IndexOfSector(int sectorX, int sectorY) {
             return sectorX + SizeSectors.x * sectorY;
+        }
+
+        public int2 CellToSector(int2 cell) {
+            return new int2(cell.x / Resolution, cell.y / Resolution);
+        }
+
+        public int2 CellToSector (int cellX, int cellY) {
+            return new int2(cellX / Resolution, cellY / Resolution);
+        }
+
+        public int CellToSectorIndex(int2 cell) {
+            return IndexOfSector(CellToSector(cell));
+        }
+
+        public int CellToSectorIndex(int cellX, int cellY) {
+            return IndexOfSector(CellToSector(cellX, cellY));
         }
 
         public CellRect GetSectorBounds (int x, int y) {

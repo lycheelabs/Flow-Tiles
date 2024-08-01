@@ -15,7 +15,7 @@ namespace FlowTiles.PortalGraphs {
         }
 
         public PortalSector GetSector(int cellX, int cellY) {
-            return Sectors[Layout.TileToIndex(cellX, cellY)];
+            return Sectors[Layout.CellToSectorIndex(cellX, cellY)];
         }
 
         public bool TryGetClusterRoot(int cellX, int cellY, int color, out Portal cluster) {
@@ -36,7 +36,7 @@ namespace FlowTiles.PortalGraphs {
         private void BuildSectors() {
             for (int x = 0; x < Layout.SizeSectors.x; x++) {
                 for (int y = 0; y < Layout.SizeSectors.y; y++) {
-                    var index = Layout.SectorToIndex(x, y);
+                    var index = Layout.IndexOfSector(x, y);
                     var bounds = Layout.GetSectorBounds(x, y);
                     var sector = new PortalSector(index, bounds);
                     Sectors[index] = sector;

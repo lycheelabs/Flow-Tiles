@@ -1,4 +1,5 @@
 using FlowTiles.PortalGraphs;
+using System.Linq;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -13,6 +14,7 @@ namespace FlowTiles {
 
         //private Entity BufferSingleton;
         private NativeList<PathRequest> PathRequests;
+        private NativeList<FlowRequest> FlowRequests;
 
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<GlobalPathfindingData>();
@@ -27,6 +29,7 @@ namespace FlowTiles {
 
             // Build the request buffers
             PathRequests = new NativeList<PathRequest>(1000, Allocator.Persistent);
+            FlowRequests = new NativeList<FlowRequest>(1000, Allocator.Persistent);
 
         }
 
@@ -47,15 +50,19 @@ namespace FlowTiles {
             PathRequests.Clear();
 
             // TODO: Process flow field requests, and cache the results
+            foreach (var request in FlowRequests) {
+                UnityEngine.Debug.Log("Requested flow: " + request.cacheKey);
+            }
+            FlowRequests.Clear();
 
             // Search for entity paths
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             new RequestPathsJob {
+                CostMap = portalGraph.Costs,
                 PathCache = PathCache.Cache,
                 FlowCache = FlowCache.Cache,
-                Requests = PathRequests,
-                CostMap = portalGraph.Costs,
-                ECB = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
+                PathRequests = PathRequests,
+                FlowRequests = FlowRequests,
             }.Schedule();
 
         }
@@ -64,16 +71,18 @@ namespace FlowTiles {
             PathCache.Cache.Dispose();
             FlowCache.Cache.Dispose();
             PathRequests.Dispose();
+            FlowRequests.Dispose();
         }
 
         [BurstCompile]
         public partial struct RequestPathsJob : IJobEntity {
 
-            public NativeList<PathRequest> Requests;
-            public EntityCommandBuffer.ParallelWriter ECB;
+            public CostMap CostMap;
             public NativeParallelHashMap<int4, PortalPath> PathCache;
             public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
-            public CostMap CostMap;
+
+            public NativeList<PathRequest> PathRequests;
+            public NativeList<FlowRequest> FlowRequests;
 
             [BurstCompile]
             private void Execute(PathfindingData agent, [ChunkIndexInQuery] int sortKey) {
@@ -82,26 +91,44 @@ namespace FlowTiles {
                 var originColor = CostMap.GetColor(origin.x, origin.y);
 
                 var dest = agent.DestCell;
-                var destSector = CostMap.GetSectorIndex(dest.x, dest.y);
+                var destCell = CostMap.GetCellIndex(dest.x, dest.y);
                 var destColor = CostMap.GetColor(dest.x, dest.y);
 
-                var pathKey = new int4(originSector, originColor, destSector, destColor);
-                var cacheHit = PathCache.ContainsKey(pathKey);
+                // Search for a cached path
+                var pathKey = new int4(originSector, originColor, destCell, destColor);
+                var pathCacheHit = PathCache.ContainsKey(pathKey);
+                if (!pathCacheHit) {
 
-                if (!cacheHit) {
-                    Requests.Add(new PathRequest {
+                    // Request a path be generated
+                    PathRequests.Add(new PathRequest {
                         originCell = agent.OriginCell,
                         destCell = agent.DestCell,
                         cacheKey = pathKey,
                     });
+                    return;
                 }
-                else {
-                    var nodes = PathCache[pathKey].Path;
-                    //UnityEngine.Debug.Log("Retrieved path: " + nodes.Length);
+
+                var pathNodes = PathCache[pathKey].Path;
+                if (pathNodes.Length > 0) {
+                    var firstNode = pathNodes[0];
+                    var flowKey = firstNode.CacheKey;
+                    var flowCacheHit = FlowCache.ContainsKey(flowKey);
+                    if (!flowCacheHit) {
+
+                        // Request a flow be generated
+                        FlowRequests.Add(new FlowRequest {
+                            goalCell = firstNode.Position.Cell,
+                            goalDirection = firstNode.Direction,
+                        });
+                        return;
+                    }
+
+                    var flow = FlowCache[flowKey];
+                    UnityEngine.Debug.Log("Retrieved flow");
                 }
+
             }
         }
-
     }
 
 }
