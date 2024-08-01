@@ -1,27 +1,27 @@
 ﻿using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
 namespace FlowTiles.Utils {
 
-    public struct UnsafeField<T> where T : unmanaged {
+    public struct NativeField<T> where T : unmanaged {
 
         public readonly int2 Size;
         public int FlatSize;
-        private UnsafeList<T> data;
+        private NativeArray<T> data;
 
-        public UnsafeField(int2 size, Allocator allocator, T initialiseTo = default) {
+        public NativeField(int2 size, Allocator allocator, T initialiseTo = default) {
             Size = size;
             FlatSize = size.x * size.y;
-            data = new UnsafeList<T>(FlatSize, allocator);
-            data.Length = FlatSize;
+            data = new NativeArray<T>(FlatSize, allocator);
 
-            InitialiseTo(initialiseTo);
+            if (!initialiseTo.Equals(default)) {
+                InitialiseTo(initialiseTo);
+            }
         }
 
         public bool IsCreated => data.IsCreated;
 
-        public void InitialiseTo (T value) {
+        public void InitialiseTo(T value) {
             for (int i = 0; i < FlatSize; i++) {
                 data[i] = value;
             }

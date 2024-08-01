@@ -17,6 +17,8 @@ namespace FlowTiles.Utils {
             }
         }
 
+        public bool IsCreated => data.IsCreated;
+
         public T this[int i] {
             get => data[i];
             set => data[i] = value;

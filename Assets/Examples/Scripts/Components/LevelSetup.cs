@@ -6,9 +6,9 @@ namespace FlowTiles.Examples {
     public struct LevelSetup : IComponentData {
 
         public int Size;
-        public UnsafeField<bool> Walls;
-        public UnsafeField<float4> Colors;
-        public UnsafeField<float2> Flows;
+        public NativeField<bool> Walls;
+        public NativeField<float4> Colors;
+        public NativeField<float2> Flows;
 
     }
 }

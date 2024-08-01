@@ -35,7 +35,7 @@ namespace FlowTiles {
             Directions.Dispose();
         }
 
-        public int FindTravelCost(CostField costs, int2 start, int2 dest) {
+        public int FindTravelCost(UnsafeField<byte> costs, int2 start, int2 dest) {
             Visited.Clear();
             Parent.Clear();
             GScore.Clear();
@@ -61,7 +61,7 @@ namespace FlowTiles {
                     // Find the neighbor cell
                     var next = current + offset;
                     if (next.x < 0 || next.y < 0 ||
-                        next.x >= costs.size.x || next.y >= costs.size.y) {
+                        next.x >= costs.Size.x || next.y >= costs.Size.y) {
                         continue;
                     }
 
@@ -71,8 +71,8 @@ namespace FlowTiles {
                     }
 
                     // Check if the cell is passable
-                    var cost = costs.GetCost(next);
-                    if (cost == CostField.WALL) {
+                    var cost = costs[next.x, next.y];
+                    if (cost == PathableMap.WALL_COST) {
                         continue;
                     }
 

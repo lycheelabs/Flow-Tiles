@@ -36,36 +36,39 @@ namespace FlowTiles.PortalGraphs {
             GraphSectors = new NativeArray<GraphSector>(sectorsW * sectorsH, Allocator.Persistent);
         }
 
-        public ColorField GetColorField(int x, int y) {
-            var sectorX = x / resolution;
-            var sectorY = y / resolution;
+        public MapSector GetMapSector(int cellX, int cellY) {
+            var sectorX = cellX / resolution;
+            var sectorY = cellY / resolution;
             var index = sectorX + sizeSectors.x * sectorY;
-            return MapSectors[math.clamp(index, 0, GraphSectors.Length - 1)].Colors;
+            return MapSectors[index];
         }
 
-        public bool TryGetSectorRoot(int x, int y, out Portal node) {
-            node = default;
-
-            // Find sector
-            var sectorX = x / resolution;
-            var sectorY = y / resolution;
+        public GraphSector GetGraphSector(int cellX, int cellY) {
+            var sectorX = cellX / resolution;
+            var sectorY = cellY / resolution;
             var index = sectorX + sizeSectors.x * sectorY;
-            if (index < 0 || index >= GraphSectors.Length) {
-                return false;
-            }
+            return GraphSectors[index];
+        }
 
+        public int GetColor(int cellX, int cellY) {
+            var mapSector = GetMapSector(cellX, cellY);
+            var tileX = cellX % resolution;
+            var tileY = cellY % resolution;
+            return mapSector.Colors[tileX, tileY];
+        }
+
+        public bool TryGetClusterRoot(int cellX, int cellY, out Portal cluster) {
+            
             // Find color
-            var mapSector = MapSectors[index];
-            var tileX = x % resolution;
-            var tileY = y % resolution;
-            var color = mapSector.Colors.GetColor(tileX, tileY);
+            var color = GetColor(cellX, cellY);
             if (color <= 0) {
+                cluster = default;
                 return false;
             }
 
             // Return root node for color
-            var graphSector = GraphSectors[index];
-            node = graphSector.RootPortals[color - 1];
+            var graphSector = GetGraphSector(cellX, cellY);
+            cluster = graphSector.RootPortals[color - 1];
             return true;
 
         }
@@ -95,7 +98,9 @@ namespace FlowTiles.PortalGraphs {
 
         private void InitialiseSectors(PathableMap map) {
             for (int s = 0; s < MapSectors.Length; s++) {
-                MapSectors[s] = MapSectors[s].Build(map);
+                var sector = MapSectors[s];
+                sector.Build(map);
+                MapSectors[s] = sector;
             }
         }
 
@@ -118,14 +123,17 @@ namespace FlowTiles.PortalGraphs {
 
             //Add Intra edges for every border nodes and pathfind between them
             var pathfinder = new SectorPathfinder(resolution * resolution, Allocator.Temp);
-            for (int i = 0; i < GraphSectors.Length; ++i) {
-                GenerateIntraEdges(i, pathfinder);
+            for (int s = 0; s < GraphSectors.Length; ++s) {
+                var sector = GraphSectors[s];
+                sector.ConnectExitPortals(MapSectors[s], pathfinder);
+                GraphSectors[s] = sector;
             }
 
             // Create root portals allowing each start tile to reach the same-colored edge portals
             for (int s = 0; s < GraphSectors.Length; s++) {
-                var mapSector = MapSectors[s];
-                GraphSectors[s].CreateRootPortals(mapSector.Colors);
+                var sector = GraphSectors[s];
+                sector.CreateRootPortals(MapSectors[s]);
+                GraphSectors[s] = sector;
             }
 
         }
@@ -223,60 +231,6 @@ namespace FlowTiles.PortalGraphs {
                 end = portal1.Position,
                 weight = 1 
             });
-        }
-
-        //Intra edges are edges that lives inside GraphSectors
-        private void GenerateIntraEdges(int sectorIndex, SectorPathfinder pathfinder) {
-            int i, j;
-            Portal n1, n2;
-
-            var mapSector = MapSectors[sectorIndex];
-            var graphSector = GraphSectors[sectorIndex];
-
-            // We do this so that we can iterate through pairs once, 
-            // by keeping the second index always higher than the first.
-            // For a path to exit, both portals must have matching color.        
-            for (i = 0; i < graphSector.ExitPortals.Length; ++i) {
-                n1 = graphSector.ExitPortals[i];
-                for (j = i + 1; j < graphSector.ExitPortals.Length; ++j) {
-                    n2 = graphSector.ExitPortals[j];
-                    if (n1.Color == n2.Color) {
-                        TryConnectPortals(n1, n2, mapSector, pathfinder);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Connect two nodes by pathfinding between them. 
-        /// </summary>
-        /// <remarks>We assume they are different nodes. If the path returned is 0, then there is no path that connects them.</remarks>
-        private bool TryConnectPortals(Portal n1, Portal n2, MapSector sector, SectorPathfinder pathfinder) {
-            PortalEdge e1, e2;
-
-            var corner = sector.Bounds.MinCell;
-            var pathCost = pathfinder.FindTravelCost(
-                sector.Costs, n1.Position.Cell - corner, n2.Position.Cell - corner);
-
-            if (pathCost > 0) {
-                e1 = new PortalEdge() {
-                    start = n1.Position,
-                    end = n2.Position,
-                    weight = pathCost,
-                };
-
-                e2 = new PortalEdge() {
-                    start = n2.Position,
-                    end = n1.Position,
-                    weight = pathCost,
-                };
-
-                n1.Edges.Add(e1);
-                n2.Edges.Add(e2);
-
-                return true;
-            }
-            return false;
         }
 
     }

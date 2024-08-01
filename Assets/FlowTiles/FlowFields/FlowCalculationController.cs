@@ -21,18 +21,18 @@ namespace FlowTiles.FlowField {
             var goalW = goalMax.x - goalMin.x + 1;
             var goalH = goalMax.y - goalMin.y + 1;
             var numGoals = goalW * goalH;
-            var goalColor = sector.Colors.GetColor(goalMin);
+            var goalColor = sector.Colors[goalMin.x, goalMin.y];
 
             // Initialise flow speeds
             var numFlowCells = (w + 2) * (h + 2);
             var speedData = new NativeArray<float>(numFlowCells, Allocator.TempJob);
             for (var x = 1; x <= w; x++) {
                 for (var y = 1; y <= h; y++) {
-                    var cost = sector.Costs.GetCost(x - 1, y - 1);
-                    var color = sector.Colors.GetColor(x - 1, y - 1);
+                    var cost = sector.Costs[x - 1, y - 1];
+                    var color = sector.Colors[x - 1, y - 1];
                     var index = y * (w + 2) + x;
                     speedData[index] = 1f / cost;
-                    if (cost == CostField.WALL || color != goalColor) speedData[index] = -1;
+                    if (cost == PathableMap.WALL_COST || color != goalColor) speedData[index] = -1;
                 }
             }
 

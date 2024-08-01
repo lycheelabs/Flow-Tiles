@@ -27,8 +27,8 @@ namespace FlowTiles.Examples {
         public bool VisualiseConnections;
 
         private PathableMap Map;
-        private UnsafeField<float4> ColorData;
-        private UnsafeField<float2> FlowData;
+        private NativeField<float4> ColorData;
+        private NativeField<float2> FlowData;
         private PortalGraph Graph;
 
         public DemoLevel (int levelSize, int resolution) {
@@ -48,13 +48,13 @@ namespace FlowTiles.Examples {
             Debug.Log(string.Format("Portal graph created in: {0} ms", (int)stopwatch.Elapsed.TotalMilliseconds));
 
             // Allocate visualisation data
-            ColorData = new UnsafeField<float4>(LevelSize, Allocator.Persistent, initialiseTo: 1);
-            FlowData = new UnsafeField<float2>(LevelSize, Allocator.Persistent);
+            ColorData = new NativeField<float4>(LevelSize, Allocator.Persistent, initialiseTo: 1);
+            FlowData = new NativeField<float2>(LevelSize, Allocator.Persistent);
 
             for (int y = 0; y < LevelSize; y++) {
                 for (int x = 0; x < LevelSize; x++) {
-                    var colors = Graph.GetColorField(x, y);
-                    var color = colors.GetColor(x % Resolution, y % Resolution);
+                    var sector = Graph.GetMapSector(x, y);
+                    var color = sector.Colors[x % Resolution, y % Resolution];
                     if (color > 0) {
                         ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
                     }
@@ -120,7 +120,7 @@ namespace FlowTiles.Examples {
                 for (int y = 0; y < bounds.SizeCells.y; y++) {
                     var mapCell = new int2(x + bounds.MinCell.x, y + bounds.MinCell.y);
                     var flow = flowField.GetFlow(x, y);
-                    var cellColor = sector.Colors.GetColor(x, y);
+                    var cellColor = sector.Colors[x, y];
                     if (FlowData[mapCell.x, mapCell.y].Equals(new float2(0)) || cellColor == color) {
                         FlowData[mapCell.x, mapCell.y] = flow;
                     }

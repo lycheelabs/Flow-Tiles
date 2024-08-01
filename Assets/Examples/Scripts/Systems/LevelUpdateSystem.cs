@@ -1,5 +1,4 @@
 using FlowTiles.Utils;
-using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -35,8 +34,8 @@ namespace FlowTiles.Examples {
         public partial struct WallsJob : IJobEntity {
 
             public int2 LevelSize;
-            [ReadOnly] public UnsafeField<bool> LevelWalls;
-            [ReadOnly] public UnsafeField<float4> LevelColors;
+            [ReadOnly] public NativeField<bool> LevelWalls;
+            [ReadOnly] public NativeField<float4> LevelColors;
 
             [BurstCompile]
             private void Execute(Aspect wall, [ChunkIndexInQuery] int sortKey) {
@@ -72,7 +71,7 @@ namespace FlowTiles.Examples {
         public partial struct FlowJob : IJobEntity {
 
             public int2 LevelSize;
-            [ReadOnly] public UnsafeField<float2> LevelFlows;
+            [ReadOnly] public NativeField<float2> LevelFlows;
 
             [BurstCompile]
             private void Execute(Aspect flow, [ChunkIndexInQuery] int sortKey) {

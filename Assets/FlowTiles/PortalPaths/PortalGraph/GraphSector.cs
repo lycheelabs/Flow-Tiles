@@ -43,19 +43,19 @@ namespace FlowTiles.PortalGraphs {
             ExitPortals.Add(portal);
         }
 
-        public void CreateRootPortals (ColorField colors) {
+        public void CreateRootPortals (MapSector mapSector) {
 
             // Color the edge portals
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
                 var tile = portal.Position.Cell - Bounds.MinCell;
-                var color = colors.GetColor(tile);
+                var color = mapSector.Colors[tile.x, tile.y];
                 portal.Color = color;
                 ExitPortals[i] = portal;
             }
 
             // Create the color roots
-            for (int color = 1; color <= colors.NumColors; color++) {
+            for (int color = 1; color <= mapSector.NumColors; color++) {
                 var colorPortal = new Portal(Bounds.CentreCell, Index, 0);
                 colorPortal.Color = color;
 
@@ -73,6 +73,57 @@ namespace FlowTiles.PortalGraphs {
                 RootPortals.Add(colorPortal);
             }
 
+        }
+
+        //Intra edges are edges that lives inside GraphSectors
+        public void ConnectExitPortals(MapSector mapSector, SectorPathfinder pathfinder) {
+            int i, j;
+            Portal n1, n2;
+
+            // We do this so that we can iterate through pairs once, 
+            // by keeping the second index always higher than the first.
+            // For a path to exit, both portals must have matching color.        
+            for (i = 0; i < ExitPortals.Length; ++i) {
+                n1 = ExitPortals[i];
+                for (j = i + 1; j < ExitPortals.Length; ++j) {
+                    n2 = ExitPortals[j];
+                    if (n1.Color == n2.Color) {
+                        TryConnectExitPortals(n1, n2, mapSector, pathfinder);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Connect two nodes by pathfinding between them. 
+        /// </summary>
+        /// <remarks>We assume they are different nodes. If the path returned is 0, then there is no path that connects them.</remarks>
+        private bool TryConnectExitPortals(Portal n1, Portal n2, MapSector sector, SectorPathfinder pathfinder) {
+            PortalEdge e1, e2;
+
+            var corner = sector.Bounds.MinCell;
+            var pathCost = pathfinder.FindTravelCost(
+                sector.Costs, n1.Position.Cell - corner, n2.Position.Cell - corner);
+
+            if (pathCost > 0) {
+                e1 = new PortalEdge() {
+                    start = n1.Position,
+                    end = n2.Position,
+                    weight = pathCost,
+                };
+
+                e2 = new PortalEdge() {
+                    start = n2.Position,
+                    end = n1.Position,
+                    weight = pathCost,
+                };
+
+                n1.Edges.Add(e1);
+                n2.Edges.Add(e2);
+
+                return true;
+            }
+            return false;
         }
 
     }

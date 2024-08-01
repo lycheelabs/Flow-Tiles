@@ -15,8 +15,8 @@ namespace FlowTiles {
             var result = new UnsafeList<PortalPathNode>(32, Allocator.Persistent);
 
             // Find start and end clusters
-            var startExists = graph.TryGetSectorRoot(start.x, start.y, out var startCluster);
-            var destExists = graph.TryGetSectorRoot(dest.x, dest.y, out var destCluster);
+            var startExists = graph.TryGetClusterRoot(start.x, start.y, out var startCluster);
+            var destExists = graph.TryGetClusterRoot(dest.x, dest.y, out var destCluster);
             if (!startExists || !destExists) {
                 return result;
             }
