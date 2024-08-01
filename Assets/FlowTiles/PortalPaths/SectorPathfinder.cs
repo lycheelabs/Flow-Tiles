@@ -72,7 +72,7 @@ namespace FlowTiles {
 
                     // Check if the cell is passable
                     var cost = costs[next.x, next.y];
-                    if (cost == PathableMap.WALL_COST) {
+                    if (cost == PathableLevel.WALL_COST) {
                         continue;
                     }
 

@@ -43,7 +43,7 @@ namespace FlowTiles.PortalGraphs {
             ExitPortals.Add(portal);
         }
 
-        public void CreateRootPortals (MapSector mapSector) {
+        public void CreateRootPortals (CostSector mapSector) {
 
             // Color the edge portals
             for (int i = 0; i < ExitPortals.Length; i++) {
@@ -76,7 +76,7 @@ namespace FlowTiles.PortalGraphs {
         }
 
         //Intra edges are edges that lives inside GraphSectors
-        public void ConnectExitPortals(MapSector mapSector, SectorPathfinder pathfinder) {
+        public void ConnectExitPortals(CostSector mapSector, SectorPathfinder pathfinder) {
             int i, j;
             Portal n1, n2;
 
@@ -100,7 +100,7 @@ namespace FlowTiles.PortalGraphs {
         /// Connect two nodes by pathfinding between them. 
         /// </summary>
         /// <remarks>We assume they are different nodes. If the path returned is 0, then there is no path that connects them.</remarks>
-        private bool TryConnectExitPortals(ref Portal n1, ref Portal n2, MapSector sector, SectorPathfinder pathfinder) {
+        private bool TryConnectExitPortals(ref Portal n1, ref Portal n2, CostSector sector, SectorPathfinder pathfinder) {
             PortalEdge e1, e2;
 
             var corner = sector.Bounds.MinCell;

@@ -4,7 +4,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles.PortalGraphs {
 
-    public struct MapSector {
+    public struct CostSector {
 
         public readonly CellRect Bounds;
 
@@ -12,7 +12,7 @@ namespace FlowTiles.PortalGraphs {
         public UnsafeField<short> Colors;
         public short NumColors;
 
-        public MapSector(CellRect boundaries) {
+        public CostSector(CellRect boundaries) {
             Bounds = new CellRect();
 
             Bounds = boundaries;
@@ -21,7 +21,7 @@ namespace FlowTiles.PortalGraphs {
             NumColors = 0;
         }
 
-        public void Build(PathableMap map) {
+        public void Build(PathableLevel map) {
             CopyCosts(map, Bounds.MinCell);
             CalculateColors();
         }
@@ -36,12 +36,12 @@ namespace FlowTiles.PortalGraphs {
         public bool IsOpenAt(int2 pos) {
             var localPos = pos - Bounds.MinCell;
             return Contains(pos)
-                && Costs[localPos.x, localPos.y] != PathableMap.WALL_COST;
+                && Costs[localPos.x, localPos.y] != PathableLevel.WALL_COST;
         }
 
         // --------------------------------------------------------------
 
-        private void CopyCosts(PathableMap map, int2 corner) {
+        private void CopyCosts(PathableLevel map, int2 corner) {
             for (int x = 0; x < Costs.Size.x; x++) {
                 for (var y = 0; y < Costs.Size.y; y++) {
                     Costs[x, y] = map.GetCostAt(corner.x + x, corner.y + y);
@@ -57,7 +57,7 @@ namespace FlowTiles.PortalGraphs {
                     Colors[x, y] = 0;
 
                     var cost = Costs[x, y];
-                    var blocked = cost == PathableMap.WALL_COST;
+                    var blocked = cost == PathableLevel.WALL_COST;
                     if (blocked) Colors[x, y] = -1;
                 }
             }

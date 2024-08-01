@@ -26,24 +26,24 @@ namespace FlowTiles.Examples {
         public int Resolution = 10;
         public bool VisualiseConnections;
 
-        private PathableMap Map;
+        private PathableLevel Map;
         private NativeField<float4> ColorData;
         private NativeField<float2> FlowData;
-        private PortalGraph Graph;
+        private PathableGraph Graph;
 
         public DemoLevel (int levelSize, int resolution) {
             LevelSize = levelSize;
             Resolution = resolution;
 
             // Initialise the map
-            Map = new PathableMap(LevelSize, LevelSize);
+            Map = new PathableLevel(LevelSize, LevelSize);
             Map.InitialiseRandomObstacles();
 
             // Create the graph
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
-            Graph = new PortalGraph(Map.Bounds.SizeCells, Resolution);
-            PortalGraph.BurstBuild(ref Graph, ref Map);
+            Graph = new PathableGraph(Map.Bounds.SizeCells, Resolution);
+            PathableGraph.BurstBuild(ref Graph, ref Map);
             stopwatch.Stop();
             Debug.Log(string.Format("Portal graph created in: {0} ms", (int)stopwatch.Elapsed.TotalMilliseconds));
 
@@ -83,7 +83,7 @@ namespace FlowTiles.Examples {
         }
 
         public void VisualiseSectors(bool visualiseConnections) {
-            Visualisation.DrawSectors(Graph, visualiseConnections);
+            Visualisation.DrawSectors(Graph.Graph, visualiseConnections);
         }
 
         public void VisualiseTestPath(object value, int2 mouseCell, bool showFlow) {
@@ -98,7 +98,7 @@ namespace FlowTiles.Examples {
             if (path.Length > 0) {
                 for (int i = 0; i < path.Length; i++) {
                     var node = path[i];
-                    var sector = Graph.MapSectors[node.Position.SectorIndex];
+                    var sector = Graph.Costs.Sectors[node.Position.SectorIndex];
 
                     var flow = FlowCalculationController.RequestCalculation(sector, node.GoalBounds, node.Direction);
 
@@ -114,7 +114,7 @@ namespace FlowTiles.Examples {
 
         }
 
-        private void CopyFlowVisualisationData(MapSector sector, int color, FlowFieldTile flowField) {
+        private void CopyFlowVisualisationData(CostSector sector, int color, FlowFieldTile flowField) {
             var bounds = sector.Bounds;
             for (int x = 0; x < bounds.SizeCells.x; x++) {
                 for (int y = 0; y < bounds.SizeCells.y; y++) {

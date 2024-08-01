@@ -4,7 +4,7 @@ using Unity.Entities;
 namespace FlowTiles {
     public struct GlobalPathfindingData : IComponentData {
 
-        public PortalGraph Graph;
+        public PathableGraph Graph;
 
     }
 

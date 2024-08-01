@@ -1,140 +1,79 @@
-﻿using Unity.Burst;
-using Unity.Collections;
+﻿using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
-using static UnityEditor.PlayerSettings;
 
 namespace FlowTiles.PortalGraphs {
 
-    [BurstCompile]
-    public struct PortalGraph {
+    public struct GraphSectors {
 
-        [BurstCompile]
-        public static void BurstBuild (ref PortalGraph graph, ref PathableMap map) {
-            graph.Build (map);
-        }
-        
-        // -----------------------------------------
+        public readonly SectorLayout Layout;
+        public NativeArray<GraphSector> Sectors;
 
-        public readonly int2 sizeCells;
-        public readonly int2 sizeSectors;
-        public readonly int resolution;
-
-        public NativeArray<MapSector> MapSectors;
-        public NativeArray<GraphSector> GraphSectors;
-
-        /// <summary>
-        /// Construct a graph from the map
-        /// </summary>
-        public PortalGraph(int2 sizeCells, int resolution) {
-            this.sizeCells = sizeCells;
-            this.resolution = resolution;
-
-            var sectorsW = Mathf.CeilToInt((float)sizeCells.x / resolution);
-            var sectorsH = Mathf.CeilToInt((float)sizeCells.y / resolution);
-            sizeSectors = new int2(sectorsW, sectorsH);
-            MapSectors = new NativeArray<MapSector>(sectorsW * sectorsH, Allocator.Persistent);
-            GraphSectors = new NativeArray<GraphSector>(sectorsW * sectorsH, Allocator.Persistent);
+        public GraphSectors(SectorLayout layout) {
+            Layout = layout;
+            Sectors = new NativeArray<GraphSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
         }
 
-        public MapSector GetMapSector(int cellX, int cellY) {
-            var sectorX = cellX / resolution;
-            var sectorY = cellY / resolution;
-            var index = sectorX + sizeSectors.x * sectorY;
-            return MapSectors[index];
+        public GraphSector GetSector(int cellX, int cellY) {
+            return Sectors[Layout.TileToIndex(cellX, cellY)];
         }
 
-        public GraphSector GetGraphSector(int cellX, int cellY) {
-            var sectorX = cellX / resolution;
-            var sectorY = cellY / resolution;
-            var index = sectorX + sizeSectors.x * sectorY;
-            return GraphSectors[index];
-        }
-
-        public int GetColor(int cellX, int cellY) {
-            var mapSector = GetMapSector(cellX, cellY);
-            var tileX = cellX % resolution;
-            var tileY = cellY % resolution;
-            return mapSector.Colors[tileX, tileY];
-        }
-
-        public bool TryGetClusterRoot(int cellX, int cellY, out Portal cluster) {
-            
-            // Find color
-            var color = GetColor(cellX, cellY);
+        public bool TryGetClusterRoot(int cellX, int cellY, int color, out Portal cluster) {
             if (color <= 0) {
                 cluster = default;
                 return false;
             }
-
-            // Return root node for color
-            var graphSector = GetGraphSector(cellX, cellY);
+            var graphSector = GetSector(cellX, cellY);
             cluster = graphSector.RootPortals[color - 1];
             return true;
-
         }
 
-        public void Build(PathableMap map) {
+        public void Build(CostSectors mapSectors) {
             BuildSectors();
-            InitialiseSectors(map);
-            LinkSectors();
+            LinkSectors(mapSectors);
         }
 
         private void BuildSectors() {
-            for (int x = 0; x < sizeSectors.x; x++) {
-                for (int y = 0; y < sizeSectors.y; y++) {
-
-                    var min = new int2(x * resolution, y * resolution);
-                    var max = new int2(
-                        Mathf.Min(min.x + resolution - 1, sizeCells.x - 1),
-                        Mathf.Min(min.y + resolution - 1, sizeCells.y - 1));
-                    var boundaries = new CellRect { MinCell = min, MaxCell = max };
-
-                    var index = x + y * sizeSectors.x;
-                    MapSectors[index] = new MapSector(boundaries);
-                    GraphSectors[index] = new GraphSector(index, boundaries);
+            for (int x = 0; x < Layout.SizeSectors.x; x++) {
+                for (int y = 0; y < Layout.SizeSectors.y; y++) {
+                    var index = Layout.SectorToIndex(x, y);
+                    var bounds = Layout.GetSectorBounds(x, y);
+                    var sector = new GraphSector(index, bounds);
+                    Sectors[index] = sector;
                 }
             }
         }
 
-        private void InitialiseSectors(PathableMap map) {
-            for (int s = 0; s < MapSectors.Length; s++) {
-                var sector = MapSectors[s];
-                sector.Build(map);
-                MapSectors[s] = sector;
-            }
-        }
-
-        private void LinkSectors() {
+        private void LinkSectors(CostSectors mapSectors) {
 
             //Add border nodes for every adjacent pair of GraphSectors
-            for (int i = 0; i < GraphSectors.Length; i++) {
+            for (int i = 0; i < Sectors.Length; i++) {
 
-                var x = i % sizeSectors.x;
-                if (x < sizeSectors.x - 1) {
-                    LinkAdjacentSectors(i, i + 1, true);
+                var x = i % Layout.SizeSectors.x;
+                if (x < Layout.SizeSectors.x - 1) {
+                    LinkAdjacentSectors(mapSectors, i, i + 1, true);
                 }
 
-                var y = i / sizeSectors.x;
-                if (y < sizeSectors.y - 1) {
-                    LinkAdjacentSectors(i, i + sizeSectors.x, false);
+                var y = i / Layout.SizeSectors.x;
+                if (y < Layout.SizeSectors.y - 1) {
+                    LinkAdjacentSectors(mapSectors, i, i + Layout.SizeSectors.x, false);
                 }
 
             }
 
             //Add Intra edges for every border nodes and pathfind between them
-            var pathfinder = new SectorPathfinder(resolution * resolution, Allocator.Temp);
-            for (int s = 0; s < GraphSectors.Length; ++s) {
-                var sector = GraphSectors[s];
-                sector.ConnectExitPortals(MapSectors[s], pathfinder);
-                GraphSectors[s] = sector;
+            var pathfinder = new SectorPathfinder(Layout.NumCellsInSector, Allocator.Temp);
+            for (int s = 0; s < Sectors.Length; ++s) {
+                var sector = Sectors[s];
+                sector.ConnectExitPortals(mapSectors.Sectors[s], pathfinder);
+                Sectors[s] = sector;
             }
 
             // Create root portals allowing each start tile to reach the same-colored edge portals
-            for (int s = 0; s < GraphSectors.Length; s++) {
-                var sector = GraphSectors[s];
-                sector.CreateRootPortals(MapSectors[s]);
-                GraphSectors[s] = sector;
+            for (int s = 0; s < Sectors.Length; s++) {
+                var sector = Sectors[s];
+                sector.CreateRootPortals(mapSectors.Sectors[s]);
+                Sectors[s] = sector;
             }
 
         }
@@ -143,9 +82,9 @@ namespace FlowTiles.PortalGraphs {
         /// Create border nodes and attach them together.
         /// We always pass the lower sector first (in sector1).
         /// </summary>
-        private void LinkAdjacentSectors(int index1, int index2, bool horizontal) {
-            var sector1 = MapSectors[index1];
-            var sector2 = MapSectors[index2];
+        private void LinkAdjacentSectors(CostSectors mapSectors, int index1, int index2, bool horizontal) {
+            var sector1 = mapSectors.Sectors[index1];
+            var sector2 = mapSectors.Sectors[index2];
 
             int i, iMin, iMax;
             if (horizontal) {
@@ -186,8 +125,8 @@ namespace FlowTiles.PortalGraphs {
 
         //Inter edges are edges that crosses GraphSectors
         private void CreateInterEdge(int index1, int index2, bool horizontal, int start, int end) {
-            var sector1 = GraphSectors[index1];
-            var sector2 = GraphSectors[index2];
+            var sector1 = Sectors[index1];
+            var sector2 = Sectors[index2];
 
             int mid = (start + end) / 2;
             int2 start1, start2, end1, end2, dir;
@@ -239,8 +178,8 @@ namespace FlowTiles.PortalGraphs {
             });
             sector2.ExitPortals[portalIndex2] = portal2;
 
-            GraphSectors[index1] = sector1;
-            GraphSectors[index2] = sector2;
+            Sectors[index1] = sector1;
+            Sectors[index2] = sector2;
         }
 
     }

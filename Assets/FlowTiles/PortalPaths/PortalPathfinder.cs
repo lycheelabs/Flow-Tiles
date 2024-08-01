@@ -11,7 +11,7 @@ namespace FlowTiles {
 
     public static partial class PortalPathfinder {
 
-        public static UnsafeList<PortalPathNode> FindPortalPath(PortalGraph graph, int2 start, int2 dest) {
+        public static UnsafeList<PortalPathNode> FindPortalPath(PathableGraph graph, int2 start, int2 dest) {
             var result = new UnsafeList<PortalPathNode>(32, Allocator.Persistent);
 
             // Find start and end clusters
@@ -38,7 +38,7 @@ namespace FlowTiles {
             for (var i = 0; i < path.Length; i ++) {
                 var edge = path[i];
                 if (edge.SpansTwoSectors) {
-                    var sector = graph.GraphSectors[edge.start.SectorIndex];
+                    var sector = graph.Graph.Sectors[edge.start.SectorIndex];
                     var portal = sector.GetExitPortalAt(edge.start.Cell);
                     result.Add(new PortalPathNode {
                         Position = edge.start,
@@ -53,7 +53,7 @@ namespace FlowTiles {
 
         }
 
-        private static LinkedList<PortalEdge> FindPath(PortalGraph graph, Portal startCluster, Portal destCluster) {
+        private static LinkedList<PortalEdge> FindPath(PathableGraph graph, Portal startCluster, Portal destCluster) {
             HashSet<int2> Visited = new HashSet<int2>();
             Dictionary<int2, PortalEdge> Parent = new Dictionary<int2, PortalEdge>();
             Dictionary<int2, float> gScore = new Dictionary<int2, float>();
@@ -78,7 +78,7 @@ namespace FlowTiles {
 
                 // Visit all neighbours through edges going out of node
                 foreach (PortalEdge e in current.Edges) {
-                    var nextSector = graph.GraphSectors[e.end.SectorIndex];
+                    var nextSector = graph.Graph.Sectors[e.end.SectorIndex];
                     var nextPortal = nextSector.GetExitPortalAt(e.end.Cell);
 
                     // Check if we visited the outer end of the edge

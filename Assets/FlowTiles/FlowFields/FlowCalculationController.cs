@@ -10,7 +10,7 @@ namespace FlowTiles.FlowField {
 
     public static class FlowCalculationController {
 
-        public static FlowFieldTile RequestCalculation(MapSector sector, CellRect goalBounds, int2 exitDirection) {
+        public static FlowFieldTile RequestCalculation(CostSector sector, CellRect goalBounds, int2 exitDirection) {
             var sectorBounds = sector.Bounds;
             var size = sectorBounds.SizeCells;
             var w = size.x;
@@ -32,7 +32,7 @@ namespace FlowTiles.FlowField {
                     var color = sector.Colors[x - 1, y - 1];
                     var index = y * (w + 2) + x;
                     speedData[index] = 1f / cost;
-                    if (cost == PathableMap.WALL_COST || color != goalColor) speedData[index] = -1;
+                    if (cost == PathableLevel.WALL_COST || color != goalColor) speedData[index] = -1;
                 }
             }
 

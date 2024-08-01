@@ -4,7 +4,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles {
 
-    public struct PathableMap {
+    public struct PathableLevel {
 
         public const byte WALL_COST = 255;
 
@@ -14,7 +14,7 @@ namespace FlowTiles {
         public NativeField<byte> BaseCosts;
         public NativeField<byte> ModifiedCosts;
 
-        public PathableMap(int width, int height) {
+        public PathableLevel(int width, int height) {
             Size = new int2(width, height);
             Bounds = new CellRect(0, Size - 1);
             Obstacles = new NativeField<bool>(Size, Allocator.Persistent);

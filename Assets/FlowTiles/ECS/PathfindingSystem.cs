@@ -71,7 +71,7 @@ namespace FlowTiles {
             public EntityCommandBuffer.ParallelWriter ECB;
             public NativeParallelHashMap<int4, PortalPath> PathCache;
             public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
-            public PortalGraphs.PortalGraph PortalGraph;
+            public PortalGraphs.PathableGraph PortalGraph;
 
             [BurstCompile]
             private void Execute(PathfindingData agent, [ChunkIndexInQuery] int sortKey) {

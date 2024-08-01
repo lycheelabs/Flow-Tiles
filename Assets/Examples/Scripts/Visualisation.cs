@@ -7,9 +7,9 @@ namespace FlowTiles.Examples {
 
     public static class Visualisation {
 
-        public static void DrawSectors (PortalGraph graph, bool showPortalEdges) {
+        public static void DrawSectors (GraphSectors graph, bool showPortalEdges) {
 
-            var sectors = graph.GraphSectors;
+            var sectors = graph.Sectors;
             for (int c = 0; c < sectors.Length; c++) {
                 var cluster = sectors[c];
                 var nodes = cluster.ExitPortals;
