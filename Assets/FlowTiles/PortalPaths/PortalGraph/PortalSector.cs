@@ -4,7 +4,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles.PortalGraphs {
 
-    public struct GraphSector {
+    public struct PortalSector {
 
         public readonly int Index;
         public readonly CellRect Bounds;
@@ -13,7 +13,7 @@ namespace FlowTiles.PortalGraphs {
         public UnsafeList<Portal> ExitPortals;
         public UnsafeHashMap<int2, int> ExitPortalLookup;
 
-        public GraphSector (int index, CellRect bounds) {
+        public PortalSector (int index, CellRect bounds) {
             Index = index;
             Bounds = bounds;
 

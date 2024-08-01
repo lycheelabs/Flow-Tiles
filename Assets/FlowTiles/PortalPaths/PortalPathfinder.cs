@@ -15,8 +15,8 @@ namespace FlowTiles {
             var result = new UnsafeList<PortalPathNode>(32, Allocator.Persistent);
 
             // Find start and end clusters
-            var startExists = graph.TryGetClusterRoot(start.x, start.y, out var startCluster);
-            var destExists = graph.TryGetClusterRoot(dest.x, dest.y, out var destCluster);
+            var startExists = graph.TryGetPortalCluster(start.x, start.y, out var startCluster);
+            var destExists = graph.TryGetPortalCluster(dest.x, dest.y, out var destCluster);
             if (!startExists || !destExists) {
                 return result;
             }
@@ -38,7 +38,7 @@ namespace FlowTiles {
             for (var i = 0; i < path.Length; i ++) {
                 var edge = path[i];
                 if (edge.SpansTwoSectors) {
-                    var sector = graph.Graph.Sectors[edge.start.SectorIndex];
+                    var sector = graph.Portals.Sectors[edge.start.SectorIndex];
                     var portal = sector.GetExitPortalAt(edge.start.Cell);
                     result.Add(new PortalPathNode {
                         Position = edge.start,
@@ -78,7 +78,7 @@ namespace FlowTiles {
 
                 // Visit all neighbours through edges going out of node
                 foreach (PortalEdge e in current.Edges) {
-                    var nextSector = graph.Graph.Sectors[e.end.SectorIndex];
+                    var nextSector = graph.Portals.Sectors[e.end.SectorIndex];
                     var nextPortal = nextSector.GetExitPortalAt(e.end.Cell);
 
                     // Check if we visited the outer end of the edge

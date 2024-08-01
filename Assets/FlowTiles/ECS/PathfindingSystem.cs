@@ -1,3 +1,4 @@
+using FlowTiles.PortalGraphs;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -37,6 +38,7 @@ namespace FlowTiles {
 
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
+                //UnityEngine.Debug.Log("Creating path: " + request.cacheKey);
                 var path = PortalPathfinder.FindPortalPath(portalGraph, request.originCell, request.destCell);
                 PathCache.Cache[request.cacheKey] = new PortalPath {
                     Path = path
@@ -52,7 +54,7 @@ namespace FlowTiles {
                 PathCache = PathCache.Cache,
                 FlowCache = FlowCache.Cache,
                 Requests = PathRequests,
-                PortalGraph = portalGraph,
+                CostMap = portalGraph.Costs,
                 ECB = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
             }.Schedule();
 
@@ -71,22 +73,30 @@ namespace FlowTiles {
             public EntityCommandBuffer.ParallelWriter ECB;
             public NativeParallelHashMap<int4, PortalPath> PathCache;
             public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
-            public PortalGraphs.PathableGraph PortalGraph;
+            public CostMap CostMap;
 
             [BurstCompile]
             private void Execute(PathfindingData agent, [ChunkIndexInQuery] int sortKey) {
-                //var color = PortalGraph.GetColor(agent.OriginCell.x, agent.OriginCell.y);
-                var request = new int4(agent.OriginCell, agent.DestCell);
-                var cacheHit = PathCache.ContainsKey(request);
+                var origin = agent.OriginCell;
+                var originSector = CostMap.GetSectorIndex(origin.x, origin.y);
+                var originColor = CostMap.GetColor(origin.x, origin.y);
+
+                var dest = agent.DestCell;
+                var destSector = CostMap.GetSectorIndex(dest.x, dest.y);
+                var destColor = CostMap.GetColor(dest.x, dest.y);
+
+                var pathKey = new int4(originSector, originColor, destSector, destColor);
+                var cacheHit = PathCache.ContainsKey(pathKey);
 
                 if (!cacheHit) {
                     Requests.Add(new PathRequest {
                         originCell = agent.OriginCell,
                         destCell = agent.DestCell,
+                        cacheKey = pathKey,
                     });
                 }
                 else {
-                    var nodes = PathCache[request].Path;
+                    var nodes = PathCache[pathKey].Path;
                     //UnityEngine.Debug.Log("Retrieved path: " + nodes.Length);
                 }
             }

@@ -1,14 +1,18 @@
 ﻿using Unity.Collections;
 
 namespace FlowTiles.PortalGraphs {
-    public struct CostSectors {
+    public struct CostMap {
 
         public readonly SectorLayout Layout;
         public NativeArray<CostSector> Sectors;
 
-        public CostSectors(SectorLayout layout) {
+        public CostMap(SectorLayout layout) {
             Layout = layout;
             Sectors = new NativeArray<CostSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
+        }
+
+        public int GetSectorIndex(int cellX, int cellY) {
+            return Layout.TileToIndex(cellX, cellY);
         }
 
         public CostSector GetSector(int cellX, int cellY) {

@@ -4,17 +4,17 @@ using UnityEngine;
 
 namespace FlowTiles.PortalGraphs {
 
-    public struct GraphSectors {
+    public struct PortalMap {
 
         public readonly SectorLayout Layout;
-        public NativeArray<GraphSector> Sectors;
+        public NativeArray<PortalSector> Sectors;
 
-        public GraphSectors(SectorLayout layout) {
+        public PortalMap(SectorLayout layout) {
             Layout = layout;
-            Sectors = new NativeArray<GraphSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
+            Sectors = new NativeArray<PortalSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
         }
 
-        public GraphSector GetSector(int cellX, int cellY) {
+        public PortalSector GetSector(int cellX, int cellY) {
             return Sectors[Layout.TileToIndex(cellX, cellY)];
         }
 
@@ -28,7 +28,7 @@ namespace FlowTiles.PortalGraphs {
             return true;
         }
 
-        public void Build(CostSectors mapSectors) {
+        public void Build(CostMap mapSectors) {
             BuildSectors();
             LinkSectors(mapSectors);
         }
@@ -38,13 +38,13 @@ namespace FlowTiles.PortalGraphs {
                 for (int y = 0; y < Layout.SizeSectors.y; y++) {
                     var index = Layout.SectorToIndex(x, y);
                     var bounds = Layout.GetSectorBounds(x, y);
-                    var sector = new GraphSector(index, bounds);
+                    var sector = new PortalSector(index, bounds);
                     Sectors[index] = sector;
                 }
             }
         }
 
-        private void LinkSectors(CostSectors mapSectors) {
+        private void LinkSectors(CostMap mapSectors) {
 
             //Add border nodes for every adjacent pair of GraphSectors
             for (int i = 0; i < Sectors.Length; i++) {
@@ -82,7 +82,7 @@ namespace FlowTiles.PortalGraphs {
         /// Create border nodes and attach them together.
         /// We always pass the lower sector first (in sector1).
         /// </summary>
-        private void LinkAdjacentSectors(CostSectors mapSectors, int index1, int index2, bool horizontal) {
+        private void LinkAdjacentSectors(CostMap mapSectors, int index1, int index2, bool horizontal) {
             var sector1 = mapSectors.Sectors[index1];
             var sector2 = mapSectors.Sectors[index2];
 

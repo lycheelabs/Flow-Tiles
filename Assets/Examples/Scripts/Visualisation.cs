@@ -7,7 +7,7 @@ namespace FlowTiles.Examples {
 
     public static class Visualisation {
 
-        public static void DrawSectors (GraphSectors graph, bool showPortalEdges) {
+        public static void DrawSectors (PortalMap graph, bool showPortalEdges) {
 
             var sectors = graph.Sectors;
             for (int c = 0; c < sectors.Length; c++) {
@@ -21,7 +21,7 @@ namespace FlowTiles.Examples {
             }
         }
 
-        public static void DrawSectorBoundaries(GraphSector cluster) {
+        public static void DrawSectorBoundaries(PortalSector cluster) {
             Debug.DrawLine(
                 new Vector3(cluster.Bounds.MinCell.x - 0.5f, cluster.Bounds.MinCell.y - 0.5f),
                 new Vector3(cluster.Bounds.MaxCell.x + 0.5f, cluster.Bounds.MinCell.y - 0.5f),

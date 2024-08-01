@@ -53,7 +53,7 @@ namespace FlowTiles.Examples {
 
             for (int y = 0; y < LevelSize; y++) {
                 for (int x = 0; x < LevelSize; x++) {
-                    var sector = Graph.GetMapSector(x, y);
+                    var sector = Graph.GetCostSector(x, y);
                     var color = sector.Colors[x % Resolution, y % Resolution];
                     if (color > 0) {
                         ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
@@ -83,7 +83,7 @@ namespace FlowTiles.Examples {
         }
 
         public void VisualiseSectors(bool visualiseConnections) {
-            Visualisation.DrawSectors(Graph.Graph, visualiseConnections);
+            Visualisation.DrawSectors(Graph.Portals, visualiseConnections);
         }
 
         public void VisualiseTestPath(object value, int2 mouseCell, bool showFlow) {
