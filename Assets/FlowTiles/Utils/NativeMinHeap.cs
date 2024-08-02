@@ -17,8 +17,8 @@ namespace FlowTiles.Utils {
 #endif
         private Allocator m_AllocatorLabel;
 
-        private int m_head;
-        private int m_length;
+        private int m_Head;
+        private int m_Length;
         private int m_MinIndex;
         private int m_MaxIndex;
 
@@ -44,8 +44,8 @@ namespace FlowTiles.Utils {
             nativeMinHeap.m_AllocatorLabel = allocator;
             nativeMinHeap.m_MinIndex = 0;
             nativeMinHeap.m_MaxIndex = capacity - 1;
-            nativeMinHeap.m_head = -1;
-            nativeMinHeap.m_length = 0;
+            nativeMinHeap.m_Head = -1;
+            nativeMinHeap.m_Length = 0;
 
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             DisposeSentinel.Create(out nativeMinHeap.m_Safety, out nativeMinHeap.m_DisposeSentinel, 1, allocator);
@@ -54,29 +54,36 @@ namespace FlowTiles.Utils {
 
         }
 
+        public bool IsFull() {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
+#endif
+            return m_Length >= m_capacity;
+        }
+
         public bool HasNext() {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
-            return m_head >= 0;
+            return m_Head >= 0;
         }
 
         public void Push(MinHeapNode node) {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
-            if (m_length == m_capacity)
+            if (m_Length == m_capacity)
                 throw new IndexOutOfRangeException($"Capacity Reached");
             AtomicSafetyHandle.CheckReadAndThrow(m_Safety);
 #endif
 
-            if (m_head < 0) {
-                m_head = m_length;
+            if (m_Head < 0) {
+                m_Head = m_Length;
             }
-            else if (node.ExpectedCost < this[m_head].ExpectedCost) {
-                node.Next = m_head;
-                m_head = m_length;
+            else if (node.ExpectedCost < this[m_Head].ExpectedCost) {
+                node.Next = m_Head;
+                m_Head = m_Length;
             }
             else {
-                var currentPtr = m_head;
+                var currentPtr = m_Head;
                 var current = this[currentPtr];
 
                 while (current.Next >= 0 && this[current.Next].ExpectedCost <= node.ExpectedCost) {
@@ -85,21 +92,21 @@ namespace FlowTiles.Utils {
                 }
 
                 node.Next = current.Next;
-                current.Next = m_length;
+                current.Next = m_Length;
 
                 UnsafeUtility.WriteArrayElement(m_Buffer, currentPtr, current);
             }
 
-            UnsafeUtility.WriteArrayElement(m_Buffer, m_length, node);
-            m_length += 1;
+            UnsafeUtility.WriteArrayElement(m_Buffer, m_Length, node);
+            m_Length += 1;
         }
 
         public int Pop() {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
             AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
 #endif
-            var result = m_head;
-            m_head = this[m_head].Next;
+            var result = m_Head;
+            m_Head = this[m_Head].Next;
             return result;
         }
 
@@ -116,8 +123,8 @@ namespace FlowTiles.Utils {
         }
 
         public void Clear() {
-            m_head = -1;
-            m_length = 0;
+            m_Head = -1;
+            m_Length = 0;
         }
 
         public void Dispose() {
@@ -153,4 +160,5 @@ namespace FlowTiles.Utils {
         public float ExpectedCost { get; }
         public int Next { get; set; }
     }
+
 }

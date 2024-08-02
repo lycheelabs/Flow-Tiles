@@ -2,6 +2,7 @@
 using FlowTiles.PortalGraphs;
 using FlowTiles.Utils;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -106,27 +107,31 @@ namespace FlowTiles.Examples {
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
 
-            var pathfinder = new PortalPathfinder(Graph, Allocator.Temp);
-            var path = pathfinder.FindPortalPath(start, dest);
+            var pathfinder = new PortalPathfinder(Graph, 200, Allocator.Temp);
+            var success = pathfinder.TryFindPath(start, dest);
 
-            // Visualise the path
-            FlowData.InitialiseTo(0);
-            if (path.Length > 0) {
-                for (int i = 0; i < path.Length; i++) {
-                    var node = path[i];
-                    var sector = Graph.Costs.Sectors[node.Position.SectorIndex];
-                    var flow = FlowCalculationController.RequestCalculation(sector, node.GoalBounds, node.Direction);
+            if (success) {
+                // Visualise the path
+                FlowData.InitialiseTo(0);
 
-                    Visualisation.DrawPortal(node.GoalBounds);
-                    if (showFlow) {
-                        CopyFlowVisualisationData(flow);
-                    } else {
-                        Visualisation.DrawPortalLink(path[i].GoalBounds.CentrePoint, path[i + 1].GoalBounds.CentrePoint);
+                var path = pathfinder.Result;
+                if (path.Length > 0) {
+                    for (int i = 0; i < path.Length; i++) {
+                        var node = path[i];
+                        var sector = Graph.Costs.Sectors[node.Position.SectorIndex];
+                        var flow = FlowCalculationController.RequestCalculation(sector, node.GoalBounds, node.Direction);
+
+                        Visualisation.DrawPortal(node.GoalBounds);
+                        if (showFlow) {
+                            CopyFlowVisualisationData(flow);
+                        }
+                        else {
+                            Visualisation.DrawPortalLink(path[i].GoalBounds.CentrePoint, path[i + 1].GoalBounds.CentrePoint);
+                        }
+
                     }
-
                 }
             }
-
         }
 
         public void VisualiseAgentFlows() {

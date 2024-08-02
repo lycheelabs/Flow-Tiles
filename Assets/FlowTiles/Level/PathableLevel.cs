@@ -23,8 +23,8 @@ namespace FlowTiles {
         }
 
         public void InitialiseRandomObstacles () {
-            for (int x = 1; x < Size.x - 1; x++) {
-                for (int y = 1; y < Size.y - 1; y++) {
+            for (int x = 0; x < Size.x; x++) {
+                for (int y = 0; y < Size.y; y++) {
                     if (UnityEngine.Random.value < 0.2f) {
                         Obstacles[x, y] = true;
                     }

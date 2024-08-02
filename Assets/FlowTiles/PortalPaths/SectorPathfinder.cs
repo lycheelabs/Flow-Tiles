@@ -11,14 +11,14 @@ namespace FlowTiles {
         private NativeHashSet<int2> Visited;
         private NativeHashMap<int2, int2> Parent;
         private NativeHashMap<int2, int> GScore;
-        private NativeMinHeap MinHeap;
+        private NativeMinHeap Queue;
         private NativeArray<int2> Directions;
 
         public SectorPathfinder(int sectorCells, Allocator allocator) {
             Visited = new NativeHashSet<int2>(sectorCells, allocator);
             Parent = new NativeHashMap<int2, int2>(sectorCells, allocator);
             GScore = new NativeHashMap<int2, int>(sectorCells, allocator);
-            MinHeap = new NativeMinHeap(sectorCells, allocator);
+            Queue = new NativeMinHeap(sectorCells, allocator);
             
             Directions = new NativeArray<int2>(4, allocator);
             Directions[0] = new int2(1, 0);
@@ -31,7 +31,7 @@ namespace FlowTiles {
             Visited.Dispose();
             Parent.Dispose();
             GScore.Dispose();
-            MinHeap.Dispose();
+            Queue.Dispose();
             Directions.Dispose();
         }
 
@@ -39,14 +39,14 @@ namespace FlowTiles {
             Visited.Clear();
             Parent.Clear();
             GScore.Clear();
-            MinHeap.Clear();
+            Queue.Clear();
 
             GScore[start] = 0;
-            MinHeap.Push(new MinHeapNode(start, EuclidianDistance(start, dest)));
+            Queue.Push(new MinHeapNode(start, EuclidianDistance(start, dest)));
             int2 current;
 
-            while (MinHeap.HasNext()) {
-                current = MinHeap[MinHeap.Pop()].Position;
+            while (Queue.HasNext()) {
+                current = Queue[Queue.Pop()].Position;
 
                 if (current.Equals(dest)) {
                     //Rebuild path and return it
@@ -86,7 +86,7 @@ namespace FlowTiles {
                     Parent[next] = current;
                     GScore[next] = temp_gCost;
 
-                    MinHeap.Push(new MinHeapNode(next, temp_gCost + EuclidianDistance(next, dest)));
+                    Queue.Push(new MinHeapNode(next, temp_gCost + EuclidianDistance(next, dest)));
                 }
             }
 

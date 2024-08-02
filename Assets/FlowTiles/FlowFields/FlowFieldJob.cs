@@ -1,11 +1,10 @@
-﻿using FlowTiles.Utils;
-using Unity.Burst;
+﻿using Unity.Burst;
 using Unity.Jobs;
 
 namespace FlowTiles.FlowField {
 
     [BurstCompile]
-    public struct FlowCalculationJob : IJob {
+    public struct FlowFieldJob : IJob {
 
         public FlowCalculator Calculator;
 

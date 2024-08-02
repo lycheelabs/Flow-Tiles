@@ -42,10 +42,15 @@ namespace FlowTiles {
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
                 //UnityEngine.Debug.Log("Creating path: " + request.cacheKey);
-                var pathfinder = new PortalPathfinder(pathGraph, Allocator.Temp);
-                var path = pathfinder.FindPortalPath(request.originCell, request.destCell);
+                //var succcess = PortalPathJob.ScheduleAndComplete(
+                //    pathfinder, request.originCell, request.destCell, out var path);
+
+                var pathfinder = new PortalPathfinder(pathGraph, 200, Allocator.Persistent);
+                var success = pathfinder.TryFindPath(request.originCell, request.destCell);
+                pathfinder.Dispose();
+
                 PathCache.Cache[request.cacheKey] = new PortalPath {
-                    Nodes = path
+                    Nodes = pathfinder.Result
                 };
             }
             PathRequests.Clear();
@@ -145,7 +150,7 @@ namespace FlowTiles {
                     var startPortal = Graph.GetRootPortal(current.x, current.y);
                     var start = startPortal.Position.Cell;
                
-                    if (startSector != destSector) {
+                    if (startSector != destSector || startColor != destColor) {
                         var sectorData = Graph.Portals.Sectors[startSector];
                         if (sectorData.TryGetClosestExitPortal(current, out var closest)) {
                             start = closest.Position.Cell;

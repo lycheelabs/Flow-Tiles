@@ -9,7 +9,7 @@ namespace FlowTiles.FlowField {
 
         public static FlowFieldTile RequestCalculation(CostSector sector, CellRect goalBounds, int2 exitDirection) {
             var calculator = new FlowCalculator(sector, goalBounds, exitDirection);
-            var job = new FlowCalculationJob() {
+            var job = new FlowFieldJob {
                 Calculator = calculator,
             };
 

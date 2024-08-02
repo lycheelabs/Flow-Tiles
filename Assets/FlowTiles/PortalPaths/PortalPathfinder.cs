@@ -1,37 +1,44 @@
 using FlowTiles.PortalGraphs;
-using Priority_Queue;
+using FlowTiles.Utils;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
 namespace FlowTiles {
 
+    [BurstCompile]
     public struct PortalPathfinder {
 
         private PathableGraph Graph;
         private NativeHashSet<int2> Visited;
-        private NativeHashMap<int2, PortalEdge> Parent;
+        private NativeHashMap<int2, PortalEdge> Parents;
         private NativeHashMap<int2, float> GScore;
-        private SimplePriorityQueue<Portal, float> Queue;
+        private NativeMinHeap Queue;
 
-        public PortalPathfinder (PathableGraph graph, Allocator allocator) {
+        public UnsafeList<PortalPathNode> Result;
+
+        public PortalPathfinder(PathableGraph graph) : this (graph, 200, Allocator.Persistent) {}
+
+        public PortalPathfinder (PathableGraph graph, int heapCapacity, Allocator allocator) {
             Graph = graph;
-            Visited = new NativeHashSet<int2>(100, allocator);
-            Parent = new NativeHashMap<int2, PortalEdge>(100, allocator);
-            GScore = new NativeHashMap<int2, float>(100, allocator);
-            Queue = new SimplePriorityQueue<Portal, float>();
+            Visited = new NativeHashSet<int2>(100, Allocator.TempJob);
+            Parents = new NativeHashMap<int2, PortalEdge>(100, Allocator.TempJob);
+            GScore = new NativeHashMap<int2, float>(100, Allocator.TempJob);
+            Queue = new NativeMinHeap(heapCapacity, Allocator.TempJob);
+            Result = new UnsafeList<PortalPathNode>(32, allocator);
         }
 
         public void Dispose () {
             Visited.Dispose();
-            Parent.Dispose();
+            Parents.Dispose();
             GScore.Dispose();
+            Queue.Dispose();
         } 
 
-        public UnsafeList<PortalPathNode> FindPortalPath(int2 start, int2 dest) {
-            var result = new UnsafeList<PortalPathNode>(32, Allocator.Persistent);
+        public bool TryFindPath(int2 start, int2 dest) {
 
             // Find start and end clusters
             var startPortal = Graph.GetRootPortal(start.x, start.y);
@@ -43,14 +50,14 @@ namespace FlowTiles {
             // Check whether start and dest clusters match
             var destNode = PortalPathNode.NewDestNode(destCluster, dest);
             if (startPortal.IsInSameCluster(destCluster)) {
-                result.Add(destNode);
-                return result;
+                Result.Add(destNode);
+                return true;
             }
 
             // Search for the path through the portal graph
             var path = FindPath(startPortal, destCluster).ToArray();
             if (path.Length == 0) {
-                return result;
+                return false;
             }
 
             // Convert the sector-spanning edges into PortalPathNodes
@@ -59,7 +66,7 @@ namespace FlowTiles {
                 if (edge.SpansTwoSectors) {
                     var sector = Graph.Portals.Sectors[edge.start.SectorIndex];
                     var portal = sector.GetExitPortalAt(edge.start.Cell);
-                    result.Add(new PortalPathNode {
+                    Result.Add(new PortalPathNode {
                         Position = edge.start,
                         GoalBounds = portal.Bounds,
                         Direction = edge.Span,
@@ -67,19 +74,28 @@ namespace FlowTiles {
                     });
                 }
             }
-            result.Add(destNode);
-            return result;
+            Result.Add(destNode);
+            return true;
 
         }
 
         private LinkedList<PortalEdge> FindPath(Portal start, Portal destCluster) {
-            
-            GScore[start.Position.Cell] = 0;
-            Queue.Enqueue(start, EuclidianDistance(start, destCluster));
-            Portal current;
+            Visited.Clear();
+            Parents.Clear();
+            GScore.Clear();
+            Queue.Clear();
 
-            while (Queue.Count > 0) {
-                current = Queue.Dequeue();
+            GScore[start.Position.Cell] = 0;
+            Queue.Push(new MinHeapNode(start.Position.Cell, EuclidianDistance(start, destCluster)));
+
+            while (Queue.HasNext()) {
+                var index = Queue.Pop();
+                var cell = Queue[index].Position;
+                var found = Graph.TryGetExitPortal(cell.x, cell.y, out var current);
+                if (!found) {
+                    continue;
+                }
+
                 Visited.Add(current.Position.Cell);
 
                 if (current.IsInSameCluster(destCluster)) {
@@ -90,9 +106,13 @@ namespace FlowTiles {
                 else {
                     // Visit all neighbours through edges going out of node
                     foreach (PortalEdge edge in current.Edges) {
-                        var nextSector = Graph.Portals.Sectors[edge.end.SectorIndex];
-                        var next = nextSector.GetExitPortalAt(edge.end.Cell);
-                        ConsiderEdge(edge, current, next, destCluster);
+
+                        // Heap at capacity? Fail!
+                        if (Queue.IsFull()) {
+                            return new LinkedList<PortalEdge>();
+                        }
+
+                        ConsiderEdge(edge, current, destCluster);
                     }
                 }
             }
@@ -100,28 +120,31 @@ namespace FlowTiles {
             return new LinkedList<PortalEdge>();
         }
 
-        private void ConsiderEdge(PortalEdge edge, Portal current, Portal next, Portal dest) {
-            if (Visited.Contains(edge.end.Cell)) {
+        private void ConsiderEdge(PortalEdge edge, Portal current, Portal dest) {
+            var nextCell = edge.end.Cell;
+            var destCell = dest.Position.Cell;
+
+            if (Visited.Contains(nextCell)) {
                 return;
             }
 
             // If new value is not better then do nothing
             float newGCost = GScore[current.Position.Cell] + edge.weight;
-            if (GScore.TryGetValue(edge.end.Cell, out var prevGCost) && newGCost >= prevGCost) {
+            if (GScore.TryGetValue(nextCell, out var prevGCost) && newGCost >= prevGCost) {
                 return;
             }
 
             // Otherwise store the new value and add the destination into the queue
-            Parent[edge.end.Cell] = edge;
-            GScore[edge.end.Cell] = newGCost;
-            Queue.Enqueue(next, newGCost + EuclidianDistance(next, dest));
+            Parents[nextCell] = edge;
+            GScore[nextCell] = newGCost;
+            Queue.Push(new MinHeapNode(nextCell, newGCost + EuclidianDistance(nextCell, destCell)));
         }
 
         private LinkedList<PortalEdge> RebuildPath(Portal dest) {
             LinkedList<PortalEdge> res = new LinkedList<PortalEdge>();
             int2 current = dest.Position.Cell;
 
-            while (Parent.TryGetValue(current, out var e)) {
+            while (Parents.TryGetValue(current, out var e)) {
                 res.AddFirst(e);
                 current = e.start.Cell;
             }
@@ -131,6 +154,10 @@ namespace FlowTiles {
 
         private float EuclidianDistance(Portal node1, Portal node2) {
             return math.distance(node1.Position.Cell, node2.Position.Cell);
+        }
+
+        private float EuclidianDistance(int2 node1, int2 node2) {
+            return math.distance(node1, node2);
         }
 
     }
