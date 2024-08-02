@@ -18,27 +18,17 @@ namespace FlowTiles {
         private NativeHashMap<int2, float> GScore;
         private NativeMinHeap Queue;
 
-        public UnsafeList<PortalPathNode> Result;
-
-        public PortalPathfinder(PathableGraph graph) : this (graph, 200, Allocator.Persistent) {}
+        public PortalPathfinder(PathableGraph graph) : this (graph, 200, Allocator.Temp) {}
 
         public PortalPathfinder (PathableGraph graph, int heapCapacity, Allocator allocator) {
             Graph = graph;
-            Visited = new NativeHashSet<int2>(100, Allocator.TempJob);
-            Parents = new NativeHashMap<int2, PortalEdge>(100, Allocator.TempJob);
-            GScore = new NativeHashMap<int2, float>(100, Allocator.TempJob);
-            Queue = new NativeMinHeap(heapCapacity, Allocator.TempJob);
-            Result = new UnsafeList<PortalPathNode>(32, allocator);
+            Visited = new NativeHashSet<int2>(100, allocator);
+            Parents = new NativeHashMap<int2, PortalEdge>(100, allocator);
+            GScore = new NativeHashMap<int2, float>(100, allocator);
+            Queue = new NativeMinHeap(heapCapacity, allocator);
         }
 
-        public void Dispose () {
-            Visited.Dispose();
-            Parents.Dispose();
-            GScore.Dispose();
-            Queue.Dispose();
-        } 
-
-        public bool TryFindPath(int2 start, int2 dest) {
+        public bool TryFindPath(int2 start, int2 dest, ref UnsafeList<PortalPathNode> result) {
 
             // Find start and end clusters
             var startPortal = Graph.GetRootPortal(start.x, start.y);
@@ -50,7 +40,7 @@ namespace FlowTiles {
             // Check whether start and dest clusters match
             var destNode = PortalPathNode.NewDestNode(destCluster, dest);
             if (startPortal.IsInSameCluster(destCluster)) {
-                Result.Add(destNode);
+                result.Add(destNode);
                 return true;
             }
 
@@ -66,7 +56,7 @@ namespace FlowTiles {
                 if (edge.SpansTwoSectors) {
                     var sector = Graph.Portals.Sectors[edge.start.SectorIndex];
                     var portal = sector.GetExitPortalAt(edge.start.Cell);
-                    Result.Add(new PortalPathNode {
+                    result.Add(new PortalPathNode {
                         Position = edge.start,
                         GoalBounds = portal.Bounds,
                         Direction = edge.Span,
@@ -74,7 +64,7 @@ namespace FlowTiles {
                     });
                 }
             }
-            Result.Add(destNode);
+            result.Add(destNode);
             return true;
 
         }

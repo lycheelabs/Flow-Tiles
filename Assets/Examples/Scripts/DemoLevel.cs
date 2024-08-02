@@ -107,14 +107,14 @@ namespace FlowTiles.Examples {
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
 
-            var pathfinder = new PortalPathfinder(Graph, 200, Allocator.Temp);
-            var success = pathfinder.TryFindPath(start, dest);
+            var pathfinder = new PortalPathfinder(Graph);
+            var path = new UnsafeList<PortalPathNode>(32, Allocator.Temp);
+            var success = pathfinder.TryFindPath(start, dest, ref path);
 
             if (success) {
                 // Visualise the path
                 FlowData.InitialiseTo(0);
 
-                var path = pathfinder.Result;
                 if (path.Length > 0) {
                     for (int i = 0; i < path.Length; i++) {
                         var node = path[i];

@@ -1,5 +1,6 @@
 ﻿using FlowTiles.PortalGraphs;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -9,28 +10,40 @@ namespace FlowTiles {
     [BurstCompile]
     public struct PortalPathJob : IJob {
 
-        public static bool ScheduleAndComplete (PortalPathfinder pathfinder, int2 start, int2 dest, out UnsafeList<PortalPathNode> result) {
-            var job = new PortalPathJob {
-                Pathfinder = pathfinder, 
-                Start = start, 
-                Dest = dest 
-            };
+        public static bool ScheduleAndComplete (PathableGraph graph, int2 start, int2 dest, out UnsafeList<PortalPathNode> result) {
+            var job = new PortalPathJob(graph, start, dest);
             job.Schedule().Complete();
-            result = job.Result;
-            return job.Success;
+            result = job.Result.Value;
+            return job.Success.Value;
         }
 
         // ------------------------------------------------
 
-        public PortalPathfinder Pathfinder;
+        public PathableGraph Graph;
         public int2 Start;
         public int2 Dest;
 
-        public UnsafeList<PortalPathNode> Result => Pathfinder.Result;
-        public bool Success;
+        public NativeReference<UnsafeList<PortalPathNode>> Result;
+        public NativeReference<bool> Success;
 
+        public PortalPathJob (PathableGraph graph, int2 start, int2 dest) {
+            Graph = graph;
+            Start = start;
+            Dest = dest;
+
+            Result = new NativeReference<UnsafeList<PortalPathNode>>(Allocator.TempJob);
+            Success = new NativeReference<bool>(Allocator.TempJob);
+
+            Result.Value = new UnsafeList<PortalPathNode>(32, Allocator.Persistent);
+            Success.Value = false;
+        }
+
+        [BurstCompile]
         public void Execute() {
-            Success = Pathfinder.TryFindPath(Start, Dest);
+            var pathfinder = new PortalPathfinder(Graph);
+            var path = Result.Value;
+            Success.Value = pathfinder.TryFindPath(Start, Dest, ref path);
+            Result.Value = path;
         }
 
 
