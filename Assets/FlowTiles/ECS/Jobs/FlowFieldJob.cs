@@ -21,13 +21,16 @@ namespace FlowTiles.ECS {
             job.Schedule().Complete();
             stopwatch.Stop();
 
-            return new FlowField {
+            var result = new FlowField {
                 SectorIndex = sector.Index,
                 Color = job.Color.Value,
                 Size = sector.Bounds.SizeCells,
                 Directions = job.Flow.Value,
                 GenerationTime = stopwatch.Elapsed,
             };
+
+            job.Dispose();
+            return result;
         }
 
         // --------------------------------------------------------
@@ -53,6 +56,11 @@ namespace FlowTiles.ECS {
             calculator.Calculate();
             Flow.Value = calculator.Flow;
             Color.Value = calculator.Color;
+        }
+
+        public void Dispose () {
+            Flow.Dispose();
+            Color.Dispose();
         }
 
     }

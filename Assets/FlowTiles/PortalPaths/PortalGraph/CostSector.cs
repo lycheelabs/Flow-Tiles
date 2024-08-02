@@ -52,6 +52,7 @@ namespace FlowTiles.PortalPaths {
         }
 
         private void CalculateColors() {
+            var cellsInSector = Bounds.SizeCells.x * Bounds.SizeCells.y;
 
             // Divide into open areas and walls
             for (int x = 0; x < Colors.Size.x; x++) {
@@ -70,7 +71,7 @@ namespace FlowTiles.PortalPaths {
                 for (var y = 0; y < Colors.Size.y; y++) {
                     if (Colors[x, y] == 0) {
                         NumColors++;
-                        FloodFill(new int2(x, y), 0, NumColors);
+                        FloodFill(new int2(x, y), 0, NumColors, cellsInSector);
                     }
                 }
             }
@@ -85,7 +86,7 @@ namespace FlowTiles.PortalPaths {
                         var c4 = TryGetColor(x, y + 1);
                         var bestNeighbor = math.max(math.max(c1, c2), math.max(c3, c4));
                         if (bestNeighbor > 0) {
-                            FloodFill(new int2(x, y), -1, (short)bestNeighbor);
+                            FloodFill(new int2(x, y), -1, (short)bestNeighbor, cellsInSector);
                         };
                     }
                 }
@@ -94,8 +95,8 @@ namespace FlowTiles.PortalPaths {
 
         // Flood fill using the scanline method. Based on...
         // https://simpledevcode.wordpress.com/2015/12/29/flood-fill-algorithm-using-c-net/
-        private void FloodFill(int2 startPoint, short oldColorIndex, short newColorIndex) {
-            NativeStack<int2> points = new NativeStack<int2>(100, Allocator.Temp);
+        private void FloodFill(int2 startPoint, short oldColorIndex, short newColorIndex, int cellsInSector) {
+            NativeStack<int2> points = new NativeStack<int2>(cellsInSector, Allocator.Temp);
             points.Push(startPoint);
 
             while (points.Count != 0) {

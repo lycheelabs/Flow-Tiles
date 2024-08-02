@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -23,8 +22,8 @@ namespace FlowTiles.Examples {
             var setup = SystemAPI.GetSingleton<LevelSetup>();
             var prefabs = SystemAPI.GetSingleton<PrefabLinks>();
 
-            for (int i = 0; i < setup.Size; i++) {
-                for (int j = 0; j < setup.Size; j++) {
+            for (int i = 0; i < setup.Size.x; i++) {
+                for (int j = 0; j < setup.Size.y; j++) {
 
                     // Create wall
                     var wall = state.EntityManager.Instantiate(prefabs.Wall);
@@ -48,8 +47,6 @@ namespace FlowTiles.Examples {
                 }
             }
 
-            var agent = state.EntityManager.Instantiate(prefabs.Agent);
-            
         }
 
     }

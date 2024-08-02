@@ -1,4 +1,3 @@
-using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Collections;
@@ -8,6 +7,8 @@ using Unity.Mathematics;
 namespace FlowTiles.ECS {
 
     public partial struct PathfindingSystem : ISystem {
+
+        public const int CACHE_CAPACITY = 1000;
 
         private PathCache PathCache;
         private FlowCache FlowCache;
@@ -21,15 +22,15 @@ namespace FlowTiles.ECS {
 
             // Build the caches
             PathCache = new PathCache {
-                Cache = new NativeParallelHashMap<int4, CachedPortalPath>(1000, Allocator.Persistent) 
+                Cache = new NativeParallelHashMap<int4, CachedPortalPath>(CACHE_CAPACITY, Allocator.Persistent) 
             };
             FlowCache = new FlowCache {
-                Cache = new NativeParallelHashMap<int4, CachedFlowField>(1000, Allocator.Persistent)
+                Cache = new NativeParallelHashMap<int4, CachedFlowField>(CACHE_CAPACITY, Allocator.Persistent)
             };
 
             // Build the request buffers
-            PathRequests = new NativeList<PathRequest>(1000, Allocator.Persistent);
-            FlowRequests = new NativeList<FlowRequest>(1000, Allocator.Persistent);
+            PathRequests = new NativeList<PathRequest>(200, Allocator.Persistent);
+            FlowRequests = new NativeList<FlowRequest>(200, Allocator.Persistent);
 
         }
 
@@ -70,6 +71,7 @@ namespace FlowTiles.ECS {
                 var sector = pathGraph.GetCostSector(goal.x, goal.y);
                 var goalDir = request.goalDirection;
                 var flow = FlowFieldJob.ScheduleAndComplete(sector, goalBounds, goalDir);
+
                 FlowCache.Cache[request.cacheKey] = new CachedFlowField { 
                     IsPending = false,
                     FlowField = flow

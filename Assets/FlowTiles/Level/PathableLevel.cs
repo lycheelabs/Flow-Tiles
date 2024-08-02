@@ -22,16 +22,6 @@ namespace FlowTiles {
             ModifiedCosts = new NativeField<byte>(Size, Allocator.Persistent);
         }
 
-        public void InitialiseRandomObstacles () {
-            for (int x = 0; x < Size.x; x++) {
-                for (int y = 0; y < Size.y; y++) {
-                    if (UnityEngine.Random.value < 0.2f) {
-                        Obstacles[x, y] = true;
-                    }
-                }
-            }
-        }
-
         public void SetObstacle (int x, int y, bool obstacle = true) {
             Obstacles[x, y] = obstacle;
         }

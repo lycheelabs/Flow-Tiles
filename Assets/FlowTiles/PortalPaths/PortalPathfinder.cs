@@ -17,14 +17,14 @@ namespace FlowTiles.PortalPaths {
         private NativeHashMap<int2, float> GScore;
         private NativeMinHeap Queue;
 
-        public PortalPathfinder(PathableGraph graph) : this (graph, 200, Allocator.Temp) {}
+        public PortalPathfinder(PathableGraph graph) : this (graph, 1000, Allocator.Temp) {}
 
-        public PortalPathfinder (PathableGraph graph, int heapCapacity, Allocator allocator) {
+        public PortalPathfinder (PathableGraph graph, int capacitry, Allocator allocator) {
             Graph = graph;
-            Visited = new NativeHashSet<int2>(100, allocator);
-            Parents = new NativeHashMap<int2, PortalEdge>(100, allocator);
-            GScore = new NativeHashMap<int2, float>(100, allocator);
-            Queue = new NativeMinHeap(heapCapacity, allocator);
+            Visited = new NativeHashSet<int2>(capacitry, allocator);
+            Parents = new NativeHashMap<int2, PortalEdge>(capacitry, allocator);
+            GScore = new NativeHashMap<int2, float>(capacitry, allocator);
+            Queue = new NativeMinHeap(capacitry, allocator);
         }
 
         public bool TryFindPath(int2 start, int2 dest, ref UnsafeList<PortalPathNode> result) {
@@ -82,7 +82,7 @@ namespace FlowTiles.PortalPaths {
                 var cell = Queue[index].Position;
                 var found = Graph.TryGetExitPortal(cell.x, cell.y, out var current);
                 if (!found) {
-                    continue;
+                    current = Graph.GetRootPortal(cell.x, cell.y);
                 }
 
                 Visited.Add(current.Position.Cell);

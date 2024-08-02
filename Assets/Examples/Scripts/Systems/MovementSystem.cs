@@ -1,22 +1,29 @@
-using FlowTiles.Examples;
+using FlowTiles.ECS;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-namespace FlowTiles.ECS {
+namespace FlowTiles.Examples {
 
     public partial struct MovementSystem : ISystem {
 
+        public void OnCreate(ref SystemState state) {
+            state.RequireForUpdate<LevelSetup>();
+        }
+
         public void OnUpdate(ref SystemState state) {
-            new RequestPathsJob {
-                DeltaTime = SystemAPI.Time.DeltaTime
+            var level = SystemAPI.GetSingleton<LevelSetup>();
+            new Job {
+                LevelSize = level.Size,
+                DeltaTime = SystemAPI.Time.DeltaTime,
             }.Schedule();
         }
 
         [BurstCompile]
-        public partial struct RequestPathsJob : IJobEntity {
+        public partial struct Job : IJobEntity {
 
+            public int2 LevelSize;
             public float DeltaTime;
 
             [BurstCompile]
@@ -28,6 +35,9 @@ namespace FlowTiles.ECS {
 
                 var position = transform.Position;
                 position += new float3(speed * DeltaTime * 3.3f, 0);
+                position.x = math.clamp(position.x, 0, LevelSize.x - 1);
+                position.y = math.clamp(position.y, 0, LevelSize.y - 1);
+
                 transform.Position = position;
 
                 var newX = (int)math.round(position.x);

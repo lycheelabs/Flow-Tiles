@@ -9,14 +9,17 @@ namespace FlowTiles.Utils {
         public int FlatSize;
         private NativeArray<T> data;
 
-        public NativeField(int2 size, Allocator allocator, T initialiseTo = default) {
+        public NativeField(int2 size, Allocator allocator) {
             Size = size;
             FlatSize = size.x * size.y;
             data = new NativeArray<T>(FlatSize, allocator);
+        }
 
-            if (!initialiseTo.Equals(default)) {
-                InitialiseTo(initialiseTo);
-            }
+        public NativeField(int2 size, Allocator allocator, T initialiseTo) {
+            Size = size;
+            FlatSize = size.x * size.y;
+            data = new NativeArray<T>(FlatSize, allocator);
+            InitialiseTo(initialiseTo);
         }
 
         public bool IsCreated => data.IsCreated;

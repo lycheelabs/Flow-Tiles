@@ -2,6 +2,7 @@
 using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
+using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
@@ -10,6 +11,7 @@ using Unity.Transforms;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
+
     public class DemoLevel {
 
         private const float ColorFading = 0.4f;
@@ -25,23 +27,22 @@ namespace FlowTiles.Examples {
 
         // -----------------------------------------
 
-        public int LevelSize = 1000;
-        public int Resolution = 10;
+        public int2 LevelSize;
+        public int Resolution;
         public bool VisualiseConnections;
 
-        private PathableLevel Map;
+        private PathableLevel Level;
         private NativeField<float4> ColorData;
         private NativeField<float2> FlowData;
         private PathableGraph Graph;
 
-        public DemoLevel (int levelSize, int resolution) {
-            LevelSize = levelSize;
+        private List<SpawnAgentCommand> AgentSpawns = new List<SpawnAgentCommand>();
+
+        public DemoLevel (PathableLevel level, int resolution) {
+            Level = level;
+            LevelSize = level.Size;
             Resolution = resolution;
 
-            // Initialise the map
-            Map = new PathableLevel(LevelSize, LevelSize);
-            Map.InitialiseRandomObstacles();
-            
             /*Map.SetObstacle(5, 2);
             Map.SetObstacle(6, 2);
             Map.SetObstacle(7, 2);
@@ -51,8 +52,8 @@ namespace FlowTiles.Examples {
             // Create the graph
             var stopwatch = new System.Diagnostics.Stopwatch();
             stopwatch.Start();
-            Graph = new PathableGraph(Map.Bounds.SizeCells, Resolution);
-            PathableGraph.BurstBuild(ref Graph, ref Map);
+            Graph = new PathableGraph(Level.Bounds.SizeCells, Resolution);
+            PathableGraph.BurstBuild(ref Graph, ref Level);
             stopwatch.Stop();
             Debug.Log(string.Format("Portal graph created in: {0} ms", (int)stopwatch.Elapsed.TotalMilliseconds));
 
@@ -60,8 +61,8 @@ namespace FlowTiles.Examples {
             ColorData = new NativeField<float4>(LevelSize, Allocator.Persistent, initialiseTo: 1);
             FlowData = new NativeField<float2>(LevelSize, Allocator.Persistent);
 
-            for (int y = 0; y < LevelSize; y++) {
-                for (int x = 0; x < LevelSize; x++) {
+            for (int y = 0; y < LevelSize.x; y++) {
+                for (int x = 0; x < LevelSize.y; x++) {
                     var sector = Graph.GetCostSector(x, y);
                     var color = sector.Colors[x % Resolution, y % Resolution];
                     if (color > 0) {
@@ -77,7 +78,7 @@ namespace FlowTiles.Examples {
             em.AddComponent<GlobalPathfindingData>(singleton);
             em.SetComponentData(singleton, new LevelSetup {
                 Size = LevelSize,
-                Walls = Map.Obstacles,
+                Walls = Level.Obstacles,
                 Colors = ColorData,
                 Flows = FlowData,
             });
@@ -85,27 +86,52 @@ namespace FlowTiles.Examples {
                 Graph = Graph,
             });
 
+            // Position the camera
+            var halfViewedSize = ((float2)LevelSize - 1) / 2f;
+            Camera.main.orthographicSize = LevelSize.y / 2f * 1.05f + 1;
+            Camera.main.transform.position = new Vector3(halfViewedSize.x, halfViewedSize.y, -20);
+
         }
 
-        public void SpawnAgentAt (int2 cell, bool addDebugData = false) {
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            if (TryGetSingleton(out PrefabLinks prefabs)) {
-                var agent = em.Instantiate(prefabs.Agent);
-                em.SetComponentData(agent, new LocalTransform {
-                    Position = new float3(cell, -1),
-                    Scale = 1,
-                });
-                em.SetComponentData(agent, new FlowPosition {
-                    Position = cell,
-                });
-                if (addDebugData) {
-                    em.AddComponent<FlowDebugData>(agent);
+        public void Update() {
+            if (AgentSpawns.Count > 0) {
+                if (TryGetSingleton(out PrefabLinks prefabs)) {
+                    var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+                    foreach (var spawn in AgentSpawns) {
+
+                        var agent = em.Instantiate(prefabs.Agent);
+                        em.SetComponentData(agent, new LocalTransform {
+                            Position = new float3(spawn.Cell, -1),
+                            Scale = 1,
+                        });
+                        em.SetComponentData(agent, new FlowPosition {
+                            Position = spawn.Cell,
+                        });
+                        if (spawn.Type == AgentType.SINGLE) {
+                            em.AddComponent<FlowDebugData>(agent);
+                        }
+                        if (spawn.Type == AgentType.STRESS_TEST) {
+                            var seed = (uint)UnityEngine.Random.Range(0, 99999);
+                            em.AddComponent<StressTestData>(agent);
+                            em.SetComponentData(agent, new StressTestData {
+                                Random = new Unity.Mathematics.Random(seed)
+                            });
+                        }
+                    }
+                    AgentSpawns.Clear();
                 }
-            }
+            }   
+        }
+
+        public void SpawnAgentAt (int2 cell, AgentType type) {
+            AgentSpawns.Add(new SpawnAgentCommand {
+                Cell = cell,
+                Type = type,
+            });
         }
 
         public void FlipWallAt(int2 cell) {
-            Map.Obstacles[cell.x, cell.y] = !Map.Obstacles[cell.x, cell.y];
+            Level.Obstacles[cell.x, cell.y] = !Level.Obstacles[cell.x, cell.y];
         }
 
         public void VisualiseSectors(bool visualiseConnections) {
@@ -171,11 +197,11 @@ namespace FlowTiles.Examples {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var query = em.CreateEntityQuery(new ComponentType[] { typeof(T) });
             if (query.TryGetSingletonEntity<T>(out Entity singleton)) {
-                data = em.GetComponentData<T>(singleton);
+                data = em.GetComponentData<T>(singleton);              
                 return true;
             } else {
                 data = default;
-                return true;
+                return false;
             }
         }
 

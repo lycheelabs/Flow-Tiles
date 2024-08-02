@@ -5,9 +5,9 @@ using UnityEngine;
 
 namespace FlowTiles.Examples {
 
-    public class DemoManager : MonoBehaviour {
+    public class AgentExampleManager : MonoBehaviour {
 
-        public int LevelSize = 1000;
+        public int LevelSize = 100;
         public int Resolution = 10;
         public bool VisualiseConnections;
 
@@ -15,19 +15,16 @@ namespace FlowTiles.Examples {
 
         void Start() {
 
-            // Initialise the map
-            Level = new DemoLevel(LevelSize, Resolution);
-            Level.SpawnAgentAt(0, true);
+            var map = new PathableLevel(LevelSize, LevelSize);
+            LevelGeneration.InitialiseRandomObstacles(map, false);
 
-            // Position the camera
-            var halfViewedSize = (LevelSize - 1) / 2f;
-            Camera.main.orthographicSize = LevelSize / 2f * 1.05f + 1;
-            Camera.main.transform.position = new Vector3(halfViewedSize, halfViewedSize, -20);
+            Level = new DemoLevel(map, Resolution);
+            Level.SpawnAgentAt(0, AgentType.SINGLE);
 
         }
 
         void Update() {
-
+            Level.Update();
             Level.VisualiseSectors(VisualiseConnections);
             Level.VisualiseAgentFlows();
 
@@ -37,10 +34,11 @@ namespace FlowTiles.Examples {
 
                 if (Input.GetMouseButtonDown(0)) {
                     SetAgentDestinations(mouseCell);
-                    //Level.FlipWallAt(mouseCell);
+                }
+                if (Input.GetMouseButtonDown(1)) {
+                    Level.FlipWallAt(mouseCell);
                 }
 
-                //Level.VisualiseTestPath(default, mouseCell, true);
             }
 
         }

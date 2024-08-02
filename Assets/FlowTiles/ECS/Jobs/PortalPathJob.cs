@@ -13,8 +13,12 @@ namespace FlowTiles.ECS {
         public static bool ScheduleAndComplete (PathableGraph graph, int2 start, int2 dest, out UnsafeList<PortalPathNode> result) {
             var job = new PortalPathJob(graph, start, dest);
             job.Schedule().Complete();
+            
             result = job.Result.Value;
-            return job.Success.Value;
+            var success = job.Success.Value;
+            
+            job.Dispose();
+            return success;
         }
 
         // ------------------------------------------------
@@ -45,7 +49,10 @@ namespace FlowTiles.ECS {
             Success.Value = pathfinder.TryFindPath(Start, Dest, ref path);
             Result.Value = path;
         }
-
+        public void Dispose() {
+            Success.Dispose();
+            Result.Dispose();
+        }
 
     }
 

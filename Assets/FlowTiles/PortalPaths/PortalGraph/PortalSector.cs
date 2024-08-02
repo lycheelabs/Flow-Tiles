@@ -59,7 +59,7 @@ namespace FlowTiles.PortalPaths {
                 var colorPortal = new Portal(Bounds.CentreCell, Index, 0);
                 colorPortal.Color = color;
 
-                /*for (int p = 0; p < ExitPortals.Length; p++) {
+                for (int p = 0; p < ExitPortals.Length; p++) {
                     var portal = ExitPortals[p];
                     if (portal.Color == color) {
                         colorPortal.Edges.Add(new PortalEdge {
@@ -68,7 +68,7 @@ namespace FlowTiles.PortalPaths {
                             weight = 0,
                         });
                     }
-                }*/
+                }
 
                 RootPortals.Add(colorPortal);
             }
