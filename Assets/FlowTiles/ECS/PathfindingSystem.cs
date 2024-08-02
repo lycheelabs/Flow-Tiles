@@ -49,9 +49,9 @@ namespace FlowTiles {
             }
             PathRequests.Clear();
 
-            // TODO: Process flow field requests, and cache the results
+            // Process flow field requests, and cache the results
             foreach (var request in FlowRequests) {
-                UnityEngine.Debug.Log("Requested flow: " + request.cacheKey);
+                //UnityEngine.Debug.Log("Requested flow: " + request.cacheKey);
                 var goal = request.goalCell;
                 var goalBounds = new CellRect(goal, goal);
                 if (!request.goalDirection.Equals(0)) {
@@ -76,7 +76,7 @@ namespace FlowTiles {
             //var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             
             new FollowPathsJob {
-                CostMap = pathGraph.Costs,
+                Graph = pathGraph,
                 PathCache = PathCache.Cache,
                 FlowCache = FlowCache.Cache,
                 PathRequests = PathRequests,
@@ -99,7 +99,7 @@ namespace FlowTiles {
         [BurstCompile]
         public partial struct FollowPathsJob : IJobEntity {
 
-            public CostMap CostMap;
+            public PathableGraph Graph;
             public NativeParallelHashMap<int4, PortalPath> PathCache;
             public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
 
@@ -122,26 +122,45 @@ namespace FlowTiles {
                     return;
                 }
 
+                // Check start and dest are valid
                 var current = position.Position;
-                var currentSector = CostMap.GetSectorIndex(current.x, current.y);
-                var currentColor = CostMap.GetColor(current.x, current.y);
-
                 var dest = goal.Goal;
-                var destCell = CostMap.GetCellIndex(dest.x, dest.y);
-                var destColor = CostMap.GetColor(dest.x, dest.y);
+                if (!Graph.Bounds.ContainsCell(current) || !Graph.Bounds.ContainsCell(dest)) {
+                    progress.HasPath = false;
+                    progress.HasFlow = false;
+                    return;
+                }
+
+                var startSector = Graph.Costs.GetSectorIndex(current.x, current.y);
+                var startColor = Graph.Costs.GetColor(current.x, current.y);
+                var destSector = Graph.Costs.GetSectorIndex(dest.x, dest.y);
+                var destColor = Graph.Costs.GetColor(dest.x, dest.y);
+                var destCell = Graph.Costs.GetCellIndex(dest.x, dest.y);
 
                 // Attach to a path
                 if (!progress.HasPath) {
 
+                    // Find closest start portal
+                    var startPortal = Graph.GetRootPortal(current.x, current.y);
+                    var start = startPortal.Position.Cell;
+               
+                    if (startSector != destSector) {
+                        var sectorData = Graph.Portals.Sectors[startSector];
+                        if (sectorData.TryGetClosestExitPortal(current, out var closest)) {
+                            start = closest.Position.Cell;
+                        }
+                    } 
+                    var startCell = Graph.Costs.GetCellIndex(start.x, start.y);
+
                     // Search for a cached path
-                    var pathKey = new int4(currentSector, currentColor, destCell, destColor);
+                    var pathKey = new int4(startCell, startColor, destCell, destColor);
                     var pathCacheHit = PathCache.ContainsKey(pathKey);
                     if (!pathCacheHit) {
 
                         // Request a path be generated
                         PathRequests.Add(new PathRequest {
-                            originCell = current,
-                            destCell = goal.Goal,
+                            originCell = start,
+                            destCell = dest,
                             cacheKey = pathKey,
                         });
                         return;
@@ -175,9 +194,9 @@ namespace FlowTiles {
                     if (progress.NodeIndex >= 0 && progress.NodeIndex < path.Nodes.Length) {
                         var node = path.Nodes[progress.NodeIndex];
                         var nodeCell = node.Position.Cell;
-                        var nodeSector = CostMap.GetSectorIndex(nodeCell.x, nodeCell.y);
-                        var nodeColor = CostMap.GetColor(nodeCell.x, nodeCell.y);
-                        nodeIsValid = nodeSector == currentSector && nodeColor == currentColor;
+                        var nodeSector = Graph.Costs.GetSectorIndex(nodeCell.x, nodeCell.y);
+                        var nodeColor = Graph.Costs.GetColor(nodeCell.x, nodeCell.y);
+                        nodeIsValid = nodeSector == startSector && nodeColor == startColor;
                     }
                     if (!nodeIsValid) {
                         var foundNode = false;
@@ -187,9 +206,9 @@ namespace FlowTiles {
                             var newIndex = progress.NodeIndex + 1;
                             var newNode = path.Nodes[newIndex];
                             var newCell = newNode.Position.Cell;
-                            var newSector = CostMap.GetSectorIndex(newCell.x, newCell.y);
-                            var newColor = CostMap.GetColor(newCell.x, newCell.y);
-                            if (newSector == currentSector && newColor == currentColor) {
+                            var newSector = Graph.Costs.GetSectorIndex(newCell.x, newCell.y);
+                            var newColor = Graph.Costs.GetColor(newCell.x, newCell.y);
+                            if (newSector == startSector && newColor == startColor) {
                                 progress.NodeIndex = newIndex;
                                 foundNode = true;
                             }
@@ -200,9 +219,9 @@ namespace FlowTiles {
                             for (int index = 0; index < path.Nodes.Length; index++) {
                                 var newNode = path.Nodes[index];
                                 var newCell = newNode.Position.Cell;
-                                var newSector = CostMap.GetSectorIndex(newCell.x, newCell.y);
-                                var newColor = CostMap.GetColor(newCell.x, newCell.y);
-                                if (newSector == currentSector && newColor == currentColor) {
+                                var newSector = Graph.Costs.GetSectorIndex(newCell.x, newCell.y);
+                                var newColor = Graph.Costs.GetColor(newCell.x, newCell.y);
+                                if (newSector == startSector && newColor == startColor) {
                                     progress.NodeIndex = index;
                                     foundNode = true;
                                     break;
@@ -238,7 +257,7 @@ namespace FlowTiles {
                     progress.FlowKey = flowKey;
 
                     // Save the flow direction
-                    var pos = position.Position - CostMap.Sectors[currentSector].Bounds.MinCell;
+                    var pos = position.Position - Graph.Costs.Sectors[startSector].Bounds.MinCell;
                     var flow = FlowCache[flowKey];
                     var direction = flow.GetFlow(pos.x, pos.y);
                     result.Direction = direction;

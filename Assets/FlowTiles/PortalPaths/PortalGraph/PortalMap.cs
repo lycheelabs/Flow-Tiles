@@ -30,14 +30,9 @@ namespace FlowTiles.PortalGraphs {
             return true;
         }
 
-        public bool TryGetRootPortal(int cellX, int cellY, int color, out Portal portal) {
-            if (color <= 0) {
-                portal = default;
-                return false;
-            }
+        public Portal GetRootPortal(int cellX, int cellY, int color) {
             var sector = GetSector(cellX, cellY);
-            portal = sector.RootPortals[color - 1];
-            return true;
+            return sector.RootPortals[color - 1];
         }
 
         public void Build(CostMap mapSectors) {

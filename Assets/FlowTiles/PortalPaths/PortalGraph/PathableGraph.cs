@@ -13,6 +13,7 @@ namespace FlowTiles.PortalGraphs {
 
         // -----------------------------------------
 
+        public CellRect Bounds;
         public SectorLayout Layout;
         public CostMap Costs;
         public PortalMap Portals;
@@ -21,6 +22,7 @@ namespace FlowTiles.PortalGraphs {
         /// Construct a graph from the map
         /// </summary>
         public PathableGraph(int2 sizeCells, int resolution) {
+            Bounds = new CellRect(0, sizeCells - 1);
             Layout = new SectorLayout(sizeCells, resolution);
             Costs = new CostMap(Layout);
             Portals = new PortalMap(Layout);
@@ -43,9 +45,9 @@ namespace FlowTiles.PortalGraphs {
             return Portals.GetSector(cellX, cellY);
         }
 
-        public bool TryGetRootPortal(int cellX, int cellY, out Portal portal) {
+        public Portal GetRootPortal(int cellX, int cellY) {
             var color = Costs.GetColor(cellX, cellY);
-            return Portals.TryGetRootPortal(cellX, cellY, color, out portal);
+            return Portals.GetRootPortal(cellX, cellY, color);
         }
 
         public bool TryGetExitPortal(int cellX, int cellY, out Portal portal) {

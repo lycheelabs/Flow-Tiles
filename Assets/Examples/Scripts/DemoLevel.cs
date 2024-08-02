@@ -104,15 +104,12 @@ namespace FlowTiles.Examples {
             Visualisation.DrawSectors(Graph.Portals, visualiseConnections);
         }
 
-        public void VisualiseTestPath(object value, int2 mouseCell, bool showFlow) {
-            FlowData.InitialiseTo(0);
-
-            // Find a path
-            var start = new int2(0, 0);
-            var dest = mouseCell;
+        public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
+                       
             var path = PortalPathfinder.FindPortalPath(Graph, start, dest);
 
             // Visualise the path
+            FlowData.InitialiseTo(0);
             if (path.Length > 0) {
                 for (int i = 0; i < path.Length; i++) {
                     var node = path[i];

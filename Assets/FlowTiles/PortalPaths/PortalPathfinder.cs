@@ -15,21 +15,21 @@ namespace FlowTiles {
             var result = new UnsafeList<PortalPathNode>(32, Allocator.Persistent);
 
             // Find start and end clusters
-            var startExists = graph.TryGetRootPortal(start.x, start.y, out var startCluster);
-            var destExists = graph.TryGetRootPortal(dest.x, dest.y, out var destCluster);
-            if (!startExists || !destExists) {
-                return result;
+            var startPortal = graph.GetRootPortal(start.x, start.y);
+            var destCluster = graph.GetRootPortal(dest.x, dest.y);
+            if (graph.TryGetExitPortal(start.x, start.y, out var exit)) {
+                startPortal = exit;
             }
 
             // Check whether start and dest clusters match
             var destNode = PortalPathNode.NewDestNode(destCluster, dest);
-            if (startCluster.IsInSameCluster(destCluster)) {
+            if (startPortal.IsInSameCluster(destCluster)) {
                 result.Add(destNode);
                 return result;
             }
 
             // Search for the path through the portal graph
-            var path = FindPath(graph, startCluster, destCluster).ToArray();
+            var path = FindPath(graph, startPortal, destCluster).ToArray();
             if (path.Length == 0) {
                 return result;
             }

@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -126,6 +128,26 @@ namespace FlowTiles.PortalGraphs {
                 return true;
             }
             return false;
+        }
+
+        public bool TryGetClosestExitPortal(int2 current, out Portal closest) {
+            if (ExitPortals.Length == 0) {
+                closest = default;
+                return false;
+            }
+
+            closest = ExitPortals[0];
+            var bestDist = 99999f;
+
+            for (int i = 0; i < ExitPortals.Length; i++) { 
+                var portal = ExitPortals[i];
+                var dist = math.distancesq(portal.Position.Cell, current);
+                if (dist < bestDist) {
+                    closest = portal;
+                    bestDist = dist;
+                }
+            }
+            return true;
         }
 
     }
