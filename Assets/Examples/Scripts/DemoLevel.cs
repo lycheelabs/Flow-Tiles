@@ -119,7 +119,7 @@ namespace FlowTiles.Examples {
                     for (int i = 0; i < path.Length; i++) {
                         var node = path[i];
                         var sector = Graph.Costs.Sectors[node.Position.SectorIndex];
-                        var flow = FlowCalculationController.RequestCalculation(sector, node.GoalBounds, node.Direction);
+                        var flow = FlowFieldJob.ScheduleAndComplete(sector, node.GoalBounds, node.Direction);
 
                         Visualisation.DrawPortal(node.GoalBounds);
                         if (showFlow) {

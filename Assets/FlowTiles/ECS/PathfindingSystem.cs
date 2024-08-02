@@ -41,7 +41,6 @@ namespace FlowTiles {
 
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
-                //UnityEngine.Debug.Log("Creating path: " + request.cacheKey);
 
                 //var pathfinder = new PortalPathfinder(pathGraph, 200, Allocator.Persistent);
                 var success = PortalPathJob.ScheduleAndComplete(
@@ -55,7 +54,8 @@ namespace FlowTiles {
 
             // Process flow field requests, and cache the results
             foreach (var request in FlowRequests) {
-                //UnityEngine.Debug.Log("Requested flow: " + request.cacheKey);
+
+                // Find the goal boundaries
                 var goal = request.goalCell;
                 var goalBounds = new CellRect(goal, goal);
                 if (!request.goalDirection.Equals(0)) {
@@ -63,17 +63,12 @@ namespace FlowTiles {
                         goalBounds = portal.Bounds;
                     }
                 }
+
+                // Calculate the flow tile
                 var sector = pathGraph.GetCostSector(goal.x, goal.y);
                 var goalDir = request.goalDirection;
-                var calculator = new FlowCalculator(sector, goalBounds, goalDir);
-                FlowCalculator.BurstCalculate(ref calculator);
-
-                FlowCache.Cache[request.cacheKey] = new FlowFieldTile {
-                    SectorIndex = sector.Index,
-                    Color = calculator.Color,
-                    Size = sector.Bounds.SizeCells,
-                    Directions = calculator.Flow,
-                };
+                var flow = FlowFieldJob.ScheduleAndComplete(sector, goalBounds, goalDir);
+                FlowCache.Cache[request.cacheKey] = flow;
             }
             FlowRequests.Clear();
 
