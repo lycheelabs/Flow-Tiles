@@ -1,4 +1,3 @@
-using FlowTiles.PortalGraphs;
 using FlowTiles.Utils;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +6,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
-namespace FlowTiles {
+namespace FlowTiles.PortalPaths {
 
     [BurstCompile]
     public struct PortalPathfinder {

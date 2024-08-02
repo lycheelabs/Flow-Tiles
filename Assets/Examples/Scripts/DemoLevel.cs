@@ -1,5 +1,6 @@
-﻿using FlowTiles.FlowField;
-using FlowTiles.PortalGraphs;
+﻿using FlowTiles.ECS;
+using FlowTiles.FlowFields;
+using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -40,6 +41,12 @@ namespace FlowTiles.Examples {
             // Initialise the map
             Map = new PathableLevel(LevelSize, LevelSize);
             Map.InitialiseRandomObstacles();
+            
+            /*Map.SetObstacle(5, 2);
+            Map.SetObstacle(6, 2);
+            Map.SetObstacle(7, 2);
+            Map.SetObstacle(8, 2);
+            Map.SetObstacle(9, 2);*/
 
             // Create the graph
             var stopwatch = new System.Diagnostics.Stopwatch();
@@ -143,7 +150,7 @@ namespace FlowTiles.Examples {
             }
         }
 
-        private void CopyFlowVisualisationData(FlowFieldTile flowField) {
+        private void CopyFlowVisualisationData(FlowField flowField) {
             if (!flowField.Directions.IsCreated) return;
 
             var sector = Graph.Costs.Sectors[flowField.SectorIndex];

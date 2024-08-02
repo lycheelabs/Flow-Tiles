@@ -1,7 +1,7 @@
 ﻿using Unity.Burst;
 using Unity.Mathematics;
 
-namespace FlowTiles.PortalGraphs {
+namespace FlowTiles.PortalPaths {
 
     [BurstCompile]
     public struct PathableGraph {

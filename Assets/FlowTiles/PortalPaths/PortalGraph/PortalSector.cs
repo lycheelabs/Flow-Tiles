@@ -1,10 +1,8 @@
-using System;
-using System.Linq;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
-namespace FlowTiles.PortalGraphs {
+namespace FlowTiles.PortalPaths {
 
     public struct PortalSector {
 
@@ -61,7 +59,7 @@ namespace FlowTiles.PortalGraphs {
                 var colorPortal = new Portal(Bounds.CentreCell, Index, 0);
                 colorPortal.Color = color;
 
-                for (int p = 0; p < ExitPortals.Length; p++) {
+                /*for (int p = 0; p < ExitPortals.Length; p++) {
                     var portal = ExitPortals[p];
                     if (portal.Color == color) {
                         colorPortal.Edges.Add(new PortalEdge {
@@ -70,7 +68,7 @@ namespace FlowTiles.PortalGraphs {
                             weight = 0,
                         });
                     }
-                }
+                }*/
 
                 RootPortals.Add(colorPortal);
             }
@@ -130,24 +128,30 @@ namespace FlowTiles.PortalGraphs {
             return false;
         }
 
-        public bool TryGetClosestExitPortal(int2 current, out Portal closest) {
+        public bool TryGetClosestExitPortal(int2 current, int color, out Portal closest) {
             if (ExitPortals.Length == 0) {
                 closest = default;
                 return false;
             }
 
             closest = ExitPortals[0];
-            var bestDist = 99999f;
+            var found = false;
+            var bestDist = 0f;
 
             for (int i = 0; i < ExitPortals.Length; i++) { 
                 var portal = ExitPortals[i];
+                if (portal.Color != color) {
+                    continue;
+                }
+
                 var dist = math.distancesq(portal.Position.Cell, current);
-                if (dist < bestDist) {
+                if (!found || dist < bestDist) {
                     closest = portal;
                     bestDist = dist;
+                    found = true;
                 }
             }
-            return true;
+            return found;
         }
 
     }

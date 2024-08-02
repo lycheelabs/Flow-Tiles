@@ -4,7 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-namespace FlowTiles {
+namespace FlowTiles.ECS {
 
     public partial struct MovementSystem : ISystem {
 

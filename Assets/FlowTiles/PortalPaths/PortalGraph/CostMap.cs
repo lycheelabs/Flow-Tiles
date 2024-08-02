@@ -1,6 +1,7 @@
 ﻿using Unity.Collections;
 
-namespace FlowTiles.PortalGraphs {
+namespace FlowTiles.PortalPaths {
+
     public struct CostMap {
 
         public readonly SectorLayout Layout;

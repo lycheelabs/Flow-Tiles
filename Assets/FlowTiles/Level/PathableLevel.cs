@@ -32,6 +32,10 @@ namespace FlowTiles {
             }
         }
 
+        public void SetObstacle (int x, int y, bool obstacle = true) {
+            Obstacles[x, y] = obstacle;
+        }
+
         public byte GetCostAt (int x, int y) {
             var obstacle = Obstacles[x, y];
             if (obstacle) {

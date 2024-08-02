@@ -2,7 +2,7 @@
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles.PortalGraphs {
+namespace FlowTiles.PortalPaths {
 
     public struct PortalMap {
 

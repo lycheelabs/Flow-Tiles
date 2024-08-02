@@ -1,10 +1,10 @@
-using FlowTiles.PortalGraphs;
+using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
 
-namespace FlowTiles.FlowField {
+namespace FlowTiles.FlowFields {
 
     [BurstCompile]
     public struct FlowCalculator {

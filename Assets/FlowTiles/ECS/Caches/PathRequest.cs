@@ -2,7 +2,7 @@
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace FlowTiles {
+namespace FlowTiles.ECS {
 
     public struct PathRequest : IBufferElementData {
 

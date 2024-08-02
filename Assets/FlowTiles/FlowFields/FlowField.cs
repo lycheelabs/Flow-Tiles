@@ -2,8 +2,9 @@
 using System;
 using Unity.Mathematics;
 
-namespace FlowTiles {
-    public struct FlowFieldTile {
+namespace FlowTiles.FlowFields {
+
+    public struct FlowField {
 
         public int SectorIndex;
         public short Color;

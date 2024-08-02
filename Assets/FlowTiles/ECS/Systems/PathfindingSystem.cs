@@ -1,11 +1,11 @@
-using FlowTiles.FlowField;
-using FlowTiles.PortalGraphs;
+using FlowTiles.FlowFields;
+using FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace FlowTiles {
+namespace FlowTiles.ECS {
 
     public partial struct PathfindingSystem : ISystem {
 
@@ -21,10 +21,10 @@ namespace FlowTiles {
 
             // Build the caches
             PathCache = new PathCache {
-                Cache = new NativeParallelHashMap<int4, PortalPath>(1000, Allocator.Persistent) 
+                Cache = new NativeParallelHashMap<int4, CachedPortalPath>(1000, Allocator.Persistent) 
             };
             FlowCache = new FlowCache {
-                Cache = new NativeParallelHashMap<int4, FlowFieldTile>(1000, Allocator.Persistent)
+                Cache = new NativeParallelHashMap<int4, CachedFlowField>(1000, Allocator.Persistent)
             };
 
             // Build the request buffers
@@ -42,11 +42,13 @@ namespace FlowTiles {
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
 
-                //var pathfinder = new PortalPathfinder(pathGraph, 200, Allocator.Persistent);
-                var success = PortalPathJob.ScheduleAndComplete(
-                    pathGraph, request.originCell, request.destCell, out var path);
+                var origin = request.originCell;
+                var dest = request.destCell;
+                var success = PortalPathJob.ScheduleAndComplete(pathGraph, origin, dest, out var path);
 
-                PathCache.Cache[request.cacheKey] = new PortalPath {
+                PathCache.Cache[request.cacheKey] = new CachedPortalPath {
+                    IsPending = false,
+                    NoPathExists = !success,
                     Nodes = path
                 };
             }
@@ -68,7 +70,10 @@ namespace FlowTiles {
                 var sector = pathGraph.GetCostSector(goal.x, goal.y);
                 var goalDir = request.goalDirection;
                 var flow = FlowFieldJob.ScheduleAndComplete(sector, goalBounds, goalDir);
-                FlowCache.Cache[request.cacheKey] = flow;
+                FlowCache.Cache[request.cacheKey] = new CachedFlowField { 
+                    IsPending = false,
+                    FlowField = flow
+                };
             }
             FlowRequests.Clear();
 
@@ -98,9 +103,10 @@ namespace FlowTiles {
         [BurstCompile]
         public partial struct FollowPathsJob : IJobEntity {
 
-            public PathableGraph Graph;
-            public NativeParallelHashMap<int4, PortalPath> PathCache;
-            public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
+            [ReadOnly] public PathableGraph Graph;
+
+            public NativeParallelHashMap<int4, CachedPortalPath> PathCache;
+            public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
 
             public NativeList<PathRequest> PathRequests;
             public NativeList<FlowRequest> FlowRequests;
@@ -134,25 +140,27 @@ namespace FlowTiles {
                 var startColor = Graph.Costs.GetColor(current.x, current.y);
                 var destSector = Graph.Costs.GetSectorIndex(dest.x, dest.y);
                 var destColor = Graph.Costs.GetColor(dest.x, dest.y);
-                var destCell = Graph.Costs.GetCellIndex(dest.x, dest.y);
+                var destKey = Graph.Costs.GetCellIndex(dest.x, dest.y);
 
                 // Attach to a path
                 if (!progress.HasPath) {
 
                     // Find closest start portal
-                    var startPortal = Graph.GetRootPortal(current.x, current.y);
-                    var start = startPortal.Position.Cell;
-               
+                    var start = current;
+                    var startCluster = Graph.GetRootPortal(current.x, current.y);
+                    var startKeyCell = startCluster.Position.Cell;
+                    
                     if (startSector != destSector || startColor != destColor) {
                         var sectorData = Graph.Portals.Sectors[startSector];
-                        if (sectorData.TryGetClosestExitPortal(current, out var closest)) {
+                        if (sectorData.TryGetClosestExitPortal(current, startCluster.Color, out var closest)) {
                             start = closest.Position.Cell;
+                            startKeyCell = start;
                         }
-                    } 
-                    var startCell = Graph.Costs.GetCellIndex(start.x, start.y);
+                    }
 
                     // Search for a cached path
-                    var pathKey = new int4(startCell, startColor, destCell, destColor);
+                    var startKey = Graph.Costs.GetCellIndex(startKeyCell.x, startKeyCell.y);
+                    var pathKey = new int4(startKey, startColor, destKey, destColor);
                     var pathCacheHit = PathCache.ContainsKey(pathKey);
                     if (!pathCacheHit) {
 
@@ -162,6 +170,9 @@ namespace FlowTiles {
                             destCell = dest,
                             cacheKey = pathKey,
                         });
+                        PathCache[pathKey] = new CachedPortalPath { 
+                            IsPending = true
+                        };
                         return;
                     }
 
@@ -174,17 +185,22 @@ namespace FlowTiles {
                 if (progress.HasPath) {
 
                     // Check destination hasn't changed
-                    if (destCell != progress.PathKey.z || destColor != progress.PathKey.w) {
+                    if (destKey != progress.PathKey.z || destColor != progress.PathKey.w) {
                         progress.HasPath = false;
                         progress.HasFlow = false;
                         return;
                     }
 
-                    // Check path still exists
+                    // Check path exists
                     var pathFound = PathCache.TryGetValue(progress.PathKey, out var path);
-                    if (!pathFound || path.Nodes.Length == 0) {
+                    if (!pathFound || path.NoPathExists) {
                         progress.HasPath = false;
                         progress.HasFlow = false;
+                        return;
+                    }
+
+                    // Wait for path to generate...
+                    if (path.IsPending) {
                         return;
                     }
 
@@ -240,7 +256,7 @@ namespace FlowTiles {
                     // Search for a cached flow
                     var pathNode = path.Nodes[progress.NodeIndex];
                     var flowKey = pathNode.CacheKey;
-                    var flowCacheHit = FlowCache.ContainsKey(flowKey);
+                    var flowCacheHit = FlowCache.TryGetValue(flowKey, out var flow);
                     if (!flowCacheHit) {
 
                         // Request a flow be generated
@@ -248,6 +264,15 @@ namespace FlowTiles {
                             goalCell = pathNode.Position.Cell,
                             goalDirection = pathNode.Direction,
                         });
+                        FlowCache[flowKey] = new CachedFlowField {
+                            IsPending = true
+                        };
+                        progress.HasFlow = false;
+                        return;
+                    }
+
+                    // Wait for flow to generate...
+                    if (flow.IsPending) {
                         progress.HasFlow = false;
                         return;
                     }
@@ -257,8 +282,7 @@ namespace FlowTiles {
 
                     // Save the flow direction
                     var pos = position.Position - Graph.Costs.Sectors[startSector].Bounds.MinCell;
-                    var flow = FlowCache[flowKey];
-                    var direction = flow.GetFlow(pos.x, pos.y);
+                    var direction = flow.FlowField.GetFlow(pos.x, pos.y);
                     result.Direction = direction;
 
 
@@ -270,7 +294,7 @@ namespace FlowTiles {
         [BurstCompile]
         public partial struct DebugPathsJob : IJobEntity {
 
-            public NativeParallelHashMap<int4, FlowFieldTile> FlowCache;
+            public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
 
             [BurstCompile]
             private void Execute(FlowProgress progress, ref FlowDebugData debug) {
@@ -280,11 +304,11 @@ namespace FlowTiles {
                     return;
                 }
                 var foundFlow = FlowCache.TryGetValue(progress.FlowKey, out var flow);
-                if (!foundFlow) {
+                if (!foundFlow || flow.IsPending) {
                     return;
                 }
 
-                debug.CurrentFlowTile = flow;
+                debug.CurrentFlowTile = flow.FlowField;
             }
         }
 

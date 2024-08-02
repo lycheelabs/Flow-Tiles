@@ -1,6 +1,6 @@
 ﻿using Unity.Mathematics;
 
-namespace FlowTiles.PortalGraphs {
+namespace FlowTiles.PortalPaths {
 
     public struct SectorCell {
         public int SectorIndex;

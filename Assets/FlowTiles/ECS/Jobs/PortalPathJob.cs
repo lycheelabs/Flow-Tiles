@@ -1,11 +1,11 @@
-﻿using FlowTiles.PortalGraphs;
+﻿using FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 
-namespace FlowTiles {
+namespace FlowTiles.ECS {
 
     [BurstCompile]
     public struct PortalPathJob : IJob {

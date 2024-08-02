@@ -1,10 +1,9 @@
-﻿using FlowTiles.PortalGraphs;
-using FlowTiles.Utils;
+﻿using FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles {
+namespace FlowTiles.PortalPaths {
 
     public struct SectorPathfinder {
 

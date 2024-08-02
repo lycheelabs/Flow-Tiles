@@ -1,11 +1,10 @@
-﻿using FlowTiles.PortalGraphs;
+﻿using FlowTiles.PortalPaths;
 using Unity.Entities;
 
-namespace FlowTiles {
+namespace FlowTiles.ECS {
     public struct GlobalPathfindingData : IComponentData {
 
         public PathableGraph Graph;
 
     }
-
 }
