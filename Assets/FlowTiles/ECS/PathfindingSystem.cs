@@ -42,7 +42,8 @@ namespace FlowTiles {
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
                 //UnityEngine.Debug.Log("Creating path: " + request.cacheKey);
-                var path = PortalPathfinder.FindPortalPath(pathGraph, request.originCell, request.destCell);
+                var pathfinder = new PortalPathfinder(pathGraph, Allocator.Temp);
+                var path = pathfinder.FindPortalPath(request.originCell, request.destCell);
                 PathCache.Cache[request.cacheKey] = new PortalPath {
                     Nodes = path
                 };

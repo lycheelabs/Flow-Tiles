@@ -105,8 +105,9 @@ namespace FlowTiles.Examples {
         }
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
-                       
-            var path = PortalPathfinder.FindPortalPath(Graph, start, dest);
+
+            var pathfinder = new PortalPathfinder(Graph, Allocator.Temp);
+            var path = pathfinder.FindPortalPath(start, dest);
 
             // Visualise the path
             FlowData.InitialiseTo(0);

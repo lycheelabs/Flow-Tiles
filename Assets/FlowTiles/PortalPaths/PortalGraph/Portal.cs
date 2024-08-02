@@ -26,6 +26,10 @@ namespace FlowTiles.PortalGraphs {
             Color = -1;
         }
 
+        public bool IsSamePortal (Portal other) {
+            return other.Position.Equals(Position) && other.Color == Color;
+        }
+
         public bool IsInSameCluster (Portal other) {
             return other.Position.SectorIndex == Position.SectorIndex && other.Color == Color;
         }
