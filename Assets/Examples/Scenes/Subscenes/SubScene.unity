@@ -152,8 +152,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   WallPrefab: {fileID: 4463320159658762581, guid: b9e5fe92cde044f428823928513930d1, type: 3}
-  AgentPrefab: {fileID: 2210048753338572315, guid: fa5c3ad8674d17247b5e1cc09e7e6782, type: 3}
-  FlowPrefab: {fileID: 2210048753338572315, guid: 28ba9517c81319745b978ed8ddf9b875, type: 3}
+  AgentPrefab: {fileID: 4463320159658762581, guid: 279f6604938ec2a4d95465aa15aebabd, type: 3}
+  FlowPrefab: {fileID: 4463320159658762581, guid: a56f605929bc11641887d5e78d1b4032, type: 3}
 --- !u!4 &1546598253
 Transform:
   m_ObjectHideFlags: 0
