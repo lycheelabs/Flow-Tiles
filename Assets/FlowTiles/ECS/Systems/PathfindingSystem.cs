@@ -3,6 +3,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 
 namespace FlowTiles.ECS {
 
@@ -43,10 +44,17 @@ namespace FlowTiles.ECS {
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
 
+                // Discard duplicate requests
+                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && !existing.IsPending) {
+                    continue;
+                }
+
+                // Calculate the path
                 var origin = request.originCell;
                 var dest = request.destCell;
                 var success = PortalPathJob.ScheduleAndComplete(pathGraph, origin, dest, out var path);
 
+                // Cache the path
                 PathCache.Cache[request.cacheKey] = new CachedPortalPath {
                     IsPending = false,
                     NoPathExists = !success,
@@ -57,6 +65,11 @@ namespace FlowTiles.ECS {
 
             // Process flow field requests, and cache the results
             foreach (var request in FlowRequests) {
+
+                // Discard duplicate requests
+                if (FlowCache.Cache.TryGetValue(request.cacheKey, out var existing) && !existing.IsPending) {
+                    continue;
+                }
 
                 // Find the goal boundaries
                 var goal = request.goalCell;
@@ -79,19 +92,31 @@ namespace FlowTiles.ECS {
             }
             FlowRequests.Clear();
 
-            //var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            
+            var ecbEarly = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecbLate = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+
+            new RequestPathsJob {
+                PathCache = PathCache.Cache,
+                PathRequests = PathRequests,
+                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
+
+            new RequestFlowsJob {
+                FlowCache = FlowCache.Cache,
+                FlowRequests = FlowRequests,
+                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
+
             new FollowPathsJob {
                 Graph = pathGraph,
                 PathCache = PathCache.Cache,
                 FlowCache = FlowCache.Cache,
-                PathRequests = PathRequests,
-                FlowRequests = FlowRequests,
-            }.Schedule();
+                ECB = ecbLate.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
+            }.ScheduleParallel();
 
             new DebugPathsJob {
                 FlowCache = FlowCache.Cache,
-            }.Schedule();
+            }.ScheduleParallel();
 
         }
 
@@ -103,18 +128,80 @@ namespace FlowTiles.ECS {
         }
 
         [BurstCompile]
+        public partial struct RequestPathsJob : IJobEntity {
+
+            public NativeParallelHashMap<int4, CachedPortalPath> PathCache;
+            public NativeList<PathRequest> PathRequests;
+
+            public EntityCommandBuffer ECB;
+
+            [BurstCompile]
+            private void Execute(MissingPathData data, Entity entity) {
+                var key = data.Key;
+                if (!PathCache.ContainsKey(key)) {
+
+                    // Request a path be generated
+                    PathRequests.Add(new PathRequest {
+                        originCell = data.Start,
+                        destCell = data.Dest,
+                        cacheKey = key,
+                    });
+
+                    // Store temp data in the cache
+                    PathCache[key] = new CachedPortalPath {
+                        IsPending = true
+                    };
+
+                    // Remove component
+                    ECB.RemoveComponent<MissingPathData>(entity);
+
+                }
+            }
+        }
+
+        [BurstCompile]
+        public partial struct RequestFlowsJob : IJobEntity {
+
+            public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
+            public NativeList<FlowRequest> FlowRequests;
+
+            public EntityCommandBuffer ECB;
+
+            [BurstCompile]
+            private void Execute(MissingFlowData data, Entity entity) {
+                var key = data.Key;
+                if (!FlowCache.ContainsKey(key)) {
+
+                    // Request a flow be generated
+                    FlowRequests.Add(new FlowRequest {
+                        goalCell = data.Cell,
+                        goalDirection = data.Direction,
+                    });
+
+                    // Store temp data in the cache
+                    FlowCache[key] = new CachedFlowField {
+                        IsPending = true
+                    };
+
+                    // Remove component
+                    ECB.RemoveComponent<MissingFlowData>(entity);
+
+                }
+            }
+        }
+
+        [BurstCompile]
         public partial struct FollowPathsJob : IJobEntity {
 
             [ReadOnly] public PathableGraph Graph;
+            [ReadOnly] public NativeParallelHashMap<int4, CachedPortalPath> PathCache;
+            [ReadOnly] public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
 
-            public NativeParallelHashMap<int4, CachedPortalPath> PathCache;
-            public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
-
-            public NativeList<PathRequest> PathRequests;
-            public NativeList<FlowRequest> FlowRequests;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             [BurstCompile]
             private void Execute(
+                    Entity entity,
                     FlowPosition position, 
                     FlowGoal goal, 
                     ref FlowProgress progress,
@@ -165,16 +252,11 @@ namespace FlowTiles.ECS {
                     var pathKey = new int4(startKey, startColor, destKey, destColor);
                     var pathCacheHit = PathCache.ContainsKey(pathKey);
                     if (!pathCacheHit) {
-
-                        // Request a path be generated
-                        PathRequests.Add(new PathRequest {
-                            originCell = start,
-                            destCell = dest,
-                            cacheKey = pathKey,
+                        ECB.AddComponent(sortKey, entity, new MissingPathData {
+                            Start = start,
+                            Dest = dest,
+                            Key = pathKey,
                         });
-                        PathCache[pathKey] = new CachedPortalPath { 
-                            IsPending = true
-                        };
                         return;
                     }
 
@@ -260,16 +342,11 @@ namespace FlowTiles.ECS {
                     var flowKey = pathNode.CacheKey;
                     var flowCacheHit = FlowCache.TryGetValue(flowKey, out var flow);
                     if (!flowCacheHit) {
-
-                        // Request a flow be generated
-                        FlowRequests.Add(new FlowRequest {
-                            goalCell = pathNode.Position.Cell,
-                            goalDirection = pathNode.Direction,
+                        ECB.AddComponent(sortKey, entity, new MissingFlowData {
+                            Cell = pathNode.Position.Cell,
+                            Direction = pathNode.Direction,
+                            Key = flowKey,
                         });
-                        FlowCache[flowKey] = new CachedFlowField {
-                            IsPending = true
-                        };
-                        progress.HasFlow = false;
                         return;
                     }
 
