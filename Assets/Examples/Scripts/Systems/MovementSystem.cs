@@ -17,7 +17,7 @@ namespace FlowTiles.Examples {
             new Job {
                 LevelSize = level.Size,
                 DeltaTime = SystemAPI.Time.DeltaTime,
-            }.Schedule();
+            }.ScheduleParallel();
         }
 
         [BurstCompile]

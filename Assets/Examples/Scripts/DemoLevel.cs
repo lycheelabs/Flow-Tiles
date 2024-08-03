@@ -111,7 +111,7 @@ namespace FlowTiles.Examples {
                             em.AddComponent<FlowDebugData>(agent);
                         }
                         if (spawn.Type == AgentType.STRESS_TEST) {
-                            var seed = (uint)UnityEngine.Random.Range(0, 99999);
+                            var seed = (uint)UnityEngine.Random.Range(1, 99999);
                             em.AddComponent<StressTestData>(agent);
                             em.SetComponentData(agent, new StressTestData {
                                 Random = new Unity.Mathematics.Random(seed)

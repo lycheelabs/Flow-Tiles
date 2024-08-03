@@ -16,7 +16,7 @@ namespace FlowTiles.Examples {
             var level = SystemAPI.GetSingleton<LevelSetup>();
             new Job {
                 LevelSize = level.Size
-            }.Schedule();
+            }.ScheduleParallel();
         }
 
         [BurstCompile]

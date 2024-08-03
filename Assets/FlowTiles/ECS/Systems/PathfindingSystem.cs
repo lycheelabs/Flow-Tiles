@@ -3,7 +3,6 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.VisualScripting;
 
 namespace FlowTiles.ECS {
 
@@ -136,14 +135,14 @@ namespace FlowTiles.ECS {
             public EntityCommandBuffer ECB;
 
             [BurstCompile]
-            private void Execute(MissingPathData data, Entity entity) {
-                var key = data.Key;
+            private void Execute(RefRO<MissingPathData> data, Entity entity) {
+                var key = data.ValueRO.Key;
                 if (!PathCache.ContainsKey(key)) {
 
                     // Request a path be generated
                     PathRequests.Add(new PathRequest {
-                        originCell = data.Start,
-                        destCell = data.Dest,
+                        originCell = data.ValueRO.Start,
+                        destCell = data.ValueRO.Dest,
                         cacheKey = key,
                     });
 
@@ -152,10 +151,10 @@ namespace FlowTiles.ECS {
                         IsPending = true
                     };
 
-                    // Remove component
-                    ECB.RemoveComponent<MissingPathData>(entity);
-
                 }
+
+                // Remove component
+                ECB.RemoveComponent<MissingPathData>(entity);
             }
         }
 
@@ -168,14 +167,14 @@ namespace FlowTiles.ECS {
             public EntityCommandBuffer ECB;
 
             [BurstCompile]
-            private void Execute(MissingFlowData data, Entity entity) {
-                var key = data.Key;
+            private void Execute(RefRO<MissingFlowData> data, Entity entity) {
+                var key = data.ValueRO.Key;
                 if (!FlowCache.ContainsKey(key)) {
 
                     // Request a flow be generated
                     FlowRequests.Add(new FlowRequest {
-                        goalCell = data.Cell,
-                        goalDirection = data.Direction,
+                        goalCell = data.ValueRO.Cell,
+                        goalDirection = data.ValueRO.Direction,
                     });
 
                     // Store temp data in the cache
@@ -183,10 +182,10 @@ namespace FlowTiles.ECS {
                         IsPending = true
                     };
 
-                    // Remove component
-                    ECB.RemoveComponent<MissingFlowData>(entity);
-
                 }
+
+                // Remove component
+                ECB.RemoveComponent<MissingFlowData>(entity);
             }
         }
 
@@ -202,23 +201,23 @@ namespace FlowTiles.ECS {
             [BurstCompile]
             private void Execute(
                     Entity entity,
-                    FlowPosition position, 
-                    FlowGoal goal, 
+                    RefRO<FlowPosition> position, 
+                    RefRO<FlowGoal> goal, 
                     ref FlowProgress progress,
                     ref FlowDirection result, 
                     [ChunkIndexInQuery] int sortKey) {
 
                 result.Direction = 0;
 
-                if (!goal.HasGoal) {
+                if (!goal.ValueRO.HasGoal) {
                     progress.HasPath = false;
                     progress.HasFlow = false;
                     return;
                 }
 
                 // Check start and dest are valid
-                var current = position.Position;
-                var dest = goal.Goal;
+                var current = position.ValueRO.Position;
+                var dest = goal.ValueRO.Goal;
                 if (!Graph.Bounds.ContainsCell(current) || !Graph.Bounds.ContainsCell(dest)) {
                     progress.HasPath = false;
                     progress.HasFlow = false;
@@ -360,7 +359,7 @@ namespace FlowTiles.ECS {
                     progress.FlowKey = flowKey;
 
                     // Save the flow direction
-                    var pos = position.Position - Graph.Costs.Sectors[startSector].Bounds.MinCell;
+                    var pos = position.ValueRO.Position - Graph.Costs.Sectors[startSector].Bounds.MinCell;
                     var direction = flow.FlowField.GetFlow(pos.x, pos.y);
                     result.Direction = direction;
 
@@ -376,13 +375,13 @@ namespace FlowTiles.ECS {
             public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
 
             [BurstCompile]
-            private void Execute(FlowProgress progress, ref FlowDebugData debug) {
+            private void Execute(RefRO<FlowProgress> progress, ref FlowDebugData debug) {
                 debug.CurrentFlowTile = default;
 
-                if (!progress.HasFlow) {
+                if (!progress.ValueRO.HasFlow) {
                     return;
                 }
-                var foundFlow = FlowCache.TryGetValue(progress.FlowKey, out var flow);
+                var foundFlow = FlowCache.TryGetValue(progress.ValueRO.FlowKey, out var flow);
                 if (!foundFlow || flow.IsPending) {
                     return;
                 }
