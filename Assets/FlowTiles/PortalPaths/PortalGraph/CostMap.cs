@@ -1,4 +1,5 @@
-﻿using Unity.Collections;
+﻿using System;
+using Unity.Collections;
 
 namespace FlowTiles.PortalPaths {
 
@@ -31,15 +32,26 @@ namespace FlowTiles.PortalPaths {
             return sector.Colors[tileX, tileY];
         }
 
-        public void Build(PathableLevel map) {
-            for (int x = 0; x < Layout.SizeSectors.x; x++) {
-                for (int y = 0; y < Layout.SizeSectors.y; y++) {
-                    var index = Layout.IndexOfSector(x, y);
-                    var bounds = Layout.GetSectorBounds(x, y);
-                    var sector = new CostSector(index, bounds);
-                    sector.Build(map);
-                    Sectors[index] = sector;
-                }
+        public void Initialise(PathableLevel map) {
+            for (int index = 0; index < Layout.NumSectorsInLevel; index++) {
+                InitialiseSector(index, map);
+            }
+        }
+
+        public void InitialiseSector(int index, PathableLevel map) {
+            var x = index % Layout.SizeSectors.x;
+            var y = index / Layout.SizeSectors.x;
+            var bounds = Layout.GetSectorBounds(x, y);
+            var sector = new CostSector(index, bounds);
+            sector.Initialise(map);
+            Sectors[index] = sector;
+        }
+
+        public void CalculateColors() {
+            for (int index = 0; index < Layout.NumSectorsInLevel; index++) {
+                var sector = Sectors[index];
+                sector.Process();
+                Sectors[index] = sector;
             }
         }
 

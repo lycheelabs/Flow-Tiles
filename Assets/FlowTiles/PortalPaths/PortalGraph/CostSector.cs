@@ -23,8 +23,11 @@ namespace FlowTiles.PortalPaths {
             NumColors = 0;
         }
 
-        public void Build(PathableLevel map) {
+        public void Initialise(PathableLevel map) {
             CopyCosts(map, Bounds.MinCell);
+        }
+
+        public void Process () {
             CalculateColors();
         }
 

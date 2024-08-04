@@ -69,6 +69,52 @@ namespace FlowTiles.PortalPaths {
 
         // --------------------------------------------------------------
 
+        public void CreateExit(int targetSector, bool horizontal, int lineSize, int i, int flip) {
+            if (lineSize <= 0) { return; }
+            var start = i - lineSize;
+            var end = i - 1;
+
+            int2 start1, start2, end1, end2, dir;
+            if (horizontal) {
+                var x1 = (flip > 0) ? Bounds.MaxCell.x : Bounds.MinCell.x;
+                var x2 = x1 + flip;
+                start1 = new int2(x1, start);
+                end1 = new int2(x1, end);
+                start2 = new int2(x2, start);
+                end2 = new int2(x2, end);
+                dir = new int2(flip, 0);
+            }
+            else {
+                var y1 = (flip > 0) ? Bounds.MaxCell.y : Bounds.MinCell.y;
+                var y2 = y1 + flip;
+                start1 = new int2(start, y1);
+                end1 = new int2(end, y1);
+                start2 = new int2(start, y2);
+                end2 = new int2(end, y2);
+                dir = new int2(0, flip);
+            }
+
+            var mid1 = (start1 + end1) / 2;
+            var mid2 = (start2 + end2) / 2;
+
+            // Create the exit portal (if needed)
+            if (!HasExitPortalAt(mid1)) {
+                var newPortal = new Portal(start1, end1, Index, dir);
+                AddExitPortal(newPortal);
+            }
+
+            // Connect the exit portal to the adjacent exit (which may not be created yet)
+            var portalIndex = ExitPortalLookup[mid1];
+            var portal = ExitPortals[portalIndex];
+            portal.Edges.Add(new PortalEdge() {
+                start = new SectorCell(Index, mid1),
+                end = new SectorCell(targetSector, mid2),
+                weight = 1
+            });
+            ExitPortals[portalIndex] = portal;
+        }
+
+
         /// <summary>
         /// Stores this portal as an exit.
         /// </summary>

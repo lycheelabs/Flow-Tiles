@@ -29,8 +29,12 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void Build(PathableLevel map) {
-            Costs.Build(map);
-            Portals.Build(Costs);
+            Costs.Initialise(map);
+            Portals.Initialise(Costs);
+
+            // To parallelise
+            Costs.CalculateColors();
+            Portals.BuildPaths(Costs);
         }
 
         public CostSector GetCostSector(int cellX, int cellY) {
