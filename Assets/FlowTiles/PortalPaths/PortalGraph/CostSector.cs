@@ -27,8 +27,8 @@ namespace FlowTiles.PortalPaths {
             CopyCosts(map, Bounds.MinCell);
         }
 
-        public void Process () {
-            CalculateColors();
+        public void CalculateColors () {
+            FloodFillAll();
         }
 
         public bool Contains(int2 pos) {
@@ -54,7 +54,7 @@ namespace FlowTiles.PortalPaths {
             }
         }
 
-        private void CalculateColors() {
+        private void FloodFillAll() {
             var cellsInSector = Bounds.SizeCells.x * Bounds.SizeCells.y;
 
             // Divide into open areas and walls

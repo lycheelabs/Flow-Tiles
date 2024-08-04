@@ -47,14 +47,6 @@ namespace FlowTiles.PortalPaths {
             Sectors[index] = sector;
         }
 
-        public void CalculateColors() {
-            for (int index = 0; index < Layout.NumSectorsInLevel; index++) {
-                var sector = Sectors[index];
-                sector.Process();
-                Sectors[index] = sector;
-            }
-        }
-
     }
 
 }

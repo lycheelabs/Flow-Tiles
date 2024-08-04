@@ -67,8 +67,6 @@ namespace FlowTiles.PortalPaths {
             return found;
         }
 
-        // --------------------------------------------------------------
-
         public void CreateExit(int targetSector, bool horizontal, int lineSize, int i, int flip) {
             if (lineSize <= 0) { return; }
             var start = i - lineSize;
@@ -100,7 +98,8 @@ namespace FlowTiles.PortalPaths {
             // Create the exit portal (if needed)
             if (!HasExitPortalAt(mid1)) {
                 var newPortal = new Portal(start1, end1, Index, dir);
-                AddExitPortal(newPortal);
+                ExitPortalLookup.Add(newPortal.Position.Cell, ExitPortals.Length);
+                ExitPortals.Add(newPortal);
             }
 
             // Connect the exit portal to the adjacent exit (which may not be created yet)
@@ -114,16 +113,6 @@ namespace FlowTiles.PortalPaths {
             ExitPortals[portalIndex] = portal;
         }
 
-
-        /// <summary>
-        /// Stores this portal as an exit.
-        /// </summary>
-        /// <remarks>Expects the portal to sit on the inside boundary of this sector.</remarks>
-        public void AddExitPortal (Portal portal) {
-            ExitPortalLookup.Add(portal.Position.Cell, ExitPortals.Length);
-            ExitPortals.Add(portal);
-        }
-
         /// <summary>
         /// Connect all exit portals inside this sector together (if their colors match)
         /// and build a root cluster
@@ -133,6 +122,8 @@ namespace FlowTiles.PortalPaths {
             BuildRootConnections(costs);
             BuildExitConnections(costs, pathfinder);
         }
+
+        // --------------------------------------------------------------
 
         private void ColorExitPortals(CostSector costs) {
             for (int i = 0; i < ExitPortals.Length; i++) {

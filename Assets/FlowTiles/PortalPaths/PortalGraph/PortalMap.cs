@@ -51,15 +51,6 @@ namespace FlowTiles.PortalPaths {
             Sectors[index] = sector;
         }
 
-        public void BuildPaths(CostMap mapSectors) {
-            var pathfinder = new SectorPathfinder(Layout.NumCellsInSector, Allocator.Temp);
-            for (int s = 0; s < Sectors.Length; ++s) {
-                var sector = Sectors[s];
-                sector.BuildInternalConnections(mapSectors.Sectors[s], pathfinder);
-                Sectors[s] = sector;
-            }
-        }
-
         // ----------------------------------------------------
 
         private void BuildExits(int index, CostMap mapSectors) {

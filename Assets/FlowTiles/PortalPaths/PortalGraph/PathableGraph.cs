@@ -1,4 +1,5 @@
 ﻿using Unity.Burst;
+using Unity.Collections;
 using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
@@ -8,7 +9,13 @@ namespace FlowTiles.PortalPaths {
 
         [BurstCompile]
         public static void BurstBuild(ref PathableGraph graph, ref PathableLevel map) {
-            graph.Build(map);
+            graph.Initialise(map);
+
+            // To parallelise
+            var pathfinder = new SectorPathfinder(graph.Layout.NumCellsInSector, Allocator.Temp);
+            for (int index = 0; index < graph.Layout.NumSectorsInLevel; ++index) {
+                graph.BuildSector(index, pathfinder);
+            }
         }
 
         // -----------------------------------------
@@ -28,13 +35,18 @@ namespace FlowTiles.PortalPaths {
             Portals = new PortalMap(Layout);
         }
 
-        public void Build(PathableLevel map) {
+        public void Initialise(PathableLevel map) {
             Costs.Initialise(map);
             Portals.Initialise(Costs);
+        }
 
-            // To parallelise
-            Costs.CalculateColors();
-            Portals.BuildPaths(Costs);
+        public void BuildSector (int index, SectorPathfinder pathfinder) {
+            var costSector = Costs.Sectors[index];
+            var portalSector = Portals.Sectors[index];
+            costSector.CalculateColors();
+            portalSector.BuildInternalConnections(costSector, pathfinder);
+            Costs.Sectors[index] = costSector;
+            Portals.Sectors[index] = portalSector;
         }
 
         public CostSector GetCostSector(int cellX, int cellY) {
