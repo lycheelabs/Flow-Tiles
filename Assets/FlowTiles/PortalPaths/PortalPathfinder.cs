@@ -82,7 +82,7 @@ namespace FlowTiles.PortalPaths {
                 var cell = Queue[index].Position;
                 var found = Graph.TryGetExitPortal(cell.x, cell.y, out var current);
                 if (!found) {
-                    current = Graph.GetRootPortal(cell.x, cell.y);
+                    current = start;
                 }
 
                 Visited.Add(current.Position.Cell);
