@@ -38,24 +38,79 @@ namespace FlowTiles.PortalPaths {
             return ExitPortals[index];
         }
 
+        /// <summary>
+        /// Returns the closest reachable portal to this point, if one exists
+        /// </summary>
+        public bool TryGetClosestExitPortal(int2 pos, int color, out Portal closest) {
+            if (ExitPortals.Length == 0) {
+                closest = default;
+                return false;
+            }
+
+            closest = ExitPortals[0];
+            var found = false;
+            var bestDist = 0f;
+
+            for (int i = 0; i < ExitPortals.Length; i++) {
+                var portal = ExitPortals[i];
+                if (portal.Color != color) {
+                    continue;
+                }
+
+                var dist = math.distancesq(portal.Position.Cell, pos);
+                if (!found || dist < bestDist) {
+                    closest = portal;
+                    bestDist = dist;
+                    found = true;
+                }
+            }
+            return found;
+        }
+
+        // --------------------------------------------------------------
+
+        /// <summary>
+        /// Stores this portal as an exit.
+        /// </summary>
+        /// <remarks>Expects the portal to sit on the inside boundary of this sector.</remarks>
         public void AddExitPortal (Portal portal) {
             ExitPortalLookup.Add(portal.Position.Cell, ExitPortals.Length);
             ExitPortals.Add(portal);
         }
 
-        public void CreateRootPortals (CostSector mapSector) {
+        /// <summary>
+        /// Connect all exit portals inside this sector together (if their colors match)
+        /// and build a root cluster
+        /// </summary>
+        public void BuildInternalConnections (CostSector costs, SectorPathfinder pathfinder) {
+            ColorExitPortals(costs);
+            BuildRootConnections(costs);
+            BuildExitConnections(costs, pathfinder);
+        }
+
+        private void ColorExitPortals(CostSector costs) {
+            for (int i = 0; i < ExitPortals.Length; i++) {
+                var portal = ExitPortals[i];
+                var tile = portal.Position.Cell - Bounds.MinCell;
+                var color = costs.Colors[tile.x, tile.y];
+                portal.Color = color;
+                ExitPortals[i] = portal;
+            }
+        }
+
+        private void BuildRootConnections (CostSector costs) {
 
             // Color the edge portals
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
                 var tile = portal.Position.Cell - Bounds.MinCell;
-                var color = mapSector.Colors[tile.x, tile.y];
+                var color = costs.Colors[tile.x, tile.y];
                 portal.Color = color;
                 ExitPortals[i] = portal;
             }
 
             // Create the color roots
-            for (int color = 1; color <= mapSector.NumColors; color++) {
+            for (int color = 1; color <= costs.NumColors; color++) {
                 var colorPortal = new Portal(Bounds.CentreCell, Index, 0);
                 colorPortal.Color = color;
 
@@ -75,8 +130,7 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        //Intra edges are edges that lives inside GraphSectors
-        public void ConnectExitPortals(CostSector mapSector, SectorPathfinder pathfinder) {
+        private void BuildExitConnections (CostSector costs, SectorPathfinder pathfinder) {
             int i, j;
             Portal n1, n2;
 
@@ -88,7 +142,7 @@ namespace FlowTiles.PortalPaths {
                 for (j = i + 1; j < ExitPortals.Length; ++j) {
                     n2 = ExitPortals[j];
                     if (n1.Color == n2.Color) {
-                        TryConnectExitPortals(ref n1, ref n2, mapSector, pathfinder);
+                        TryConnectExits(ref n1, ref n2, costs, pathfinder);
                         ExitPortals[i] = n1;
                         ExitPortals[j] = n2;
                     }
@@ -96,11 +150,7 @@ namespace FlowTiles.PortalPaths {
             }
         }
 
-        /// <summary>
-        /// Connect two nodes by pathfinding between them. 
-        /// </summary>
-        /// <remarks>We assume they are different nodes. If the path returned is 0, then there is no path that connects them.</remarks>
-        private bool TryConnectExitPortals(ref Portal n1, ref Portal n2, CostSector sector, SectorPathfinder pathfinder) {
+        private bool TryConnectExits(ref Portal n1, ref Portal n2, CostSector sector, SectorPathfinder pathfinder) {
             PortalEdge e1, e2;
 
             var corner = sector.Bounds.MinCell;
@@ -126,32 +176,6 @@ namespace FlowTiles.PortalPaths {
                 return true;
             }
             return false;
-        }
-
-        public bool TryGetClosestExitPortal(int2 current, int color, out Portal closest) {
-            if (ExitPortals.Length == 0) {
-                closest = default;
-                return false;
-            }
-
-            closest = ExitPortals[0];
-            var found = false;
-            var bestDist = 0f;
-
-            for (int i = 0; i < ExitPortals.Length; i++) { 
-                var portal = ExitPortals[i];
-                if (portal.Color != color) {
-                    continue;
-                }
-
-                var dist = math.distancesq(portal.Position.Cell, current);
-                if (!found || dist < bestDist) {
-                    closest = portal;
-                    bestDist = dist;
-                    found = true;
-                }
-            }
-            return found;
         }
 
     }

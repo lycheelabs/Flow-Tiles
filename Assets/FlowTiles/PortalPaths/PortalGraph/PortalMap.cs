@@ -72,17 +72,9 @@ namespace FlowTiles.PortalPaths {
             var pathfinder = new SectorPathfinder(Layout.NumCellsInSector, Allocator.Temp);
             for (int s = 0; s < Sectors.Length; ++s) {
                 var sector = Sectors[s];
-                sector.ConnectExitPortals(mapSectors.Sectors[s], pathfinder);
+                sector.BuildInternalConnections(mapSectors.Sectors[s], pathfinder);
                 Sectors[s] = sector;
             }
-
-            // Create root portals allowing each start tile to reach the same-colored edge portals
-            for (int s = 0; s < Sectors.Length; s++) {
-                var sector = Sectors[s];
-                sector.CreateRootPortals(mapSectors.Sectors[s]);
-                Sectors[s] = sector;
-            }
-
         }
 
         /// <summary>
@@ -92,50 +84,45 @@ namespace FlowTiles.PortalPaths {
         private void LinkAdjacentSectors(CostMap mapSectors, int index1, int index2, bool horizontal) {
             var sector1 = mapSectors.Sectors[index1];
             var sector2 = mapSectors.Sectors[index2];
+            var bounds = sector1.Bounds;
 
-            int i, iMin, iMax;
-            if (horizontal) {
-                iMin = sector1.Bounds.MinCell.y;
-                iMax = iMin + sector1.Bounds.HeightCells;
-            }
-            else {
-                iMin = sector1.Bounds.MinCell.x;
-                iMax = iMin + sector1.Bounds.WidthCells;
-            }
-
+            int i = 0; 
             int lineSize = 0;
-            for (i = iMin; i < iMax; ++i) {
-                if (horizontal && sector1.IsOpenAt(new int2(sector1.Bounds.MaxCell.x, i)) 
-                        && sector2.IsOpenAt(new int2(sector2.Bounds.MinCell.x, i))) {
-                    lineSize++;
+
+            if (horizontal) {
+                for (i = bounds.MinCell.y; i <= bounds.MaxCell.y; i++) {
+                    if (sector1.IsOpenAt(new int2(sector1.Bounds.MaxCell.x, i)) && 
+                        sector2.IsOpenAt(new int2(sector2.Bounds.MinCell.x, i))) {
+                        lineSize++;
+                        continue;
+                    }
+                    CreateInterEdge(index1, index2, horizontal, lineSize, i);
+                    lineSize = 0;
                 }
-                else if (!horizontal && sector1.IsOpenAt(new int2(i, sector1.Bounds.MaxCell.y)) 
-                        && sector2.IsOpenAt(new int2(i, sector2.Bounds.MinCell.y))) {
-                    lineSize++;
-                }
-                else {
-                    CreateInterEdges(index1, index2, horizontal, lineSize, i);
+            }
+            if (!horizontal) {
+                for (i = bounds.MinCell.x; i <= bounds.MaxCell.x; i++) {
+                    if (sector1.IsOpenAt(new int2(i, sector1.Bounds.MaxCell.y)) && 
+                        sector2.IsOpenAt(new int2(i, sector2.Bounds.MinCell.y))) {
+                        lineSize++;
+                        continue;
+                    }
+                    CreateInterEdge(index1, index2, horizontal, lineSize, i);
                     lineSize = 0;
                 }
             }
 
-            //If line size > 0 after looping, then we have another line to fill in
-            CreateInterEdges(index1, index2, horizontal, lineSize, i);
+            CreateInterEdge(index1, index2, horizontal, lineSize, i);
         }
+                
+        private void CreateInterEdge(int index1, int index2, bool horizontal, int lineSize, int i) {
+            if (lineSize <= 0) { return; }
+            var start = i - lineSize;
+            var end = i - 1;
 
-        //i is the index at which we stopped (either its an obstacle or the end of the cluster
-        private void CreateInterEdges(int index1, int index2, bool horizontal, int lineSize, int i) {
-            if (lineSize > 0) {
-                CreateInterEdge(index1, index2, horizontal, i - lineSize, i - 1);// i - (lineSize / 2 + 1));
-            }
-        }
-
-        //Inter edges are edges that crosses GraphSectors
-        private void CreateInterEdge(int index1, int index2, bool horizontal, int start, int end) {
             var sector1 = Sectors[index1];
             var sector2 = Sectors[index2];
 
-            int mid = (start + end) / 2;
             int2 start1, start2, end1, end2, dir;
             Portal portal1, portal2;
             if (horizontal) {
@@ -187,6 +174,55 @@ namespace FlowTiles.PortalPaths {
 
             Sectors[index1] = sector1;
             Sectors[index2] = sector2;
+        }
+                
+        private void CreateExit(int index1, int index2, bool horizontal, int lineSize, int i, int flip) {
+            if (lineSize <= 0) { return; }
+            var start = i - lineSize;
+            var end = i - 1;
+
+            var sector1 = Sectors[index1];
+            var sector2 = Sectors[index2];
+
+            int2 start1, start2, end1, end2, dir;
+            if (horizontal) {
+                var x1 = (flip > 0) ? sector1.Bounds.MaxCell.x : sector2.Bounds.MinCell.x;
+                var x2 = (flip > 0) ? sector2.Bounds.MinCell.x : sector1.Bounds.MaxCell.x;
+                start1 = new int2(x1, start);
+                end1 = new int2(x1, end);
+                start2 = new int2(x2, start);
+                end2 = new int2(x2, end);
+                dir = new int2(flip, 0);
+            }
+            else {
+                var y1 = (flip > 0) ? sector1.Bounds.MaxCell.y : sector2.Bounds.MinCell.y;
+                var y2 = (flip > 0) ? sector2.Bounds.MinCell.y : sector1.Bounds.MaxCell.y;
+                start1 = new int2(start, y1);
+                end1 = new int2(end, y1);
+                start2 = new int2(start, y2);
+                end2 = new int2(end, y2);
+                dir = new int2(0, flip);
+            }
+
+            var mid1 = (start1 + end1) / 2;
+            var mid2 = (start2 + end2) / 2;
+
+            // Create the exit portal (if needed)
+            if (!sector1.HasExitPortalAt(mid1)) {
+                var newPortal = new Portal(start1, end1, sector1.Index, dir);
+                sector1.AddExitPortal(newPortal);
+            }
+
+            // Connect the exit portal
+            var portalIndex = sector1.ExitPortalLookup[mid1];
+            var portal = sector1.ExitPortals[portalIndex];
+            portal.Edges.Add(new PortalEdge() {
+                start = new SectorCell(sector1.Index, mid1),
+                end = new SectorCell(sector2.Index, mid2),
+                weight = 1
+            });
+            sector1.ExitPortals[portalIndex] = portal;
+            Sectors[index1] = sector1;
         }
 
     }
