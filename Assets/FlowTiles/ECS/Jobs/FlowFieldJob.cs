@@ -14,19 +14,13 @@ namespace FlowTiles.ECS {
 
         public static FlowField ScheduleAndComplete(CostSector sector, CellRect goalBounds, int2 exitDirection) {
             var job = new FlowFieldJob(sector, goalBounds, exitDirection);
-
-            // Execute and time the job
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
             job.Schedule().Complete();
-            stopwatch.Stop();
 
             var result = new FlowField {
                 SectorIndex = sector.Index,
                 Color = job.Color.Value,
                 Size = sector.Bounds.SizeCells,
                 Directions = job.Flow.Value,
-                GenerationTime = stopwatch.Elapsed,
             };
 
             job.Dispose();

@@ -8,6 +8,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles.ECS {
 
+    [BurstCompile]
     public partial struct PathfindingSystem : ISystem {
 
         public const int CACHE_CAPACITY = 1000;
@@ -40,25 +41,17 @@ namespace FlowTiles.ECS {
 
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-
+            
             // Access the global data
             var globalData = SystemAPI.GetSingleton<GlobalPathfindingData>();
             var level = globalData.Level;
             var graph = globalData.Graph;
-
+            
+            // Rebuild all dirty graph sectors
             if (level.NeedsRebuilding) {
-                RebuildRequests.Clear();
-                for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
-                    if (level.SectorFlags[index].NeedsRebuilding) {
-                        RebuildRequests.Add(index);
-                        graph.Costs.InitialiseSector(index, level);
-                        level.SectorFlags[index] = default;
-                    }
-                }
-                for (int i = 0; i < RebuildRequests.Length; i++) {
-                    graph.Portals.InitialiseSector(RebuildRequests[i], graph.Costs);
-                }
+                PrepareForRebuild(ref level, ref graph);
                 level.NeedsRebuilding = false;
 
                 var job = new BuildGraphJob {
@@ -68,9 +61,6 @@ namespace FlowTiles.ECS {
                 };
                 state.Dependency = job.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
             }
-
-            globalData.Level = level;
-            SystemAPI.SetSingleton(globalData);
 
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
@@ -122,10 +112,10 @@ namespace FlowTiles.ECS {
                 };
             }
             FlowRequests.Clear();
-
+            
             var ecbEarly = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecbLate = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-
+                        
             new RequestPathsJob {
                 PathCache = PathCache.Cache,
                 PathRequests = PathRequests,
@@ -149,6 +139,23 @@ namespace FlowTiles.ECS {
                 FlowCache = FlowCache.Cache,
             }.ScheduleParallel();
 
+            globalData.Level = level;
+            SystemAPI.SetSingleton(globalData);
+
+        }
+
+        private void PrepareForRebuild(ref PathableLevel level, ref PathableGraph graph) {
+            RebuildRequests.Clear();
+            for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
+                if (level.SectorFlags[index].NeedsRebuilding) {
+                    RebuildRequests.Add(index);
+                    graph.Costs.InitialiseSector(index, level);
+                    level.SectorFlags[index] = default;
+                }
+            }
+            for (int i = 0; i < RebuildRequests.Length; i++) {
+                graph.Portals.InitialiseSector(RebuildRequests[i], graph.Costs);
+            }
         }
 
         public void OnDestroy (ref SystemState state) {
@@ -404,7 +411,7 @@ namespace FlowTiles.ECS {
         [BurstCompile]
         public partial struct DebugPathsJob : IJobEntity {
 
-            public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
+            [ReadOnly] public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
 
             [BurstCompile]
             private void Execute(RefRO<FlowProgress> progress, ref FlowDebugData debug) {

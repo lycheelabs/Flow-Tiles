@@ -7,7 +7,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles.ECS {
 
-    //[BurstCompile]
+    [BurstCompile]
     public struct PortalPathJob : IJob {
 
         public static bool ScheduleAndComplete (PathableGraph graph, int2 start, int2 dest, out UnsafeList<PortalPathNode> result) {
@@ -42,13 +42,14 @@ namespace FlowTiles.ECS {
             Success.Value = false;
         }
 
-        //[BurstCompile]
+        [BurstCompile]
         public void Execute() {
             var pathfinder = new PortalPathfinder(Graph);
             var path = Result.Value;
             Success.Value = pathfinder.TryFindPath(Start, Dest, ref path);
             Result.Value = path;
         }
+
         public void Dispose() {
             Success.Dispose();
             Result.Dispose();

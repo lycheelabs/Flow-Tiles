@@ -1,6 +1,4 @@
 using FlowTiles.Utils;
-using System.Collections.Generic;
-using System.Linq;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -8,7 +6,6 @@ using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
 
-    [BurstCompile]
     public struct PortalPathfinder {
 
         private PathableGraph Graph;
@@ -44,8 +41,8 @@ namespace FlowTiles.PortalPaths {
             }
 
             // Search for the path through the portal graph
-            var path = FindPath(startPortal, destCluster).ToArray();
-            if (path.Length == 0) {
+            var path = FindPath(startPortal, destCluster);
+            if (!path.IsCreated || path.Length == 0) {
                 return false;
             }
 
@@ -68,7 +65,7 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        private LinkedList<PortalEdge> FindPath(Portal start, Portal destCluster) {
+        private NativeList<PortalEdge> FindPath(Portal start, Portal destCluster) {
             Visited.Clear();
             Parents.Clear();
             GScore.Clear();
@@ -98,7 +95,7 @@ namespace FlowTiles.PortalPaths {
 
                         // Heap at capacity? Fail!
                         if (Queue.IsFull()) {
-                            return new LinkedList<PortalEdge>();
+                            return default;
                         }
 
                         ConsiderEdge(edge, current, destCluster);
@@ -106,7 +103,7 @@ namespace FlowTiles.PortalPaths {
                 }
             }
 
-            return new LinkedList<PortalEdge>();
+            return default;
         }
 
         private void ConsiderEdge(PortalEdge edge, Portal current, Portal dest) {
@@ -129,12 +126,12 @@ namespace FlowTiles.PortalPaths {
             Queue.Push(new MinHeapNode(nextCell, newGCost + EuclidianDistance(nextCell, destCell)));
         }
 
-        private LinkedList<PortalEdge> RebuildPath(Portal dest) {
-            LinkedList<PortalEdge> res = new LinkedList<PortalEdge>();
+        private NativeList<PortalEdge> RebuildPath(Portal dest) {
+            var res = new NativeList<PortalEdge>(Allocator.Temp);
             int2 current = dest.Position.Cell;
 
             while (Parents.TryGetValue(current, out var e)) {
-                res.AddFirst(e);
+                res.Add(e);
                 current = e.start.Cell;
             }
 

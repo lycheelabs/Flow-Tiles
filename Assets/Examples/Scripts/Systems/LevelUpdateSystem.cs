@@ -7,6 +7,7 @@ using Unity.Transforms;
 
 namespace FlowTiles.Examples {
 
+    [BurstCompile]
     public partial struct LevelUpdateSystem : ISystem {
 
         public const bool VISUALISE_GRAPH_COLORS = false;
@@ -15,6 +16,7 @@ namespace FlowTiles.Examples {
             state.RequireForUpdate<LevelSetup>();
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             var setup = SystemAPI.GetSingleton<LevelSetup>();
 

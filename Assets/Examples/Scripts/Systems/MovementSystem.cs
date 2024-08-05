@@ -6,12 +6,14 @@ using Unity.Transforms;
 
 namespace FlowTiles.Examples {
 
+    [BurstCompile]
     public partial struct MovementSystem : ISystem {
 
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<LevelSetup>();
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state) {
             var level = SystemAPI.GetSingleton<LevelSetup>();
             new Job {
