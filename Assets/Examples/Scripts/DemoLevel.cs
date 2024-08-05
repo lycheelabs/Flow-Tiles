@@ -50,12 +50,7 @@ namespace FlowTiles.Examples {
             Map.SetObstacle(9, 2);*/
 
             // Create the graph
-            var stopwatch = new System.Diagnostics.Stopwatch();
-            stopwatch.Start();
             Graph = new PathableGraph(Level.Bounds.SizeCells, Resolution);
-            PathableGraph.BurstBuild(ref Graph, ref Level);
-            stopwatch.Stop();
-            Debug.Log(string.Format("Portal graph created in: {0} ms", (int)stopwatch.Elapsed.TotalMilliseconds));
 
             // Allocate visualisation data
             ColorData = new NativeField<float4>(LevelSize, Allocator.Persistent, initialiseTo: 1);
@@ -83,6 +78,7 @@ namespace FlowTiles.Examples {
                 Flows = FlowData,
             });
             em.SetComponentData(singleton, new GlobalPathfindingData {
+                Level = level,
                 Graph = Graph,
             });
 

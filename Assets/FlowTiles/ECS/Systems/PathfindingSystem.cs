@@ -1,7 +1,9 @@
+
 using FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 using Unity.Mathematics;
 
 namespace FlowTiles.ECS {
@@ -14,8 +16,11 @@ namespace FlowTiles.ECS {
         private FlowCache FlowCache;
 
         //private Entity BufferSingleton;
+        private NativeList<int> RebuildRequests;
         private NativeList<PathRequest> PathRequests;
         private NativeList<FlowRequest> FlowRequests;
+
+        //private JobHandle RebuildJob;
 
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<GlobalPathfindingData>();
@@ -29,6 +34,7 @@ namespace FlowTiles.ECS {
             };
 
             // Build the request buffers
+            RebuildRequests = new NativeList<int>(50, Allocator.Persistent);
             PathRequests = new NativeList<PathRequest>(200, Allocator.Persistent);
             FlowRequests = new NativeList<FlowRequest>(200, Allocator.Persistent);
 
@@ -38,7 +44,33 @@ namespace FlowTiles.ECS {
 
             // Access the global data
             var globalData = SystemAPI.GetSingleton<GlobalPathfindingData>();
-            var pathGraph = globalData.Graph;
+            var level = globalData.Level;
+            var graph = globalData.Graph;
+
+            if (level.NeedsRebuilding) {
+                RebuildRequests.Clear();
+                for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
+                    if (level.SectorFlags[index].NeedsRebuilding) {
+                        RebuildRequests.Add(index);
+                        graph.Costs.InitialiseSector(index, level);
+                        level.SectorFlags[index] = default;
+                    }
+                }
+                for (int i = 0; i < RebuildRequests.Length; i++) {
+                    graph.Portals.InitialiseSector(RebuildRequests[i], graph.Costs);
+                }
+                level.NeedsRebuilding = false;
+
+                var job = new BuildGraphJob {
+                    Requests = RebuildRequests,
+                    Costs = graph.Costs.Sectors,
+                    Portals = graph.Portals.Sectors,
+                };
+                state.Dependency = job.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
+            }
+
+            globalData.Level = level;
+            SystemAPI.SetSingleton(globalData);
 
             // Process pathfinding requests, and cache the results
             foreach (var request in PathRequests) {
@@ -51,7 +83,7 @@ namespace FlowTiles.ECS {
                 // Calculate the path
                 var origin = request.originCell;
                 var dest = request.destCell;
-                var success = PortalPathJob.ScheduleAndComplete(pathGraph, origin, dest, out var path);
+                var success = PortalPathJob.ScheduleAndComplete(graph, origin, dest, out var path);
 
                 // Cache the path
                 PathCache.Cache[request.cacheKey] = new CachedPortalPath {
@@ -74,13 +106,13 @@ namespace FlowTiles.ECS {
                 var goal = request.goalCell;
                 var goalBounds = new CellRect(goal, goal);
                 if (!request.goalDirection.Equals(0)) {
-                    if (pathGraph.TryGetExitPortal(goal.x, goal.y, out var portal)) {
+                    if (graph.TryGetExitPortal(goal.x, goal.y, out var portal)) {
                         goalBounds = portal.Bounds;
                     }
                 }
 
                 // Calculate the flow tile
-                var sector = pathGraph.GetCostSector(goal.x, goal.y);
+                var sector = graph.GetCostSector(goal.x, goal.y);
                 var goalDir = request.goalDirection;
                 var flow = FlowFieldJob.ScheduleAndComplete(sector, goalBounds, goalDir);
 
@@ -107,7 +139,7 @@ namespace FlowTiles.ECS {
             }.Schedule();
 
             new FollowPathsJob {
-                Graph = pathGraph,
+                Graph = graph,
                 PathCache = PathCache.Cache,
                 FlowCache = FlowCache.Cache,
                 ECB = ecbLate.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),

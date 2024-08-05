@@ -22,6 +22,12 @@ namespace FlowTiles.PortalPaths {
             ExitPortalLookup = new UnsafeHashMap<int2, int>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
         }
 
+        public void Clear() {
+            RootPortals.Clear();
+            ExitPortals.Clear();
+            ExitPortalLookup.Clear();
+        }
+
         public bool Contains(int2 pos) {
             return pos.x >= Bounds.MinCell.x &&
                 pos.x <= Bounds.MaxCell.x &&

@@ -30,9 +30,14 @@ namespace FlowTiles.Utils {
             }
         }
 
-        public T this[int i, int j] {
-            get => data[i + j * Size.x];
-            set => data[i + j * Size.x] = value;
+        public T this[int x, int y] {
+            get => data[x + y * Size.x];
+            set => data[x + y * Size.x] = value;
+        }
+
+        public T this[int i] {
+            get => data[i];
+            set => data[i] = value;
         }
 
         public void Dispose() {

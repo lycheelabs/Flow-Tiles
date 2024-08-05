@@ -11,6 +11,14 @@ namespace FlowTiles.PortalPaths {
         public CostMap(SectorLayout layout) {
             Layout = layout;
             Sectors = new NativeArray<CostSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
+            
+            for (int index = 0; index < Layout.NumSectorsInLevel; index++) {
+                var x = index % Layout.SizeSectors.x;
+                var y = index / Layout.SizeSectors.x;
+                var bounds = Layout.GetSectorBounds(x, y);
+                var sector = new CostSector(index, bounds);
+                Sectors[index] = sector;
+            }
         }
 
         public int GetCellIndex(int cellX, int cellY) {
@@ -39,10 +47,7 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void InitialiseSector(int index, PathableLevel map) {
-            var x = index % Layout.SizeSectors.x;
-            var y = index / Layout.SizeSectors.x;
-            var bounds = Layout.GetSectorBounds(x, y);
-            var sector = new CostSector(index, bounds);
+            var sector = Sectors[index];
             sector.Initialise(map);
             Sectors[index] = sector;
         }

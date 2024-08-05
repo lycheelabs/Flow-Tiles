@@ -15,7 +15,7 @@ namespace FlowTiles.Examples {
 
         void Start() {
 
-            var map = new PathableLevel(LevelSize, LevelSize);
+            var map = new PathableLevel(LevelSize, LevelSize, Resolution);
             LevelGeneration.InitialiseRandomObstacles(map, false);
 
             Level = new DemoLevel(map, Resolution);

@@ -1,24 +1,13 @@
-﻿using Unity.Burst;
+﻿using FlowTiles.ECS;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Mathematics;
+using Unity.Jobs;
 
 namespace FlowTiles.PortalPaths {
 
     [BurstCompile]
     public struct PathableGraph {
-
-        [BurstCompile]
-        public static void BurstBuild(ref PathableGraph graph, ref PathableLevel map) {
-            graph.Initialise(map);
-
-            // To parallelise
-            var pathfinder = new SectorPathfinder(graph.Layout.NumCellsInSector, Allocator.Temp);
-            for (int index = 0; index < graph.Layout.NumSectorsInLevel; ++index) {
-                graph.BuildSector(index, pathfinder);
-            }
-        }
-
-        // -----------------------------------------
 
         public CellRect Bounds;
         public SectorLayout Layout;
@@ -33,20 +22,6 @@ namespace FlowTiles.PortalPaths {
             Layout = new SectorLayout(sizeCells, resolution);
             Costs = new CostMap(Layout);
             Portals = new PortalMap(Layout);
-        }
-
-        public void Initialise(PathableLevel map) {
-            Costs.Initialise(map);
-            Portals.Initialise(Costs);
-        }
-
-        public void BuildSector (int index, SectorPathfinder pathfinder) {
-            var costSector = Costs.Sectors[index];
-            var portalSector = Portals.Sectors[index];
-            costSector.CalculateColors();
-            portalSector.BuildInternalConnections(costSector, pathfinder);
-            Costs.Sectors[index] = costSector;
-            Portals.Sectors[index] = portalSector;
         }
 
         public CostSector GetCostSector(int cellX, int cellY) {
