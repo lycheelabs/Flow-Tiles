@@ -4,7 +4,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
 
-    public struct CostSector {
+    public struct CostMap {
 
         public readonly int Index;
         public readonly CellRect Bounds;
@@ -13,7 +13,7 @@ namespace FlowTiles.PortalPaths {
         public UnsafeField<short> Colors;
         public short NumColors;
 
-        public CostSector(int index, CellRect boundaries) {
+        public CostMap(int index, CellRect boundaries) {
             Index = index;
             Bounds = new CellRect();
 
@@ -25,6 +25,11 @@ namespace FlowTiles.PortalPaths {
 
         public void Initialise(PathableLevel map) {
             CopyCosts(map, Bounds.MinCell);
+        }
+
+        public void Dispose() {
+            Costs.Dispose();
+            Colors.Dispose();
         }
 
         public void CalculateColors () {

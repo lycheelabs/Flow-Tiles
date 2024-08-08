@@ -46,7 +46,7 @@ namespace FlowTiles.ECS {
         public void Execute() {
             var pathfinder = new PortalPathfinder(Graph);
             var path = Result.Value;
-            Success.Value = pathfinder.TryFindPath(Start, Dest, ref path);
+            Success.Value = pathfinder.TryFindPath(Start, Dest, 0, ref path);
             Result.Value = path;
         }
 

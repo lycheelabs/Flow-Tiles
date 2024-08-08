@@ -1,7 +1,6 @@
 ﻿using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
-using System.Diagnostics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -10,10 +9,10 @@ using Unity.Mathematics;
 namespace FlowTiles.ECS {
 
     [BurstCompile]
-    public struct FlowFieldJob : IJob {
+    public struct CalculateFlowJob : IJob {
 
-        public static FlowField ScheduleAndComplete(CostSector sector, CellRect goalBounds, int2 exitDirection) {
-            var job = new FlowFieldJob(sector, goalBounds, exitDirection);
+        public static FlowField ScheduleAndComplete(CostMap sector, CellRect goalBounds, int2 exitDirection) {
+            var job = new CalculateFlowJob(sector, goalBounds, exitDirection);
             job.Schedule().Complete();
 
             var result = new FlowField {
@@ -29,7 +28,7 @@ namespace FlowTiles.ECS {
 
         // --------------------------------------------------------
 
-        [ReadOnly] public CostSector Sector;
+        [ReadOnly] public CostMap Sector;
         [ReadOnly] public CellRect GoalBounds;
         [ReadOnly] public int2 ExitDirection;
 
@@ -37,7 +36,7 @@ namespace FlowTiles.ECS {
         public NativeReference<UnsafeField<float2>> Flow;
         public NativeReference<short> Color;
 
-        public FlowFieldJob (CostSector sector, CellRect goalBounds, int2 exitDirection) {
+        public CalculateFlowJob (CostMap sector, CellRect goalBounds, int2 exitDirection) {
             Sector = sector;
             GoalBounds = goalBounds;
             ExitDirection = exitDirection;

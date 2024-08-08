@@ -23,7 +23,7 @@ namespace FlowTiles.FlowFields {
         // ------------------------------------------------------------
 
         [ReadOnly] public int2 Size;
-        [ReadOnly] public CostSector Sector;
+        [ReadOnly] public CostMap Sector;
         [ReadOnly] public CellRect GoalBounds;
         [ReadOnly] public float2 ExitDirection;
 
@@ -31,7 +31,7 @@ namespace FlowTiles.FlowFields {
         public UnsafeField<float2> Flow;
         public short Color;
 
-        public FlowCalculator(CostSector sector, CellRect goalBounds, int2 exitDirection) {
+        public FlowCalculator(CostMap sector, CellRect goalBounds, int2 exitDirection) {
             Size = sector.Bounds.SizeCells;
             Sector = sector;
             GoalBounds = goalBounds;

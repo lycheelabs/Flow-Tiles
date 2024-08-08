@@ -43,12 +43,6 @@ namespace FlowTiles.Examples {
             LevelSize = level.Size;
             Resolution = resolution;
 
-            /*Map.SetObstacle(5, 2);
-            Map.SetObstacle(6, 2);
-            Map.SetObstacle(7, 2);
-            Map.SetObstacle(8, 2);
-            Map.SetObstacle(9, 2);*/
-
             // Create the graph
             Graph = new PathableGraph(Level.Bounds.SizeCells, Resolution);
 
@@ -56,7 +50,7 @@ namespace FlowTiles.Examples {
             ColorData = new NativeField<float4>(LevelSize, Allocator.Persistent, initialiseTo: 1);
             FlowData = new NativeField<float2>(LevelSize, Allocator.Persistent);
 
-            for (int y = 0; y < LevelSize.x; y++) {
+            /*for (int y = 0; y < LevelSize.x; y++) {
                 for (int x = 0; x < LevelSize.y; x++) {
                     var sector = Graph.GetCostSector(x, y);
                     var color = sector.Colors[x % Resolution, y % Resolution];
@@ -64,7 +58,7 @@ namespace FlowTiles.Examples {
                         ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
                     }
                 }
-            }
+            }*/
 
             // Initialise the ECS simulation
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -131,33 +125,39 @@ namespace FlowTiles.Examples {
         }
 
         public void VisualiseSectors(bool visualiseConnections) {
-            Visualisation.DrawSectors(Graph.Portals, visualiseConnections);
+            Visualisation.DrawSectors(Graph, visualiseConnections);
         }
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
 
             var pathfinder = new PortalPathfinder(Graph);
             var path = new UnsafeList<PortalPathNode>(32, Allocator.Temp);
-            var success = pathfinder.TryFindPath(start, dest, ref path);
+            var success = pathfinder.TryFindPath(start, dest, 0, ref path);
 
             if (success) {
                 // Visualise the path
                 FlowData.InitialiseTo(0);
 
+                // Draw portals
+                for (int i = 0; i < path.Length; i++) {
+                    Visualisation.DrawPortal(path[i].GoalBounds);
+                }
+
+                // Draw links
                 if (path.Length > 0) {
+                    Visualisation.DrawPortalLink(start, path[0].GoalBounds.CentrePoint);
+                    for (int i = 0; i < path.Length - 1; i++) {
+                        Visualisation.DrawPortalLink(path[i].GoalBounds.CentrePoint, path[i + 1].GoalBounds.CentrePoint);
+                    }
+                }
+
+                // Draw flow
+                if (showFlow) {
                     for (int i = 0; i < path.Length; i++) {
                         var node = path[i];
-                        var sector = Graph.Costs.Sectors[node.Position.SectorIndex];
-                        var flow = FlowFieldJob.ScheduleAndComplete(sector, node.GoalBounds, node.Direction);
-
-                        Visualisation.DrawPortal(node.GoalBounds);
-                        if (showFlow) {
-                            CopyFlowVisualisationData(flow);
-                        }
-                        else {
-                            Visualisation.DrawPortalLink(path[i].GoalBounds.CentrePoint, path[i + 1].GoalBounds.CentrePoint);
-                        }
-
+                        var sector = Graph.IndexToSectorMap(node.Position.SectorIndex, 0);
+                        var flow = CalculateFlowJob.ScheduleAndComplete(sector.Costs, node.GoalBounds, node.Direction);
+                        CopyFlowVisualisationData(flow);
                     }
                 }
             }
@@ -175,13 +175,13 @@ namespace FlowTiles.Examples {
         private void CopyFlowVisualisationData(FlowField flowField) {
             if (!flowField.Directions.IsCreated) return;
 
-            var sector = Graph.Costs.Sectors[flowField.SectorIndex];
-            var bounds = sector.Bounds;
+            var bounds = Graph.Layout.GetSectorBounds(flowField.SectorIndex);
             for (int x = 0; x < bounds.SizeCells.x; x++) {
                 for (int y = 0; y < bounds.SizeCells.y; y++) {
+                    var colors = Graph.CellToSectorMap(new int2(x, y), 0).Costs;
                     var mapCell = new int2(x + bounds.MinCell.x, y + bounds.MinCell.y);
                     var flow = flowField.GetFlow(x, y);
-                    var cellColor = sector.Colors[x, y];
+                    var cellColor = colors.Colors[x, y];
                     if (FlowData[mapCell.x, mapCell.y].Equals(new float2(0)) || cellColor == flowField.Color) {
                         FlowData[mapCell.x, mapCell.y] = flow;
                     }

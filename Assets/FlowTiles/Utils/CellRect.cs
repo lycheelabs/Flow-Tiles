@@ -22,7 +22,7 @@ namespace FlowTiles {
         public int HeightCells => MaxCell.y - MinCell.y + 1;
         public int2 SizeCells => MaxCell - MinCell + 1;
         public int2 CentreCell => (MinCell + MaxCell) / 2;
-        public float2 CentrePoint => (float2)(MinCell + MaxCell + 1) / 2f;
+        public float2 CentrePoint => (float2)(MinCell + MaxCell) / 2f;
 
         public bool ContainsCell (int2 cell) {
             return cell.x >= MinCell.x && cell.y >= MinCell.y 

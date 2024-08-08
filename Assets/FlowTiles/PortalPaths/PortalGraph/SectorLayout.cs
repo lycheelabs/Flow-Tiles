@@ -52,6 +52,17 @@ namespace FlowTiles.PortalPaths {
             return IndexOfSector(CellToSector(cellX, cellY));
         }
 
+        public CellRect GetSectorBounds(int index) {
+            var x = index % SizeSectors.x;
+            var y = index / SizeSectors.y;
+            var min = new int2(x * Resolution, y * Resolution);
+            var max = new int2(
+                Mathf.Min(min.x + Resolution - 1, SizeCells.x - 1),
+                Mathf.Min(min.y + Resolution - 1, SizeCells.y - 1));
+            return new CellRect { MinCell = min, MaxCell = max };
+
+        }
+
         public CellRect GetSectorBounds (int x, int y) {
             var min = new int2(x * Resolution, y * Resolution);
             var max = new int2(

@@ -7,21 +7,22 @@ namespace FlowTiles.Examples {
 
     public static class Visualisation {
 
-        public static void DrawSectors (PortalMap graph, bool showPortalEdges) {
+        public static void DrawSectors (PathableGraph graph, bool showPortalEdges) {
+            var numSectors = graph.Layout.NumSectorsInLevel;
+            for (int index = 0; index < numSectors; index++) {
+                if (!graph.SectorIsInitialised(index)) continue;
 
-            var sectors = graph.Sectors;
-            for (int c = 0; c < sectors.Length; c++) {
-                var cluster = sectors[c];
-                var nodes = cluster.ExitPortals;
+                var sector = graph.IndexToSectorMap(index, 0);
+                var nodes = sector.Portals.ExitPortals;
 
-                DrawSectorBoundaries(cluster);
+                DrawSectorBoundaries(sector.Portals);
                 if (showPortalEdges) {
                     DrawSectorConnections(nodes);
                 }
             }
         }
 
-        public static void DrawSectorBoundaries(PortalSector cluster) {
+        public static void DrawSectorBoundaries(PortalMap cluster) {
             Debug.DrawLine(
                 new Vector3(cluster.Bounds.MinCell.x - 0.5f, cluster.Bounds.MinCell.y - 0.5f),
                 new Vector3(cluster.Bounds.MaxCell.x + 0.5f, cluster.Bounds.MinCell.y - 0.5f),

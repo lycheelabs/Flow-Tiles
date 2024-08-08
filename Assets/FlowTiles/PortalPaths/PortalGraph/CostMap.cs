@@ -2,21 +2,21 @@
 using Unity.Collections;
 
 namespace FlowTiles.PortalPaths {
-
+    /*
     public struct CostMap {
 
         public readonly SectorLayout Layout;
-        public NativeArray<CostSector> Sectors;
+        public NativeArray<CostMap> Sectors;
 
         public CostMap(SectorLayout layout) {
             Layout = layout;
-            Sectors = new NativeArray<CostSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
+            Sectors = new NativeArray<CostMap>(Layout.NumSectorsInLevel, Allocator.Persistent);
             
             for (int index = 0; index < Layout.NumSectorsInLevel; index++) {
                 var x = index % Layout.SizeSectors.x;
                 var y = index / Layout.SizeSectors.x;
                 var bounds = Layout.GetSectorBounds(x, y);
-                var sector = new CostSector(index, bounds);
+                var sector = new CostMap(index, bounds);
                 Sectors[index] = sector;
             }
         }
@@ -29,7 +29,7 @@ namespace FlowTiles.PortalPaths {
             return Layout.CellToSectorIndex(cellX, cellY);
         }
 
-        public CostSector GetSector(int cellX, int cellY) {
+        public CostMap GetSector(int cellX, int cellY) {
             return Sectors[Layout.CellToSectorIndex(cellX, cellY)];
         }
 
@@ -40,12 +40,6 @@ namespace FlowTiles.PortalPaths {
             return sector.Colors[tileX, tileY];
         }
 
-        public void Initialise(PathableLevel map) {
-            for (int index = 0; index < Layout.NumSectorsInLevel; index++) {
-                InitialiseSector(index, map);
-            }
-        }
-
         public void InitialiseSector(int index, PathableLevel map) {
             var sector = Sectors[index];
             sector.Initialise(map);
@@ -53,5 +47,5 @@ namespace FlowTiles.PortalPaths {
         }
 
     }
-
+    */
 }

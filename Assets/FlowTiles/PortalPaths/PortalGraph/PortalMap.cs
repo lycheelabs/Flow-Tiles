@@ -2,26 +2,26 @@
 using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
-
+    /*
     public struct PortalMap {
 
         public readonly SectorLayout Layout;
-        public NativeArray<PortalSector> Sectors;
+        public NativeArray<PortalMap> Sectors;
 
         public PortalMap(SectorLayout layout) {
             Layout = layout;
-            Sectors = new NativeArray<PortalSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
+            Sectors = new NativeArray<PortalMap>(Layout.NumSectorsInLevel, Allocator.Persistent);
 
             for (int index = 0; index < Layout.NumSectorsInLevel; index++) {
                 var x = index % Layout.SizeSectors.x;
                 var y = index / Layout.SizeSectors.x;
                 var bounds = Layout.GetSectorBounds(x, y);
-                var sector = new PortalSector(index, bounds);
+                var sector = new PortalMap(index, bounds);
                 Sectors[index] = sector;
             }
         }
 
-        public PortalSector GetSector(int cellX, int cellY) {
+        public PortalMap GetSector(int cellX, int cellY) {
             return Sectors[Layout.CellToSectorIndex(cellX, cellY)];
         }
 
@@ -42,19 +42,7 @@ namespace FlowTiles.PortalPaths {
             return sector.RootPortals[color - 1];
         }
 
-        public void Initialise(CostMap mapSectors) {
-            for (int i = 0; i < Sectors.Length; i++) {
-                BuildExits(i, mapSectors);
-            }
-        }
-
-        public void InitialiseSector(int index, CostMap mapSectors) {
-            BuildExits(index, mapSectors);
-        }
-
-        // ----------------------------------------------------
-
-        private void BuildExits(int index, CostMap mapSectors) {
+        public void BuildExits(int index, CostMap mapSectors) {
             var sector = Sectors[index];
             sector.Clear();
             Sectors[index] = sector;
@@ -116,5 +104,5 @@ namespace FlowTiles.PortalPaths {
         }
        
     }
-
+    */
 }

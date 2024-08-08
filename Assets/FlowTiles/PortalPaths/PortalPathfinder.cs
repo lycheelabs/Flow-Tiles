@@ -24,12 +24,12 @@ namespace FlowTiles.PortalPaths {
             Queue = new NativeMinHeap(capacitry, allocator);
         }
 
-        public bool TryFindPath(int2 start, int2 dest, ref UnsafeList<PortalPathNode> result) {
+        public bool TryFindPath(int2 start, int2 dest, int travelType, ref UnsafeList<PortalPathNode> result) {
 
             // Find start and end clusters
-            var startPortal = Graph.GetRootPortal(start.x, start.y);
-            var destCluster = Graph.GetRootPortal(dest.x, dest.y);
-            if (Graph.TryGetExitPortal(start.x, start.y, out var exit)) {
+            var startPortal = Graph.CellToSectorMap(start, travelType).GetRootPortal(start);
+            var destCluster = Graph.CellToSectorMap(dest, travelType).GetRootPortal(dest);
+            if (Graph.CellToSectorMap(start, travelType).TryGetExitPortal(start, out var exit)) {
                 startPortal = exit;
             }
 
@@ -41,17 +41,17 @@ namespace FlowTiles.PortalPaths {
             }
 
             // Search for the path through the portal graph
-            var path = FindPath(startPortal, destCluster);
+            var path = FindPath(startPortal, destCluster, travelType);
             if (!path.IsCreated || path.Length == 0) {
                 return false;
             }
 
             // Convert the sector-spanning edges into PortalPathNodes
-            for (var i = 0; i < path.Length; i++) {
+            for (var i = path.Length - 1; i >= 0; i--) {
                 var edge = path[i];
                 if (edge.SpansTwoSectors) {
-                    var sector = Graph.Portals.Sectors[edge.start.SectorIndex];
-                    var portal = sector.GetExitPortalAt(edge.start.Cell);
+                    var map = Graph.IndexToSectorMap(edge.start.SectorIndex, travelType);
+                    var portal = map.GetExitPortal(edge.start.Cell);
                     result.Add(new PortalPathNode {
                         Position = edge.start,
                         GoalBounds = portal.Bounds,
@@ -65,7 +65,7 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        private NativeList<PortalEdge> FindPath(Portal start, Portal destCluster) {
+        private NativeList<PortalEdge> FindPath(Portal start, Portal destCluster, int travelType) {
             Visited.Clear();
             Parents.Clear();
             GScore.Clear();
@@ -77,7 +77,7 @@ namespace FlowTiles.PortalPaths {
             while (Queue.HasNext()) {
                 var index = Queue.Pop();
                 var cell = Queue[index].Position;
-                var found = Graph.TryGetExitPortal(cell.x, cell.y, out var current);
+                var found = Graph.CellToSectorMap(cell, travelType).TryGetExitPortal(cell, out var current);
                 if (!found) {
                     current = start;
                 }

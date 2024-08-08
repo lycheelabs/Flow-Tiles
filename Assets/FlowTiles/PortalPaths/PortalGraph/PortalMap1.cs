@@ -4,7 +4,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
 
-    public struct PortalSector {
+    public struct PortalMap {
 
         public readonly int Index;
         public readonly CellRect Bounds;
@@ -13,7 +13,7 @@ namespace FlowTiles.PortalPaths {
         public UnsafeList<Portal> ExitPortals;
         public UnsafeHashMap<int2, int> ExitPortalLookup;
 
-        public PortalSector (int index, CellRect bounds) {
+        public PortalMap (int index, CellRect bounds) {
             Index = index;
             Bounds = bounds;
 
@@ -26,6 +26,12 @@ namespace FlowTiles.PortalPaths {
             RootPortals.Clear();
             ExitPortals.Clear();
             ExitPortalLookup.Clear();
+        }
+
+        internal void Dispose() {
+            RootPortals.Dispose();
+            ExitPortals.Dispose();
+            ExitPortalLookup.Dispose();
         }
 
         public bool Contains(int2 pos) {
@@ -123,7 +129,7 @@ namespace FlowTiles.PortalPaths {
         /// Connect all exit portals inside this sector together (if their colors match)
         /// and build a root cluster
         /// </summary>
-        public void BuildInternalConnections (CostSector costs, SectorPathfinder pathfinder) {
+        public void BuildInternalConnections (CostMap costs, SectorPathfinder pathfinder) {
             ColorExitPortals(costs);
             BuildRootConnections(costs);
             BuildExitConnections(costs, pathfinder);
@@ -131,7 +137,7 @@ namespace FlowTiles.PortalPaths {
 
         // --------------------------------------------------------------
 
-        private void ColorExitPortals(CostSector costs) {
+        private void ColorExitPortals(CostMap costs) {
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
                 var tile = portal.Position.Cell - Bounds.MinCell;
@@ -141,7 +147,7 @@ namespace FlowTiles.PortalPaths {
             }
         }
 
-        private void BuildRootConnections (CostSector costs) {
+        private void BuildRootConnections (CostMap costs) {
 
             // Color the edge portals
             for (int i = 0; i < ExitPortals.Length; i++) {
@@ -173,7 +179,7 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        private void BuildExitConnections (CostSector costs, SectorPathfinder pathfinder) {
+        private void BuildExitConnections (CostMap costs, SectorPathfinder pathfinder) {
             int i, j;
             Portal n1, n2;
 
@@ -193,7 +199,7 @@ namespace FlowTiles.PortalPaths {
             }
         }
 
-        private bool TryConnectExits(ref Portal n1, ref Portal n2, CostSector sector, SectorPathfinder pathfinder) {
+        private bool TryConnectExits(ref Portal n1, ref Portal n2, CostMap sector, SectorPathfinder pathfinder) {
             PortalEdge e1, e2;
 
             var corner = sector.Bounds.MinCell;
