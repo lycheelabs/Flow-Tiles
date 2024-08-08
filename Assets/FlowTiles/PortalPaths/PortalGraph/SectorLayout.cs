@@ -52,6 +52,13 @@ namespace FlowTiles.PortalPaths {
             return IndexOfSector(CellToSector(cellX, cellY));
         }
 
+        public int2 GetMinCorner(int index) {
+            var x = index % SizeSectors.x;
+            var y = index / SizeSectors.y;
+            var min = new int2(x * Resolution, y * Resolution);
+            return min;
+        }
+
         public CellRect GetSectorBounds(int index) {
             var x = index % SizeSectors.x;
             var y = index / SizeSectors.y;
