@@ -48,6 +48,7 @@ namespace FlowTiles.Examples {
                     var edge = node.Edges[e];
                     var pos1 = edge.start.Cell;
                     var pos2 = edge.end.Cell;
+                    var diff = pos2 - pos1;
                     Debug.DrawLine(
                         new Vector3(pos1.x, pos1.y),
                         new Vector3(pos2.x, pos2.y),

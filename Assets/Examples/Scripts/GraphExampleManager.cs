@@ -32,8 +32,11 @@ namespace FlowTiles.Examples {
                 if (Input.GetMouseButtonDown(0)) {
                     startCell = mouseCell;
                 }
+                if (Input.GetMouseButtonDown(1)) {
+                    Level.FlipWallAt(mouseCell);
+                }
 
-                Level.VisualiseTestPath(startCell, mouseCell, true);
+                //Level.VisualiseTestPath(startCell, mouseCell, true);
             }
 
         }

@@ -121,7 +121,7 @@ namespace FlowTiles.Examples {
         }
 
         public void FlipWallAt(int2 cell) {
-            Level.Obstacles[cell.x, cell.y] = !Level.Obstacles[cell.x, cell.y];
+            Level.SetObstacle(cell.x, cell.y, !Level.Obstacles[cell.x, cell.y]);
         }
 
         public void VisualiseSectors(bool visualiseConnections) {

@@ -21,7 +21,7 @@ namespace FlowTiles {
         public NativeField<byte> BaseCosts;
         public NativeField<byte> ModifiedCosts;
         public NativeField<SectorFlags> SectorFlags;
-        public bool NeedsRebuilding;
+        public NativeReference<bool> NeedsRebuilding;
 
         public PathableLevel(int width, int height, int resolution) {
             Size = new int2(width, height);
@@ -34,15 +34,39 @@ namespace FlowTiles {
 
             var initialise = new SectorFlags { NeedsRebuilding = true };
             SectorFlags = new NativeField<SectorFlags>(Layout.SizeSectors, Allocator.Persistent, initialise);
-            NeedsRebuilding = true;
+            NeedsRebuilding = new NativeReference<bool>(true, Allocator.Persistent);
         }
 
         public void SetObstacle (int x, int y, bool obstacle = true) {
             Obstacles[x, y] = obstacle;
-            var sectorX = x / Layout.Resolution;
-            var sectorY = y / Layout.Resolution;
-            SectorFlags[sectorX, sectorY] = new SectorFlags { NeedsRebuilding = true };
-            NeedsRebuilding = true;
+            NeedsRebuilding.Value = true;
+
+            UpdateRebuildFlags(x, y);
+        }
+
+        private void UpdateRebuildFlags(int x, int y) {
+            var size = Layout.SizeSectors;
+            var resolution = Layout.Resolution;
+            var sectorX = x / resolution;
+            var sectorY = y / resolution;
+            var cellX = x % resolution;
+            var cellY = y % resolution;
+
+            var rebuild = new SectorFlags { NeedsRebuilding = true };
+            SectorFlags[sectorX, sectorY] = rebuild;
+
+            if (sectorX > 0 && cellX == 0) {
+                SectorFlags[sectorX - 1, sectorY] = rebuild;
+            }
+            if (sectorY > 0 && cellY == 0) {
+                SectorFlags[sectorX, sectorY - 1] = rebuild;
+            }
+            if (sectorX < size.x - 1 && cellX == resolution - 1) {
+                SectorFlags[sectorX + 1, sectorY] = rebuild;
+            }
+            if (sectorY < size.y - 1 && cellY == resolution - 1) {
+                SectorFlags[sectorX, sectorY + 1] = rebuild;
+            }
         }
 
         public byte GetCostAt (int x, int y) {

@@ -50,9 +50,9 @@ namespace FlowTiles.ECS {
             var graph = globalData.Graph;
             
             // Rebuild all dirty graph sectors
-            if (level.NeedsRebuilding) {
+            if (level.NeedsRebuilding.Value) {
                 PrepareForRebuild(ref level, ref graph);
-                level.NeedsRebuilding = false;
+                level.NeedsRebuilding.Value = false;
 
                 var job = new RebuildGraphJob {
                     Requests = RebuildRequests,
@@ -154,7 +154,7 @@ namespace FlowTiles.ECS {
                 }
             }
             for (int index = 0; index < RebuildRequests.Length; index++) {
-                graph.BuildSectorExits(index);
+                graph.BuildSectorExits(RebuildRequests[index]);
             }
         }
 
