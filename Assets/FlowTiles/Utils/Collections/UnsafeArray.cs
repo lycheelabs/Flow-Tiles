@@ -8,12 +8,12 @@ namespace FlowTiles.Utils {
         public readonly int Length;
         private UnsafeList<T> data;
 
-        public UnsafeArray(int size, Allocator allocator) {
+        public UnsafeArray(int size, Allocator allocator, T initialiseTo = default) {
             Length = size;
             data = new UnsafeList<T>(size, allocator);
             data.Length = size;
             for (int i = 0; i < size; i++) {
-                data[i] = default;
+                data[i] = initialiseTo;
             }
         }
 

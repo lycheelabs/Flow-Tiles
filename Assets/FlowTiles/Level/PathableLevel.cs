@@ -1,12 +1,20 @@
-﻿using FlowTiles.PortalPaths;
+﻿using System;
+using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Mathematics;
 
 namespace FlowTiles {
 
-    public struct SectorFlags {
-        public bool NeedsRebuilding;
+    public struct TerrainCosts {
+        public UnsafeArray<byte> Mapping;
+        public TerrainCosts(int numTerrainTypes) {
+            Mapping = new UnsafeArray<byte>(numTerrainTypes, Allocator.Persistent, initialiseTo: 1);
+        } 
+        public byte GetCost (int terrainType) {
+            if (terrainType < 0 || terrainType >= Mapping.Length) return 0;
+            return 1;
+        }
     }
 
     public struct PathableLevel {
@@ -18,29 +26,64 @@ namespace FlowTiles {
         public readonly CellRect Bounds;
 
         public NativeField<bool> Obstacles;
-        public NativeField<byte> BaseCosts;
-        public NativeField<byte> ModifiedCosts;
+        public NativeField<byte> Terrain;
+        public NativeField<byte> Costs;
+        
+        public readonly int NumMovementTypes;
+        public readonly int NumTerrainTypes;
+        public NativeArray<TerrainCosts> TerrainCosts;
+
         public NativeField<SectorFlags> SectorFlags;
         public NativeReference<bool> NeedsRebuilding;
 
-        public PathableLevel(int width, int height, int resolution) {
+        public PathableLevel(int width, int height, int resolution, int numMovementTypes = 1, int numTerrainTypes = 1) {
             Size = new int2(width, height);
             Layout = new SectorLayout(Size, resolution);
             Bounds = new CellRect(0, Size - 1);
 
             Obstacles = new NativeField<bool>(Size, Allocator.Persistent);
-            BaseCosts = new NativeField<byte>(Size, Allocator.Persistent, initialiseTo: 1);
-            ModifiedCosts = new NativeField<byte>(Size, Allocator.Persistent);
+            Terrain = new NativeField<byte>(Size, Allocator.Persistent);
+            Costs = new NativeField<byte>(Size, Allocator.Persistent);
+            
+            NumMovementTypes = numMovementTypes;
+            NumTerrainTypes = numTerrainTypes;
+            TerrainCosts = new NativeArray<TerrainCosts>(numMovementTypes, Allocator.Persistent);
+            for (int i = 0; i < numMovementTypes; i++) {
+                TerrainCosts[i] = new TerrainCosts(numTerrainTypes);
+            }
 
             var initialise = new SectorFlags { NeedsRebuilding = true };
             SectorFlags = new NativeField<SectorFlags>(Layout.SizeSectors, Allocator.Persistent, initialise);
             NeedsRebuilding = new NativeReference<bool>(true, Allocator.Persistent);
         }
 
+        public void SetTerrainCost(int movementType, int terrainType, byte newCost) {
+            if (newCost <= 0 || newCost > 255) {
+                throw new ArgumentException("Terrain costs must be in range 1-255");
+            }
+            if (movementType < 0 || movementType >= NumMovementTypes) {
+                throw new ArgumentException("The provided movement type is not known");
+            }
+            if (terrainType < 0 || terrainType >= NumTerrainTypes) {
+                throw new ArgumentException("The provided terrain type is not known");
+            }
+
+            var costSet = TerrainCosts[terrainType];
+            var costs = costSet.Mapping;
+            costs[terrainType] = newCost;
+            costSet.Mapping = costs;
+            TerrainCosts[terrainType] = costSet;
+        }
+
         public void SetObstacle (int x, int y, bool obstacle = true) {
             Obstacles[x, y] = obstacle;
             NeedsRebuilding.Value = true;
+            UpdateRebuildFlags(x, y);
+        }
 
+        public void SetTerrain(int x, int y, byte type) {
+            Terrain[x, y] = type;
+            NeedsRebuilding.Value = true;
             UpdateRebuildFlags(x, y);
         }
 
@@ -69,18 +112,19 @@ namespace FlowTiles {
             }
         }
 
-        public byte GetCostAt (int x, int y) {
+        public byte GetCostAt (int x, int y, int movementType) {
             var obstacle = Obstacles[x, y];
             if (obstacle) {
                 return WALL_COST;
             }
 
-            var modifiedCost = ModifiedCosts[x, y];
-            if (modifiedCost > 0) {
-                return modifiedCost;
-            }
+            int terrainType = Terrain[x, y];
+            movementType = math.clamp(movementType, 0, NumMovementTypes - 1);
+            terrainType = math.clamp(terrainType, 0, NumTerrainTypes - 1);
 
-            return BaseCosts[x, y];
+            var terrainCost = TerrainCosts[movementType].Mapping[terrainType];
+            var extraCost = Costs[x, y];
+            return (byte)math.min(terrainCost + extraCost, WALL_COST - 1);
         }
 
     }

@@ -46,6 +46,27 @@ namespace FlowTiles.Examples {
             }
         }
 
+        public static void InitialiseWaterPools(PathableLevel level) {
+            var size = level.Size;
+            var sizeSectors = level.Layout.SizeSectors;
+            var resolution = level.Layout.Resolution;
+
+            for (int sector = 0; sector < sizeSectors.x; sector++) {
+                var x0 = sector * resolution;
+                var x1 = x0 + resolution;
+                for (int x = x0 + 2; x < x1 - 2; x++) {
+                    var yGap = sector * resolution + resolution / 2;
+                    for (int y = 2; y < size.y - 2; y++) {
+                        var gapDist = math.abs(yGap - y);
+                        if (gapDist >= 2) {
+                            level.SetTerrain(x, y, (byte)TerrainType.WATER);
+                        }
+                    }
+                }
+            }
+            
+        }
+
     }
 
 }

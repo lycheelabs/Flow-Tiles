@@ -27,12 +27,12 @@ namespace FlowTiles.PortalPaths {
             return Sectors[index].IsCreated;
         }
 
-        public Sector IndexToSector(int index, int travelType) {
+        public Sector IndexToSector(int index) {
             var sector = Sectors[index];
             return sector;
         }
 
-        public Sector CellToSector(int2 pos, int travelType) {
+        public Sector CellToSector(int2 pos) {
             var sectorX = pos.x / Layout.Resolution;
             var sectorY = pos.y / Layout.Resolution;
             var sector = Sectors[sectorX + sectorY * Layout.SizeSectors.x];
@@ -156,7 +156,7 @@ namespace FlowTiles.PortalPaths {
 
             Maps = new UnsafeArray<SectorMap>(1, Allocator.Persistent);
             for (int i = 0; i < Maps.Length; i++) {
-                var map = new SectorMap(Index, Bounds, version);
+                var map = new SectorMap(Index, Bounds, i, version);
                 map.Costs.Initialise(level);
                 Maps[i] = map;
             }
@@ -182,12 +182,12 @@ namespace FlowTiles.PortalPaths {
         public CostMap Costs;
         public PortalMap Portals;
 
-        public SectorMap(int index, CellRect boundaries, int version) {
+        public SectorMap(int index, CellRect boundaries, int movementType, int version) {
             Index = index;
             Bounds = boundaries;
             Version = version;
 
-            Costs = new CostMap(index, boundaries);
+            Costs = new CostMap(index, boundaries, movementType);
             Portals = new PortalMap(index, boundaries);
         }
 

@@ -68,6 +68,7 @@ namespace FlowTiles.Examples {
             em.SetComponentData(singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = Level.Obstacles,
+                Terrain = Level.Terrain,
                 Colors = ColorData,
                 Flows = FlowData,
             });
@@ -113,10 +114,11 @@ namespace FlowTiles.Examples {
             }   
         }
 
-        public void SpawnAgentAt (int2 cell, AgentType type) {
+        public void SpawnAgentAt (int2 cell, AgentType type, int travelType = 0) {
             AgentSpawns.Add(new SpawnAgentCommand {
                 Cell = cell,
                 Type = type,
+
             });
         }
 

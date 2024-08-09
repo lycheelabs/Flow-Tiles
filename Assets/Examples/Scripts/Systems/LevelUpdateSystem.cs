@@ -23,6 +23,7 @@ namespace FlowTiles.Examples {
             new WallsJob {
                 LevelSize = setup.Size,
                 LevelWalls = setup.Walls,
+                LevelTerrain = setup.Terrain,
                 LevelColors = setup.Colors,
             }.ScheduleParallel();
 
@@ -37,19 +38,28 @@ namespace FlowTiles.Examples {
 
             public int2 LevelSize;
             [ReadOnly] public NativeField<bool> LevelWalls;
+            [ReadOnly] public NativeField<byte> LevelTerrain;
             [ReadOnly] public NativeField<float4> LevelColors;
 
             [BurstCompile]
-            private void Execute(Aspect wall, [ChunkIndexInQuery] int sortKey) {
-                var cell = wall.Cell;
-                var data = LevelWalls[cell.x, cell.y];
+            private void Execute(Aspect quad, [ChunkIndexInQuery] int sortKey) {
+                var cell = quad.Cell;
+                var wall = LevelWalls[cell.x, cell.y];
+                var terrain = LevelTerrain[cell.x, cell.y];
 
-                var brightness = data ? 0f : 1;
-                wall.Color = new float4(brightness);
+                float4 color = 1;
+                if (terrain == (byte)TerrainType.WATER) {
+                    color = new float4(0.2f, 0.36f, 1f, 1f);
+                }
+                if (wall) {
+                    color = 0;
+                }
 
                 if (VISUALISE_GRAPH_COLORS) {
-                    wall.Color *= LevelColors[cell.x, cell.y];
+                    color *= LevelColors[cell.x, cell.y];
                 }
+
+                quad.Color = color;
             }
 
             public readonly partial struct Aspect : IAspect {

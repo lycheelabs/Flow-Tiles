@@ -162,7 +162,7 @@ namespace FlowTiles.ECS {
                 int maxVersionCheck = math.min(progress.NodeIndex + versionCheckDistance, path.Nodes.Length);
                 for (int i = progress.NodeIndex; i < maxVersionCheck; i++) {
                     var checkNode = path.Nodes[i];
-                    var checkSector = Graph.CellToSector(checkNode.Position.Cell, travelType);
+                    var checkSector = Graph.CellToSector(checkNode.Position.Cell);
                     if (checkSector.Version != checkNode.Version) {
                         ECB.AddComponent(sortKey, entity, new InvalidPathData {
                             Key = progress.PathKey,
@@ -193,7 +193,7 @@ namespace FlowTiles.ECS {
                 }
 
                 // Check flow version
-                var flowMap = Graph.CellToSector(pathNode.Position.Cell, travelType);
+                var flowMap = Graph.CellToSector(pathNode.Position.Cell);
                 if (flow.FlowField.Version != flowMap.Version) {
                     ECB.AddComponent(sortKey, entity, new InvalidFlowData {
                         Key = flowKey,
