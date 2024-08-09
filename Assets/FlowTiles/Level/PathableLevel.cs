@@ -29,14 +29,14 @@ namespace FlowTiles {
         public NativeField<byte> Terrain;
         public NativeField<byte> Costs;
         
-        public readonly int NumMovementTypes;
+        public readonly int NumTravelTypes;
         public readonly int NumTerrainTypes;
         public NativeArray<TerrainCosts> TerrainCosts;
 
         public NativeField<SectorFlags> SectorFlags;
         public NativeReference<bool> NeedsRebuilding;
 
-        public PathableLevel(int width, int height, int resolution, int numMovementTypes = 1, int numTerrainTypes = 1) {
+        public PathableLevel(int width, int height, int resolution, int numTravelTypes = 1, int numTerrainTypes = 1) {
             Size = new int2(width, height);
             Layout = new SectorLayout(Size, resolution);
             Bounds = new CellRect(0, Size - 1);
@@ -45,10 +45,10 @@ namespace FlowTiles {
             Terrain = new NativeField<byte>(Size, Allocator.Persistent);
             Costs = new NativeField<byte>(Size, Allocator.Persistent);
             
-            NumMovementTypes = numMovementTypes;
+            NumTravelTypes = numTravelTypes;
             NumTerrainTypes = numTerrainTypes;
-            TerrainCosts = new NativeArray<TerrainCosts>(numMovementTypes, Allocator.Persistent);
-            for (int i = 0; i < numMovementTypes; i++) {
+            TerrainCosts = new NativeArray<TerrainCosts>(numTravelTypes, Allocator.Persistent);
+            for (int i = 0; i < numTravelTypes; i++) {
                 TerrainCosts[i] = new TerrainCosts(numTerrainTypes);
             }
 
@@ -57,22 +57,22 @@ namespace FlowTiles {
             NeedsRebuilding = new NativeReference<bool>(true, Allocator.Persistent);
         }
 
-        public void SetTerrainCost(int movementType, int terrainType, byte newCost) {
+        public void SetTerrainCost(int travelType, int terrainType, byte newCost) {
             if (newCost <= 0 || newCost > 255) {
                 throw new ArgumentException("Terrain costs must be in range 1-255");
             }
-            if (movementType < 0 || movementType >= NumMovementTypes) {
+            if (travelType < 0 || travelType >= NumTravelTypes) {
                 throw new ArgumentException("The provided movement type is not known");
             }
             if (terrainType < 0 || terrainType >= NumTerrainTypes) {
                 throw new ArgumentException("The provided terrain type is not known");
             }
 
-            var costSet = TerrainCosts[terrainType];
+            var costSet = TerrainCosts[travelType];
             var costs = costSet.Mapping;
             costs[terrainType] = newCost;
             costSet.Mapping = costs;
-            TerrainCosts[terrainType] = costSet;
+            TerrainCosts[travelType] = costSet;
         }
 
         public void SetObstacle (int x, int y, bool obstacle = true) {
@@ -112,17 +112,17 @@ namespace FlowTiles {
             }
         }
 
-        public byte GetCostAt (int x, int y, int movementType) {
+        public byte GetCostAt (int x, int y, int travelType) {
             var obstacle = Obstacles[x, y];
             if (obstacle) {
                 return WALL_COST;
             }
 
             int terrainType = Terrain[x, y];
-            movementType = math.clamp(movementType, 0, NumMovementTypes - 1);
+            travelType = math.clamp(travelType, 0, NumTravelTypes - 1);
             terrainType = math.clamp(terrainType, 0, NumTerrainTypes - 1);
 
-            var terrainCost = TerrainCosts[movementType].Mapping[terrainType];
+            var terrainCost = TerrainCosts[travelType].Mapping[terrainType];
             var extraCost = Costs[x, y];
             return (byte)math.min(terrainCost + extraCost, WALL_COST - 1);
         }

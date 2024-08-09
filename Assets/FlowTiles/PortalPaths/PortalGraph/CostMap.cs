@@ -51,6 +51,11 @@ namespace FlowTiles.PortalPaths {
                 && Costs[localPos.x, localPos.y] != PathableLevel.WALL_COST;
         }
 
+        public byte GetCostAt(int2 pos) {
+            var localPos = pos - Bounds.MinCell;
+            return Costs[localPos.x, localPos.y];
+        }
+
         // --------------------------------------------------------------
 
         private void CopyCosts(PathableLevel map, int2 corner) {

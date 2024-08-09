@@ -22,7 +22,7 @@ namespace FlowTiles.Examples {
             LevelGeneration.InitialiseWaterPools(map);
 
             Level = new DemoLevel(map, Resolution);
-            Level.SpawnAgentAt(new int2(0, (int)(LevelSize * 0.33f)), AgentType.MULTIPLE);
+            Level.SpawnAgentAt(new int2(0, (int)(LevelSize * 0.33f)), AgentType.SINGLE);
             Level.SpawnAgentAt(new int2(0, (int)(LevelSize * 0.66f)), AgentType.MULTIPLE);
 
         }

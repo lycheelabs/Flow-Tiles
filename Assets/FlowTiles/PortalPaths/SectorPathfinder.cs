@@ -17,7 +17,7 @@ namespace FlowTiles.PortalPaths {
             Visited = new NativeHashSet<int2>(sectorCells, allocator);
             Parent = new NativeHashMap<int2, int2>(sectorCells, allocator);
             GScore = new NativeHashMap<int2, int>(sectorCells, allocator);
-            Queue = new NativeMinHeap(sectorCells, allocator);
+            Queue = new NativeMinHeap(sectorCells * 2, allocator);
             
             Directions = new NativeArray<int2>(4, allocator);
             Directions[0] = new int2(1, 0);

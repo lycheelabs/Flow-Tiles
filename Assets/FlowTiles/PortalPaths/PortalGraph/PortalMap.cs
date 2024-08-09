@@ -80,7 +80,6 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void CreateExit(int targetSector, bool horizontal, int lineSize, int i, int flip) {
-            if (lineSize <= 0) { return; }
             var start = i - lineSize;
             var end = i - 1;
 
