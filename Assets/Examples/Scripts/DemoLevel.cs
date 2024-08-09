@@ -155,8 +155,8 @@ namespace FlowTiles.Examples {
                 if (showFlow) {
                     for (int i = 0; i < path.Length; i++) {
                         var node = path[i];
-                        var sector = Graph.IndexToSectorMap(node.Position.SectorIndex, 0);
-                        var flow = CalculateFlowJob.ScheduleAndComplete(sector.Costs, node.GoalBounds, node.Direction);
+                        var map = Graph.IndexToSectorMap(node.Position.SectorIndex, 0);
+                        var flow = CalculateFlowJob.ScheduleAndComplete(map, node.GoalBounds, node.Direction);
                         CopyFlowVisualisationData(flow);
                     }
                 }

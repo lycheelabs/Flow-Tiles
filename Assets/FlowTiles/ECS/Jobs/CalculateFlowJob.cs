@@ -11,15 +11,16 @@ namespace FlowTiles.ECS {
     [BurstCompile]
     public struct CalculateFlowJob : IJob {
 
-        public static FlowField ScheduleAndComplete(CostMap sector, CellRect goalBounds, int2 exitDirection) {
-            var job = new CalculateFlowJob(sector, goalBounds, exitDirection);
+        public static FlowField ScheduleAndComplete(SectorMap map, CellRect goalBounds, int2 exitDirection) {
+            var job = new CalculateFlowJob(map.Costs, goalBounds, exitDirection);
             job.Schedule().Complete();
 
             var result = new FlowField {
-                SectorIndex = sector.Index,
+                SectorIndex = map.Index,
                 Color = job.Color.Value,
-                Size = sector.Bounds.SizeCells,
+                Size = map.Bounds.SizeCells,
                 Directions = job.Flow.Value,
+                Version = map.Version,
             };
 
             job.Dispose();

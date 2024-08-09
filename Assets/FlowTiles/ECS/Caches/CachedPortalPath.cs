@@ -1,5 +1,6 @@
 ﻿using Unity.Collections.LowLevel.Unsafe;
 using FlowTiles.PortalPaths;
+using System;
 
 namespace FlowTiles.ECS {
     public struct CachedPortalPath {
@@ -7,6 +8,10 @@ namespace FlowTiles.ECS {
         public bool IsPending;
         public bool NoPathExists;
         public UnsafeList<PortalPathNode> Nodes;
+
+        public void Dispose() {
+            Nodes.Dispose();
+        }
 
     }
 

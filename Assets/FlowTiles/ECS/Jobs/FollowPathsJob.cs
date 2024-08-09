@@ -64,9 +64,9 @@ namespace FlowTiles.ECS {
                     }
                 }
 
-                // Search for a cached path
+                // Generate or retrieve a path
                 var startKey = Graph.Layout.IndexOfCell(startKeyCell);
-                var pathKey = new int4(startKey, startColor, destKey, destColor);
+                var pathKey = new int4(startKey, startColor, destKey, travelType);
                 var pathCacheHit = PathCache.ContainsKey(pathKey);
                 if (!pathCacheHit) {
                     ECB.AddComponent(sortKey, entity, new MissingPathData {
@@ -79,14 +79,14 @@ namespace FlowTiles.ECS {
 
                 progress.HasPath = true;
                 progress.PathKey = pathKey;
-                progress.NodeIndex = 0;
+                progress.NodeIndex = -1;
             }
 
-            // Read current path
+            // Follow current path
             if (progress.HasPath) {
 
                 // Check destination hasn't changed
-                if (destKey != progress.PathKey.z || destColor != progress.PathKey.w) {
+                if (destKey != progress.PathKey.z || travelType != progress.PathKey.w) {
                     progress.HasPath = false;
                     progress.HasFlow = false;
                     return;
@@ -107,6 +107,7 @@ namespace FlowTiles.ECS {
 
                 // Check for sector change
                 var nodeIsValid = false;
+                int versionCheckDistance = 1;
                 if (progress.NodeIndex >= 0 && progress.NodeIndex < path.Nodes.Length) {
                     var node = path.Nodes[progress.NodeIndex];
                     var nodeCell = node.Position.Cell;
@@ -114,10 +115,13 @@ namespace FlowTiles.ECS {
                     var nodeColor = nodeMap.GetCellColor(nodeCell);
                     nodeIsValid = nodeMap.Index == startMap.Index && nodeColor == startColor;
                 }
+
+                // Connect to a sector
                 if (!nodeIsValid) {
                     var foundNode = false;
+                    versionCheckDistance = 3;
 
-                    // Check next sector
+                    // Default: Check next sector
                     if (progress.NodeIndex < path.Nodes.Length - 1) {
                         var newIndex = progress.NodeIndex + 1;
                         var newNode = path.Nodes[newIndex];
@@ -154,9 +158,24 @@ namespace FlowTiles.ECS {
 
                 }
 
-                // Search for a cached flow
+                // Check path version
+                int maxVersionCheck = math.min(progress.NodeIndex + versionCheckDistance, path.Nodes.Length);
+                for (int i = progress.NodeIndex; i < maxVersionCheck; i++) {
+                    var checkNode = path.Nodes[i];
+                    var checkSector = Graph.CellToSector(checkNode.Position.Cell, travelType);
+                    if (checkSector.Version != checkNode.Version) {
+                        ECB.AddComponent(sortKey, entity, new InvalidPathData {
+                            Key = progress.PathKey,
+                        });
+                        progress.HasPath = false;
+                        progress.HasFlow = false;
+                        return;
+                    }
+                }
+
+                // Generate or retrieve a flow
                 var pathNode = path.Nodes[progress.NodeIndex];
-                var flowKey = pathNode.CacheKey;
+                var flowKey = pathNode.CacheKey(travelType);
                 var flowCacheHit = FlowCache.TryGetValue(flowKey, out var flow);
                 if (!flowCacheHit) {
                     ECB.AddComponent(sortKey, entity, new MissingFlowData {
@@ -173,15 +192,24 @@ namespace FlowTiles.ECS {
                     return;
                 }
 
+                // Check flow version
+                var flowMap = Graph.CellToSector(pathNode.Position.Cell, travelType);
+                if (flow.FlowField.Version != flowMap.Version) {
+                    ECB.AddComponent(sortKey, entity, new InvalidFlowData {
+                        Key = flowKey,
+                    });
+                    progress.HasPath = false;
+                    progress.HasFlow = false;
+                    return;
+                }
+
+                // Find the flow direction
                 progress.HasFlow = true;
                 progress.FlowKey = flowKey;
-
-                // Save the flow direction
                 var cornerCell = Graph.Layout.GetMinCorner(startMap.Index);
                 var pos = position.ValueRO.Position - cornerCell;
                 var direction = flow.FlowField.GetFlow(pos.x, pos.y);
                 result.Direction = direction;
-
 
             }
 

@@ -6,7 +6,7 @@ namespace FlowTiles.ECS {
 
         public int2 goalCell;
         public int2 goalDirection;
-        public int4 cacheKey => new int4(goalCell, goalDirection);
+        public int4 cacheKey;
 
     }
 

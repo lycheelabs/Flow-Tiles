@@ -10,6 +10,7 @@ namespace FlowTiles.FlowFields {
         public short Color;
         public int2 Size;
         public UnsafeField<float2> Directions;
+        public int Version;
 
         public void Dispose() {
             Directions.Dispose();

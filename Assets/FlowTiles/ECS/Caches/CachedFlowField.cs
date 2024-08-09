@@ -1,4 +1,5 @@
-﻿using FlowTiles.FlowFields;
+﻿using System;
+using FlowTiles.FlowFields;
 
 namespace FlowTiles.ECS {
     public struct CachedFlowField {
@@ -6,6 +7,9 @@ namespace FlowTiles.ECS {
         public bool IsPending;
         public FlowField FlowField;
 
-    }
+        public void Dispose() {
+            FlowField.Dispose();
+        }
 
+    }
 }

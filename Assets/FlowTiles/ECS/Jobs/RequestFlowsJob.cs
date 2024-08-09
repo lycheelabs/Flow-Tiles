@@ -22,6 +22,7 @@ namespace FlowTiles.ECS {
                 FlowRequests.Add(new FlowRequest {
                     goalCell = data.ValueRO.Cell,
                     goalDirection = data.ValueRO.Direction,
+                    cacheKey = data.ValueRO.Key,
                 });
 
                 // Store temp data in the cache

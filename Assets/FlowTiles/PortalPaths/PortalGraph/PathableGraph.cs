@@ -27,6 +27,18 @@ namespace FlowTiles.PortalPaths {
             return Sectors[index].IsCreated;
         }
 
+        public Sector IndexToSector(int index, int travelType) {
+            var sector = Sectors[index];
+            return sector;
+        }
+
+        public Sector CellToSector(int2 pos, int travelType) {
+            var sectorX = pos.x / Layout.Resolution;
+            var sectorY = pos.y / Layout.Resolution;
+            var sector = Sectors[sectorX + sectorY * Layout.SizeSectors.x];
+            return sector;
+        }
+
         public SectorMap IndexToSectorMap (int index, int travelType) {
             var sector = Sectors[index];
             var map = sector.Maps[travelType];
@@ -42,11 +54,13 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void ReinitialiseSector(int index, PathableLevel level) {
+            int version = 0;
             if (Sectors[index].IsCreated) {
+                version = Sectors[index].Version + 1;
                 Sectors[index].Dispose();
             }
 
-            Sectors[index] = new Sector(index, Layout.GetSectorBounds(index), level);
+            Sectors[index] = new Sector(index, version, Layout.GetSectorBounds(index), level);
             for (int travelType = 0; travelType < NUM_TRAVEL_TYPES; travelType++) {
                 Sectors[index].Maps[travelType].Initialise(level);
             }
@@ -131,16 +145,18 @@ namespace FlowTiles.PortalPaths {
     public struct Sector {
 
         public readonly int Index;
+        public readonly int Version;
         public readonly CellRect Bounds;
         public UnsafeArray<SectorMap> Maps;
 
-        public Sector(int index, CellRect boundaries, PathableLevel level) {
+        public Sector(int index, int version, CellRect boundaries, PathableLevel level) {
             Index = index;
             Bounds = boundaries;
+            Version = version;
 
             Maps = new UnsafeArray<SectorMap>(1, Allocator.Persistent);
             for (int i = 0; i < Maps.Length; i++) {
-                var map = new SectorMap(Index, Bounds);
+                var map = new SectorMap(Index, Bounds, version);
                 map.Costs.Initialise(level);
                 Maps[i] = map;
             }
@@ -161,13 +177,16 @@ namespace FlowTiles.PortalPaths {
 
         public readonly int Index;
         public readonly CellRect Bounds;
+        public readonly int Version;
 
         public CostMap Costs;
         public PortalMap Portals;
 
-        public SectorMap(int index, CellRect boundaries) {
+        public SectorMap(int index, CellRect boundaries, int version) {
             Index = index;
             Bounds = boundaries;
+            Version = version;
+
             Costs = new CostMap(index, boundaries);
             Portals = new PortalMap(index, boundaries);
         }

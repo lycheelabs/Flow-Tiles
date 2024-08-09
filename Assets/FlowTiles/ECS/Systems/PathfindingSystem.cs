@@ -43,47 +43,64 @@ namespace FlowTiles.ECS {
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-            
-            // Access the global data
+
+            var ecbEarly = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecbLate = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var globalData = SystemAPI.GetSingleton<GlobalPathfindingData>();
             var level = globalData.Level;
             var graph = globalData.Graph;
             
             // Rebuild all dirty graph sectors
             if (level.NeedsRebuilding.Value) {
-                PrepareForRebuild(ref level, ref graph);
-                level.NeedsRebuilding.Value = false;
-
-                var job = new RebuildGraphJob {
-                    Requests = RebuildRequests,
-                    Graph = graph,
-                };
-                state.Dependency = job.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
+                RebuildDirtySectors(ref level, ref graph, ref state);
             }
 
-            // Process pathfinding requests, and cache the results
-            foreach (var request in PathRequests) {
+            // Process path and flow requests, and cache the results
+            ProcessPathRequests(graph);
+            ProcessFlowRequests(graph);
 
-                // Discard duplicate requests
-                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && !existing.IsPending) {
-                    continue;
-                }
+            // Invalidate old paths
+            new InvalidatePathsJob {
+                PathCache = PathCache.Cache,
+                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
 
-                // Calculate the path
-                var origin = request.originCell;
-                var dest = request.destCell;
-                var success = PortalPathJob.ScheduleAndComplete(graph, origin, dest, out var path);
+            // Invalidate old flows
+            new InvalidateFlowsJob {
+                FlowCache = FlowCache.Cache,
+                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
 
-                // Cache the path
-                PathCache.Cache[request.cacheKey] = new CachedPortalPath {
-                    IsPending = false,
-                    NoPathExists = !success,
-                    Nodes = path
-                };
-            }
-            PathRequests.Clear();
+            // Accumulate path rquests
+            new RequestPathsJob {
+                PathCache = PathCache.Cache,
+                PathRequests = PathRequests,
+                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
 
-            // Process flow field requests, and cache the results
+            // Accumulate flow rquests
+            new RequestFlowsJob {
+                FlowCache = FlowCache.Cache,
+                FlowRequests = FlowRequests,
+                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
+
+            // Follow the paths
+            new FollowPathsJob {
+                Graph = graph,
+                PathCache = PathCache.Cache,
+                FlowCache = FlowCache.Cache,
+                ECB = ecbLate.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
+            }.ScheduleParallel();
+
+            // Visualises pathing data
+            new DebugPathsJob {
+                FlowCache = FlowCache.Cache,
+            }.ScheduleParallel();
+
+        }
+
+        private void ProcessFlowRequests(PathableGraph graph) {
             foreach (var request in FlowRequests) {
 
                 // Discard duplicate requests
@@ -104,47 +121,40 @@ namespace FlowTiles.ECS {
 
                 // Calculate the flow tile
                 var goalDir = request.goalDirection;
-                var flow = CalculateFlowJob.ScheduleAndComplete(goalMap.Costs, goalBounds, goalDir);
+                var flow = CalculateFlowJob.ScheduleAndComplete(goalMap, goalBounds, goalDir);
 
-                FlowCache.Cache[request.cacheKey] = new CachedFlowField { 
+                FlowCache.Cache[request.cacheKey] = new CachedFlowField {
                     IsPending = false,
                     FlowField = flow
                 };
             }
             FlowRequests.Clear();
-            
-            var ecbEarly = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecbLate = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-                        
-            new RequestPathsJob {
-                PathCache = PathCache.Cache,
-                PathRequests = PathRequests,
-                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
-
-            new RequestFlowsJob {
-                FlowCache = FlowCache.Cache,
-                FlowRequests = FlowRequests,
-                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
-
-            new FollowPathsJob {
-                Graph = graph,
-                PathCache = PathCache.Cache,
-                FlowCache = FlowCache.Cache,
-                ECB = ecbLate.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
-            }.ScheduleParallel();
-
-            new DebugPathsJob {
-                FlowCache = FlowCache.Cache,
-            }.ScheduleParallel();
-
-            globalData.Level = level;
-            SystemAPI.SetSingleton(globalData);
-
         }
 
-        private void PrepareForRebuild(ref PathableLevel level, ref PathableGraph graph) {
+        private void ProcessPathRequests(PathableGraph graph) {
+            foreach (var request in PathRequests) {
+
+                // Discard duplicate requests
+                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && !existing.IsPending) {
+                    continue;
+                }
+
+                // Calculate the path
+                var origin = request.originCell;
+                var dest = request.destCell;
+                var success = PortalPathJob.ScheduleAndComplete(graph, origin, dest, out var path);
+
+                // Cache the path
+                PathCache.Cache[request.cacheKey] = new CachedPortalPath {
+                    IsPending = false,
+                    NoPathExists = !success,
+                    Nodes = path
+                };
+            }
+            PathRequests.Clear();
+        }
+
+        private void RebuildDirtySectors(ref PathableLevel level, ref PathableGraph graph, ref SystemState state) {
             RebuildRequests.Clear();
             for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
                 if (level.SectorFlags[index].NeedsRebuilding) {
@@ -153,9 +163,18 @@ namespace FlowTiles.ECS {
                     RebuildRequests.Add(index);
                 }
             }
+
             for (int index = 0; index < RebuildRequests.Length; index++) {
                 graph.BuildSectorExits(RebuildRequests[index]);
             }
+
+            var job = new RebuildGraphJob {
+                Requests = RebuildRequests,
+                Graph = graph,
+            };
+            state.Dependency = job.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
+
+            level.NeedsRebuilding.Value = false;
         }
 
         public void OnDestroy (ref SystemState state) {

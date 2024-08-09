@@ -27,14 +27,16 @@ namespace FlowTiles.PortalPaths {
         public bool TryFindPath(int2 start, int2 dest, int travelType, ref UnsafeList<PortalPathNode> result) {
 
             // Find start and end clusters
-            var startPortal = Graph.CellToSectorMap(start, travelType).GetRootPortal(start);
-            var destCluster = Graph.CellToSectorMap(dest, travelType).GetRootPortal(dest);
+            var startMap = Graph.CellToSectorMap(start, travelType);
+            var destMap = Graph.CellToSectorMap(dest, travelType);
+            var startPortal = startMap.GetRootPortal(start);
+            var destCluster = destMap.GetRootPortal(dest);
             if (Graph.CellToSectorMap(start, travelType).TryGetExitPortal(start, out var exit)) {
                 startPortal = exit;
             }
 
             // Check whether start and dest clusters match
-            var destNode = PortalPathNode.NewDestNode(destCluster, dest);
+            var destNode = PortalPathNode.NewDestNode(destCluster, dest, destMap.Version);
             if (startPortal.IsInSameCluster(destCluster)) {
                 result.Add(destNode);
                 return true;
@@ -57,6 +59,7 @@ namespace FlowTiles.PortalPaths {
                         GoalBounds = portal.Bounds,
                         Direction = edge.Span,
                         Color = portal.Color,
+                        Version = map.Version,
                     });
                 }
             }
