@@ -132,37 +132,37 @@ namespace FlowTiles.PortalPaths {
         /// Connect all exit portals inside this sector together (if their colors match)
         /// and build a root cluster
         /// </summary>
-        public void BuildInternalConnections (CostMap costs, ColorMap colors, SectorPathfinder pathfinder) {
-            ColorExitPortals(colors);
-            BuildRootConnections(colors);
-            BuildExitConnections(costs, pathfinder);
+        public void BuildInternalConnections (SectorMap sector, SectorPathfinder pathfinder) {
+            ColorExitPortals(sector);
+            BuildRootConnections(sector);
+            BuildExitConnections(sector, pathfinder);
         }
 
         // --------------------------------------------------------------
 
-        private void ColorExitPortals(ColorMap colors) {
+        private void ColorExitPortals(SectorMap sector) {
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
                 var tile = portal.Position.Cell - Bounds.MinCell;
-                var color = colors.Colors[tile.x, tile.y];
-                portal.Color = color;
+                portal.Color = sector.Colors.Cells[tile.x, tile.y];
+                portal.Island = sector.Islands.Cells[tile.x, tile.y];
                 ExitPortals[i] = portal;
             }
         }
 
-        private void BuildRootConnections (ColorMap costs) {
+        private void BuildRootConnections (SectorMap sector) {
 
             // Color the edge portals
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
                 var tile = portal.Position.Cell - Bounds.MinCell;
-                var color = costs.Colors[tile.x, tile.y];
+                var color = sector.Costs.Cells[tile.x, tile.y];
                 portal.Color = color;
                 ExitPortals[i] = portal;
             }
 
             // Create the color roots
-            for (int color = 1; color <= costs.NumColors; color++) {
+            for (int color = 1; color <= sector.Colors.NumColors; color++) {
                 var colorPortal = new Portal(Bounds.CentreCell, Index, 0);
                 colorPortal.Color = color;
 
@@ -182,7 +182,7 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        private void BuildExitConnections (CostMap costs, SectorPathfinder pathfinder) {
+        private void BuildExitConnections (SectorMap sector, SectorPathfinder pathfinder) {
             int i, j;
             Portal n1, n2;
 
@@ -193,11 +193,11 @@ namespace FlowTiles.PortalPaths {
                 n1 = ExitPortals[i];
                 for (j = i + 1; j < ExitPortals.Length; ++j) {
                     n2 = ExitPortals[j];
-                    //if (n1.Color == n2.Color) {
-                        TryConnectExits(ref n1, ref n2, costs, pathfinder);
+                    if (n1.Island == n2.Island) {
+                        TryConnectExits(ref n1, ref n2, sector.Costs, pathfinder);
                         ExitPortals[i] = n1;
                         ExitPortals[j] = n2;
-                    //}
+                    }
                 }
             }
         }
@@ -207,7 +207,7 @@ namespace FlowTiles.PortalPaths {
 
             var corner = sector.Bounds.MinCell;
             var pathCost = pathfinder.FindTravelCost(
-                sector.Costs, n1.Position.Cell - corner, n2.Position.Cell - corner);
+                sector.Cells, n1.Position.Cell - corner, n2.Position.Cell - corner);
 
             if (pathCost > 0) {
                 e1 = new PortalEdge() {

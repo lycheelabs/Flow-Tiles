@@ -65,7 +65,7 @@ namespace FlowTiles.FlowFields {
                     Queue.Push(new MinHeapNode(goal, 0));
                 }
             }
-            Color = Colors.Colors[goalMin.x, goalMin.y];
+            Color = Colors.Cells[goalMin.x, goalMin.y];
 
             // Iterate over the cells once in least-cost order
             int2 current;
@@ -83,7 +83,7 @@ namespace FlowTiles.FlowFields {
                     }
 
                     // Check if the cell is passable
-                    var cost = Costs.Costs[next.x, next.y];
+                    var cost = Costs.Cells[next.x, next.y];
                     if (cost == PathableLevel.WALL_COST) {
                         continue;
                     }

@@ -9,7 +9,7 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 10;
-        public bool VisualiseConnections;
+        public VisualiseMode VisualiseMode;
 
         private DemoLevel Level;
 
@@ -25,7 +25,7 @@ namespace FlowTiles.Examples {
 
         void Update() {
             Level.Update();
-            Level.VisualiseSectors(VisualiseConnections);
+            Level.VisualiseMode = VisualiseMode;
             Level.VisualiseAgentFlows();
 
             var position = Camera.main.ScreenToWorldPoint(Input.mousePosition); 

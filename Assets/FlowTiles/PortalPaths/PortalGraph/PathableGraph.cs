@@ -149,7 +149,8 @@ namespace FlowTiles.PortalPaths {
             for (int travelType = 0; travelType < NumTravelTypes; travelType++) {
                 var map = sector.Maps[travelType];
                 map.Colors.CalculateColors(map.Costs);
-                map.Portals.BuildInternalConnections(map.Costs, map.Colors, pathfinder);
+                map.Islands.CalculateIslands(map.Costs);
+                map.Portals.BuildInternalConnections(map, pathfinder);
                 sector.Maps[travelType] = map;
             }
         }
@@ -195,6 +196,7 @@ namespace FlowTiles.PortalPaths {
 
         public CostMap Costs;
         public ColorMap Colors;
+        public IslandMap Islands;
         public PortalMap Portals;
 
         public SectorMap(int index, CellRect boundaries, int travelType, int version) {
@@ -204,6 +206,7 @@ namespace FlowTiles.PortalPaths {
 
             Costs = new CostMap(index, boundaries, travelType);
             Colors = new ColorMap(index, boundaries);
+            Islands = new IslandMap(index, boundaries);
             Portals = new PortalMap(index, boundaries);
         }
 
@@ -213,17 +216,19 @@ namespace FlowTiles.PortalPaths {
 
         public void Dispose() {
             Costs.Dispose();
+            Colors.Dispose();
+            Islands.Dispose();
             Portals.Dispose();
         }
 
         public int GetCellColor(int2 cell) {
             var localCell = cell - Bounds.MinCell;
-            return Colors.Colors[localCell.x, localCell.y];
+            return Colors.Cells[localCell.x, localCell.y];
         }
 
         public Portal GetRootPortal(int2 cell) {
             var localCell = cell - Bounds.MinCell;
-            var color = Colors.Colors[localCell.x, localCell.y];
+            var color = Colors.Cells[localCell.x, localCell.y];
             return Portals.RootPortals[color - 1];
         }
 

@@ -9,14 +9,16 @@ namespace FlowTiles.PortalPaths {
         public readonly SectorCell Position;
         public readonly CellRect Bounds;
 
-        public UnsafeList<PortalEdge> Edges;
         public int Color;
+        public int Island;
+        public UnsafeList<PortalEdge> Edges;
 
         public Portal(int2 cell, int sector, int2 direction) {
             Position = new SectorCell(sector, cell);
             Bounds = new CellRect(cell, cell);
             Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
             Color = -1;
+            Island = -1;
         }
 
         public Portal(int2 corner1, int2 corner2, int sector, int2 direction) {
@@ -24,10 +26,11 @@ namespace FlowTiles.PortalPaths {
             Bounds = new CellRect(corner1, corner2);
             Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
             Color = -1;
+            Island = -1;
         }
 
         public bool IsSamePortal (Portal other) {
-            return other.Position.Equals(Position) && other.Color == Color;
+            return other.Position.Equals(Position);
         }
 
         public bool IsInSameCluster (Portal other) {

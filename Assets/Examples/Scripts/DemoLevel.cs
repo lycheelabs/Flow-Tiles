@@ -12,6 +12,12 @@ using UnityEngine;
 
 namespace FlowTiles.Examples {
 
+    public enum VisualiseMode {
+        NONE,
+        CONNECTIONS, 
+        COLORS, 
+        ISLANDS
+    }
     public class DemoLevel {
 
         private const float ColorFading = 0.4f;
@@ -29,8 +35,8 @@ namespace FlowTiles.Examples {
 
         public int2 LevelSize;
         public int Resolution;
-        public bool VisualiseConnections;
-        public bool VisualiseColors;
+        public VisualiseMode VisualiseMode;
+        public int VisualisedTravelType;
 
         private PathableLevel Level;
         private NativeField<float4> ColorData;
@@ -79,12 +85,13 @@ namespace FlowTiles.Examples {
 
         public void Update() {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var showColors = VisualiseMode == VisualiseMode.COLORS || VisualiseMode == VisualiseMode.ISLANDS;
             em.SetComponentData(Singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = Level.Obstacles,
                 Terrain = Level.Terrain,
                 Flows = FlowData,
-                VisualiseColors = VisualiseColors,
+                VisualiseColors = showColors,
                 Colors = ColorData,
             });
 
@@ -118,14 +125,33 @@ namespace FlowTiles.Examples {
                 }
             }
 
-            if (VisualiseColors) {
+            Visualisation.DrawSectors(Graph);
+            if (VisualiseMode == VisualiseMode.CONNECTIONS) {
+                Visualisation.DrawSectorConnections(Graph, VisualisedTravelType);
+            }
+
+            if (VisualiseMode == VisualiseMode.COLORS) {
                 for (int y = 0; y < LevelSize.x; y++) {
                     for (int x = 0; x < LevelSize.y; x++) {
                         var sector = Graph.CellToSectorMap(new int2(x, y), 0);
-                        var color = sector.Colors.Colors[x % Resolution, y % Resolution];
+                        var color = sector.Colors.Cells[x % Resolution, y % Resolution];
                         if (color > 0) {
                             ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
                         } else {
+                            ColorData[x, y] = 1;
+                        }
+                    }
+                }
+            }
+            if (VisualiseMode == VisualiseMode.ISLANDS) {
+                for (int y = 0; y < LevelSize.x; y++) {
+                    for (int x = 0; x < LevelSize.y; x++) {
+                        var sector = Graph.CellToSectorMap(new int2(x, y), 0);
+                        var color = sector.Islands.Cells[x % Resolution, y % Resolution];
+                        if (color > 0) {
+                            ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
+                        }
+                        else {
                             ColorData[x, y] = 1;
                         }
                     }
@@ -156,10 +182,6 @@ namespace FlowTiles.Examples {
             Level.SetTerrain(cell.x, cell.y, (byte)type);
         }
 
-        public void VisualiseSectors(bool visualiseConnections, int travelType = 0) {
-            Visualisation.DrawSectors(Graph, visualiseConnections, travelType);
-        }
-
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
 
             var pathfinder = new PortalPathfinder(Graph);
@@ -172,7 +194,7 @@ namespace FlowTiles.Examples {
 
                 // Draw portals
                 for (int i = 0; i < path.Length; i++) {
-                    Visualisation.DrawPortal(path[i].GoalBounds);
+                    Visualisation.DrawRect(path[i].GoalBounds, Color.green);
                 }
 
                 // Draw links
@@ -218,7 +240,7 @@ namespace FlowTiles.Examples {
                     var colors = Graph.CellToSectorMap(new int2(x, y), 0).Colors;
                     var mapCell = new int2(x + bounds.MinCell.x, y + bounds.MinCell.y);
                     var flow = flowField.GetFlow(x, y);
-                    var cellColor = colors.Colors[x, y];
+                    var cellColor = colors.Cells[x, y];
                     if (FlowData[mapCell.x, mapCell.y].Equals(new float2(0)) || cellColor == flowField.Color) {
                         FlowData[mapCell.x, mapCell.y] = flow;
                     }

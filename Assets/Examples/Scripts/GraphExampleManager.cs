@@ -7,8 +7,7 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 20;
-        public bool VisualiseConnections;
-        public bool VisualiseColors;
+        public VisualiseMode VisualiseMode;
 
         private DemoLevel Level;
         private int2 startCell;
@@ -28,8 +27,7 @@ namespace FlowTiles.Examples {
 
         void Update() {
             Level.Update();
-            Level.VisualiseSectors(VisualiseConnections);
-            Level.VisualiseColors = VisualiseColors;
+            Level.VisualiseMode = VisualiseMode;
 
             var position = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             var mouseCell = new int2((int)(position.x + 0.5f), (int)(position.y + 0.5f));
