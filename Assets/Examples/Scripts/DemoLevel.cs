@@ -30,6 +30,7 @@ namespace FlowTiles.Examples {
         public int2 LevelSize;
         public int Resolution;
         public bool VisualiseConnections;
+        public bool VisualiseColors;
 
         private PathableLevel Level;
         private NativeField<float4> ColorData;
@@ -37,6 +38,7 @@ namespace FlowTiles.Examples {
         private PathableGraph Graph;
 
         private List<SpawnAgentCommand> AgentSpawns = new List<SpawnAgentCommand>();
+        private bool isVisualisingColors;
 
         public DemoLevel (PathableLevel level, int resolution) {
             Level = level;
@@ -49,16 +51,6 @@ namespace FlowTiles.Examples {
             // Allocate visualisation data
             ColorData = new NativeField<float4>(LevelSize, Allocator.Persistent, initialiseTo: 1);
             FlowData = new NativeField<float2>(LevelSize, Allocator.Persistent);
-
-            /*for (int y = 0; y < LevelSize.x; y++) {
-                for (int x = 0; x < LevelSize.y; x++) {
-                    var sector = Graph.GetCostSector(x, y);
-                    var color = sector.Colors[x % Resolution, y % Resolution];
-                    if (color > 0) {
-                        ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
-                    }
-                }
-            }*/
 
             // Initialise the ECS simulation
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -114,7 +106,30 @@ namespace FlowTiles.Examples {
                     }
                     AgentSpawns.Clear();
                 }
-            }   
+            }
+
+            if (VisualiseColors) {
+                isVisualisingColors = true;
+                for (int y = 0; y < LevelSize.x; y++) {
+                    for (int x = 0; x < LevelSize.y; x++) {
+                        var sector = Graph.CellToSectorMap(new int2(x, y), 0);
+                        var color = sector.Costs.Colors[x % Resolution, y % Resolution];
+                        if (color > 0) {
+                            ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
+                        } else {
+                            ColorData[x, y] = 1;
+                        }
+                    }
+                }
+            }
+            else if (isVisualisingColors) {
+                isVisualisingColors = false;
+                for (int y = 0; y < LevelSize.x; y++) {
+                    for (int x = 0; x < LevelSize.y; x++) {
+                        ColorData[x, y] = 1;
+                    }
+                }
+            }
         }
 
         public void SpawnAgentAt (int2 cell, AgentType type, int travelType = 0) {
@@ -127,6 +142,10 @@ namespace FlowTiles.Examples {
 
         public void FlipWallAt(int2 cell) {
             Level.SetObstacle(cell.x, cell.y, !Level.Obstacles[cell.x, cell.y]);
+        }
+
+        public void SetTerrainAt(int2 cell, TerrainType type) {
+            Level.SetTerrain(cell.x, cell.y, (byte)type);
         }
 
         public void VisualiseSectors(bool visualiseConnections) {

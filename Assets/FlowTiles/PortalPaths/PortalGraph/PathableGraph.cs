@@ -89,51 +89,41 @@ namespace FlowTiles.PortalPaths {
                 var costs2 = Sectors[index2].Maps[travelType].Costs;
                 var bounds = costs1.Bounds;
 
-                int i = 0;
-                int lineSize = 0;
-
                 var maps = Sectors[index1].Maps;
                 var map = maps[travelType];
                 var portals = map.Portals;
-                var currentCost = 0;
+                var newCost = 0;
+                int lineSize = 0;
+
+                int i, iMin, iMax, j1, j2;
                 if (horizontal) {
-                    int x1 = (flip > 0) ? costs1.Bounds.MaxCell.x : costs1.Bounds.MinCell.x;
-                    var x2 = (flip > 0) ? costs2.Bounds.MinCell.x : costs2.Bounds.MaxCell.x;
-                    for (i = bounds.MinCell.y; i <= bounds.MaxCell.y; i++) {
-                        if (costs1.IsOpenAt(new int2(x1, i)) &&
-                            costs2.IsOpenAt(new int2(x2, i))) {
-                            var oldCost = currentCost;
-                            currentCost = costs1.GetCostAt(new int2(x1, i));
-                            if (currentCost == oldCost || lineSize == 0) {
-                                lineSize++;
-                                continue;
-                            }
-                        }
-                        if (lineSize > 0) {
-                            portals.CreateExit(index2, horizontal, lineSize, i, flip);
-                            lineSize = 0;
-                            if (currentCost < 255) lineSize++;
+                    iMin = bounds.MinCell.y;
+                    iMax = bounds.MaxCell.y;
+                    j1 = (flip > 0) ? costs1.Bounds.MaxCell.x : costs1.Bounds.MinCell.x;
+                    j2 = (flip > 0) ? costs2.Bounds.MinCell.x : costs2.Bounds.MaxCell.x;
+                } else {
+                    iMin = bounds.MinCell.x;
+                    iMax = bounds.MaxCell.x;
+                    j1 = (flip > 0) ? costs1.Bounds.MaxCell.y : costs1.Bounds.MinCell.y;
+                    j2 = (flip > 0) ? costs2.Bounds.MinCell.y : costs2.Bounds.MaxCell.y;
+                }
+
+                for (i = iMin; i <= iMax; i++) {
+                    var portalCost = newCost;
+                    var cell1 = horizontal ? new int2(j1, i) : new int2(i, j1);
+                    var cell2 = horizontal ? new int2(j2, i) : new int2(i, j2);
+                    newCost = costs1.GetCostAt(cell1);
+                    if (costs1.IsOpenAt(cell1) &&
+                        costs2.IsOpenAt(cell2)) {
+                        if (newCost == portalCost || lineSize == 0) {
+                            lineSize++;
+                            continue;
                         }
                     }
-                }
-                if (!horizontal) {
-                    var y1 = (flip > 0) ? costs1.Bounds.MaxCell.y : costs1.Bounds.MinCell.y;
-                    var y2 = (flip > 0) ? costs2.Bounds.MinCell.y : costs2.Bounds.MaxCell.y;
-                    for (i = bounds.MinCell.x; i <= bounds.MaxCell.x; i++) {
-                        if (costs1.IsOpenAt(new int2(i, y1)) &&
-                            costs2.IsOpenAt(new int2(i, y2))) {
-                            var oldCost = currentCost;
-                            currentCost = costs1.GetCostAt(new int2(i, y1));
-                            if (currentCost == oldCost || lineSize == 0) {
-                                lineSize++;
-                                continue;
-                            }
-                        }
-                        if (lineSize > 0) {
-                            portals.CreateExit(index2, horizontal, lineSize, i, flip);
-                            lineSize = 0;
-                            if (currentCost < 255) lineSize++;
-                        }
+                    if (lineSize > 0) {
+                        portals.CreateExit(index2, horizontal, lineSize, i, flip);
+                        lineSize = 0;
+                        //if (currentCost < 255) lineSize++;
                     }
                 }
 

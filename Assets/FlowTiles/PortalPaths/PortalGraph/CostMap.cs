@@ -48,7 +48,7 @@ namespace FlowTiles.PortalPaths {
         public bool IsOpenAt(int2 pos) {
             var localPos = pos - Bounds.MinCell;
             return Contains(pos)
-                && Costs[localPos.x, localPos.y] != PathableLevel.WALL_COST;
+                && Costs[localPos.x, localPos.y] < PathableLevel.WALL_COST;
         }
 
         public byte GetCostAt(int2 pos) {

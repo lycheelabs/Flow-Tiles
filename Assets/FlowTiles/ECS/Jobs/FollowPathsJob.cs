@@ -49,8 +49,6 @@ namespace FlowTiles.ECS {
             var destColor = destMap.GetCellColor(dest);
             var destKey = Graph.Layout.IndexOfCell(dest);
 
-            UnityEngine.Debug.Log(travelType);
-
             // Attach to a path
             if (!progress.HasPath) {
 
