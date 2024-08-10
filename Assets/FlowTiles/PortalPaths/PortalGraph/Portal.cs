@@ -37,6 +37,10 @@ namespace FlowTiles.PortalPaths {
             return other.Position.SectorIndex == Position.SectorIndex && other.Color == Color;
         }
 
+        public bool IsInSameIsland(Portal other) {
+            return other.Position.SectorIndex == Position.SectorIndex && other.Island == Island;
+        }
+
     }
 
 }

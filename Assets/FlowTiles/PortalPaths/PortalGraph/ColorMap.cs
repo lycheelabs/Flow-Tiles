@@ -141,6 +141,14 @@ namespace FlowTiles.PortalPaths {
             return Cells[x, y];
         }
 
+        public int FindIslandOfColor(int color, IslandMap islands) {
+            for (int x = 0; x < Cells.Size.x; x++) {
+                for (var y = 0; y < Cells.Size.y; y++) {
+                    if (Cells[x, y] == color) return islands.Cells[x, y];
+                }
+            }
+            return -1;
+        }
     }
 
 }

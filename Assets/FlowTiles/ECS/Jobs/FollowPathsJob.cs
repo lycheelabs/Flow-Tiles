@@ -43,8 +43,10 @@ namespace FlowTiles.ECS {
             }
 
             var travelType = goal.ValueRO.TravelType;
-            var startMap = Graph.CellToSectorMap(current, travelType);
-            var startColor = startMap.GetCellColor(current);
+            var currentMap = Graph.CellToSectorMap(current, travelType);
+            var currentColor = currentMap.GetCellColor(current);
+            var currentIsland = currentMap.GetCellIsland(current);
+
             var destMap = Graph.CellToSectorMap(dest, travelType);
             var destColor = destMap.GetCellColor(dest);
             var destKey = Graph.Layout.IndexOfCell(dest);
@@ -54,11 +56,11 @@ namespace FlowTiles.ECS {
 
                 // Find closest start portal
                 var start = current;
-                var startCluster = startMap.GetRootPortal(current);
+                var startCluster = currentMap.GetRootPortal(current);
                 var startKeyCell = startCluster.Position.Cell;
                     
-                if (startMap.Index != destMap.Index || startColor != destColor) {
-                    if (startMap.Portals.TryGetClosestExitPortal(current, dest, startCluster.Color, out var closest)) {
+                if (currentMap.Index != destMap.Index || currentColor != destColor) {
+                    if (currentMap.Portals.TryGetClosestExitPortal(current, dest, startCluster.Color, out var closest)) {
                         start = closest.Position.Cell;
                         startKeyCell = start;
                     }
@@ -66,7 +68,7 @@ namespace FlowTiles.ECS {
 
                 // Generate or retrieve a path
                 var startKey = Graph.Layout.IndexOfCell(startKeyCell);
-                var pathKey = new int4(startKey, startColor, destKey, travelType);
+                var pathKey = new int4(startKey, currentColor, destKey, travelType);
                 var pathCacheHit = PathCache.ContainsKey(pathKey);
                 if (!pathCacheHit) {
                     ECB.AddComponent(sortKey, entity, new MissingPathData {
@@ -113,8 +115,8 @@ namespace FlowTiles.ECS {
                     var node = path.Nodes[progress.NodeIndex];
                     var nodeCell = node.Position.Cell;
                     var nodeMap = Graph.CellToSectorMap(nodeCell, travelType);
-                    var nodeColor = nodeMap.GetCellColor(nodeCell);
-                    nodeIsValid = nodeMap.Index == startMap.Index && nodeColor == startColor;
+                    var newIsland = nodeMap.GetCellIsland(nodeCell);
+                    nodeIsValid = nodeMap.Index == currentMap.Index && newIsland == currentIsland;
                 }
 
                 // Connect to a sector
@@ -128,8 +130,8 @@ namespace FlowTiles.ECS {
                         var newNode = path.Nodes[newIndex];
                         var newCell = newNode.Position.Cell;
                         var newMap = Graph.CellToSectorMap(newCell, travelType);
-                        var newColor = newMap.GetCellColor(newCell);
-                        if (newMap.Index == startMap.Index && newColor == startColor) {
+                        var newIsland = newMap.GetCellIsland(newCell);
+                        if (newMap.Index == currentMap.Index && newIsland == currentIsland) {
                             progress.NodeIndex = newIndex;
                             foundNode = true;
                         }
@@ -141,8 +143,8 @@ namespace FlowTiles.ECS {
                             var newNode = path.Nodes[index];
                             var newCell = newNode.Position.Cell;
                             var newMap = Graph.CellToSectorMap(newCell, travelType);
-                            var newColor = newMap.GetCellColor(newCell);
-                            if (newMap.Index == startMap.Index && newColor == startColor) {
+                            var newIsland = newMap.GetCellIsland(newCell);
+                            if (newMap.Index == currentMap.Index && newIsland == currentIsland) {
                                 progress.NodeIndex = index;
                                 foundNode = true;
                                 break;
@@ -208,7 +210,7 @@ namespace FlowTiles.ECS {
                 // Find the flow direction
                 progress.HasFlow = true;
                 progress.FlowKey = flowKey;
-                var cornerCell = Graph.Layout.GetMinCorner(startMap.Index);
+                var cornerCell = Graph.Layout.GetMinCorner(currentMap.Index);
                 var pos = position.ValueRO.Position - cornerCell;
                 var direction = flow.FlowField.GetFlow(pos.x, pos.y);
                 result.Direction = direction;

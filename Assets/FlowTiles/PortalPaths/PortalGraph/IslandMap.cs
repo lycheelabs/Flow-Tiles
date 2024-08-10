@@ -35,7 +35,7 @@ namespace FlowTiles.PortalPaths {
                 pos.y <= Bounds.MaxCell.y;
         }
 
-        public short GetColorAt(int2 pos) {
+        public short GetIslandAt(int2 pos) {
             var localPos = pos - Bounds.MinCell;
             return Cells[localPos.x, localPos.y];
         }

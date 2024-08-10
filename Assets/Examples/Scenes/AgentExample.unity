@@ -358,8 +358,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   LevelSize: 20
-  Resolution: 10
-  VisualiseConnections: 0
+  Resolution: 5
+  VisualiseMode: 2
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

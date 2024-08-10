@@ -359,7 +359,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LevelSize: 28
   Resolution: 7
-  VisualisedTravelType: 1
+  VisualisedTravelType: 0
   VisualiseMode: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

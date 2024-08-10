@@ -226,6 +226,11 @@ namespace FlowTiles.PortalPaths {
             return Colors.Cells[localCell.x, localCell.y];
         }
 
+        public int GetCellIsland(int2 cell) {
+            var localCell = cell - Bounds.MinCell;
+            return Islands.Cells[localCell.x, localCell.y];
+        }
+
         public Portal GetRootPortal(int2 cell) {
             var localCell = cell - Bounds.MinCell;
             var color = Colors.Cells[localCell.x, localCell.y];

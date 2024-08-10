@@ -37,7 +37,7 @@ namespace FlowTiles.PortalPaths {
 
             // Check whether start and dest clusters match
             var destNode = PortalPathNode.NewDestNode(destCluster, dest, destMap.Version);
-            if (startPortal.IsInSameCluster(destCluster)) {
+            if (startPortal.IsInSameIsland(destCluster)) {
                 result.Add(destNode);
                 return true;
             }
@@ -87,7 +87,7 @@ namespace FlowTiles.PortalPaths {
 
                 Visited.Add(current.Position.Cell);
 
-                if (current.IsInSameCluster(destCluster)) {
+                if (current.IsInSameIsland(destCluster)) {
                     //Rebuild path and return it
                     return RebuildPath(current);
                 }

@@ -152,29 +152,27 @@ namespace FlowTiles.PortalPaths {
 
         private void BuildRootConnections (SectorMap sector) {
 
-            // Color the edge portals
-            for (int i = 0; i < ExitPortals.Length; i++) {
-                var portal = ExitPortals[i];
-                var tile = portal.Position.Cell - Bounds.MinCell;
-                var color = sector.Costs.Cells[tile.x, tile.y];
-                portal.Color = color;
-                ExitPortals[i] = portal;
-            }
-
             // Create the color roots
             for (int color = 1; color <= sector.Colors.NumColors; color++) {
-                var colorPortal = new Portal(Bounds.CentreCell, Index, 0);
+                var cell = Bounds.CentreCell;
+                var colorPortal = new Portal(cell, Index, 0);
                 colorPortal.Color = color;
 
                 for (int p = 0; p < ExitPortals.Length; p++) {
                     var portal = ExitPortals[p];
                     if (portal.Color == color) {
+                        colorPortal.Island = portal.Island;
                         colorPortal.Edges.Add(new PortalEdge {
                             start = colorPortal.Position,
                             end = portal.Position,
                             weight = 0,
                         });
                     }
+                }
+
+                // Fallback assign island
+                if (colorPortal.Island == -1) {
+                    colorPortal.Color = sector.Colors.FindIslandOfColor(color, sector.Islands);
                 }
 
                 RootPortals.Add(colorPortal);
