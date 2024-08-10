@@ -141,7 +141,14 @@ namespace FlowTiles.Examples {
         }
 
         public void FlipWallAt(int2 cell) {
-            Level.SetObstacle(cell.x, cell.y, !Level.Obstacles[cell.x, cell.y]);
+            var wall = Level.Obstacles[cell.x, cell.y];
+            Level.SetObstacle(cell.x, cell.y, !wall);
+        }
+
+        public void FlipTerrainAt(int2 cell) {
+            var terrain = Level.Terrain[cell.x, cell.y];
+            var newTerrain = (terrain == 0 ? 1 : 0);
+            Level.SetTerrain(cell.x, cell.y, (byte)newTerrain);
         }
 
         public void SetTerrainAt(int2 cell, TerrainType type) {

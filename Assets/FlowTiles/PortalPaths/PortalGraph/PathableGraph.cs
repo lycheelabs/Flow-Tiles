@@ -92,8 +92,9 @@ namespace FlowTiles.PortalPaths {
                 var maps = Sectors[index1].Maps;
                 var map = maps[travelType];
                 var portals = map.Portals;
-                var newCost = 0;
                 int lineSize = 0;
+                var portalCost1 = 0;
+                var portalCost2 = 0;
 
                 int i, iMin, iMax, j1, j2;
                 if (horizontal) {
@@ -109,13 +110,21 @@ namespace FlowTiles.PortalPaths {
                 }
 
                 for (i = iMin; i <= iMax; i++) {
-                    var portalCost = newCost;
                     var cell1 = horizontal ? new int2(j1, i) : new int2(i, j1);
                     var cell2 = horizontal ? new int2(j2, i) : new int2(i, j2);
-                    newCost = costs1.GetCostAt(cell1);
-                    if (costs1.IsOpenAt(cell1) &&
-                        costs2.IsOpenAt(cell2)) {
-                        if (newCost == portalCost || lineSize == 0) {
+
+                    var oldCost1 = portalCost1;
+                    var oldCost2 = portalCost2;
+                    portalCost1 = costs1.GetCostAt(cell1);
+                    portalCost2 = costs2.GetCostAt(cell2);
+
+                    if (portalCost1 == 3 || portalCost2 == 3) {
+                        var x = 0;
+                    }
+
+                    var bothSidesOpen = portalCost1 < 255 && portalCost2 < 255;
+                    if (bothSidesOpen) {
+                        if (lineSize == 0 || (portalCost1 == oldCost1 && portalCost2 == oldCost2)) {
                             lineSize++;
                             continue;
                         }
@@ -123,7 +132,9 @@ namespace FlowTiles.PortalPaths {
                     if (lineSize > 0) {
                         portals.CreateExit(index2, horizontal, lineSize, i, flip);
                         lineSize = 0;
-                        //if (currentCost < 255) lineSize++;
+                        if (bothSidesOpen) {
+                            lineSize++;
+                        }
                     }
                 }
 

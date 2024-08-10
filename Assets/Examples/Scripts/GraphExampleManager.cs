@@ -34,10 +34,10 @@ namespace FlowTiles.Examples {
 
                 if (Input.GetMouseButtonDown(0)) {
                     startCell = mouseCell;
+                    Level.FlipTerrainAt(mouseCell);
                 }
                 if (Input.GetMouseButtonDown(1)) {
-                    //Level.FlipWallAt(mouseCell);
-                    Level.SetTerrainAt(mouseCell, TerrainType.WATER);
+                    Level.FlipWallAt(mouseCell);
                 }
 
                 //Level.VisualiseTestPath(startCell, mouseCell, true);
