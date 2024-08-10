@@ -11,8 +11,6 @@ namespace FlowTiles.PortalPaths {
         public readonly int MovementType;
 
         public UnsafeField<byte> Costs;
-        public UnsafeField<short> Colors;
-        public short NumColors;
 
         public CostMap(int index, CellRect boundaries, int movementType) {
             Index = index;
@@ -21,8 +19,6 @@ namespace FlowTiles.PortalPaths {
 
             Bounds = boundaries;
             Costs = new UnsafeField<byte>(Bounds.SizeCells, Allocator.Persistent, initialiseTo: 1);
-            Colors = new UnsafeField<short>(Bounds.SizeCells, Allocator.Persistent, initialiseTo: 0);
-            NumColors = 0;
         }
 
         public void Initialise(PathableLevel map) {
@@ -31,11 +27,6 @@ namespace FlowTiles.PortalPaths {
 
         public void Dispose() {
             Costs.Dispose();
-            Colors.Dispose();
-        }
-
-        public void CalculateColors () {
-            FloodFillAll();
         }
 
         public bool Contains(int2 pos) {
@@ -66,7 +57,48 @@ namespace FlowTiles.PortalPaths {
             }
         }
 
-        private void FloodFillAll() {
+    }
+
+    public struct ColorMap {
+
+        public readonly int Index;
+        public readonly CellRect Bounds;
+
+        public UnsafeField<short> Colors;
+        public short NumColors;
+
+        public ColorMap(int index, CellRect boundaries) {
+            Index = index;
+            Bounds = new CellRect();
+
+            Bounds = boundaries;
+            Colors = new UnsafeField<short>(Bounds.SizeCells, Allocator.Persistent, initialiseTo: 0);
+            NumColors = 0;
+        }
+
+        public void Dispose() {
+            Colors.Dispose();
+        }
+
+        public void CalculateColors(CostMap costs) {
+            FloodFillAll(costs);
+        }
+
+        public bool Contains(int2 pos) {
+            return pos.x >= Bounds.MinCell.x &&
+                pos.x <= Bounds.MaxCell.x &&
+                pos.y >= Bounds.MinCell.y &&
+                pos.y <= Bounds.MaxCell.y;
+        }
+
+        public short GetColorAt(int2 pos) {
+            var localPos = pos - Bounds.MinCell;
+            return Colors[localPos.x, localPos.y];
+        }
+
+        // --------------------------------------------------------------
+
+        private void FloodFillAll(CostMap costs) {
             var cellsInSector = Bounds.SizeCells.x * Bounds.SizeCells.y;
 
             // Divide into open areas and walls
@@ -74,7 +106,7 @@ namespace FlowTiles.PortalPaths {
                 for (var y = 0; y < Colors.Size.y; y++) {
                     Colors[x, y] = 0;
 
-                    var cost = Costs[x, y];
+                    var cost = costs.Costs[x, y];
                     var blocked = cost == PathableLevel.WALL_COST;
                     if (blocked) Colors[x, y] = -1;
                 }
@@ -86,7 +118,7 @@ namespace FlowTiles.PortalPaths {
                 for (var y = 0; y < Colors.Size.y; y++) {
                     if (Colors[x, y] == 0) {
                         NumColors++;
-                        FloodFill(new int2(x, y), Costs[x, y], NumColors, cellsInSector);
+                        FloodFill(costs, new int2(x, y), costs.Costs[x, y], NumColors, cellsInSector);
                     }
                 }
             }
@@ -101,7 +133,7 @@ namespace FlowTiles.PortalPaths {
                         var c4 = TryGetColor(x, y + 1);
                         var bestNeighbor = math.max(math.max(c1, c2), math.max(c3, c4));
                         if (bestNeighbor > 0) {
-                            FloodFill(new int2(x, y), 255, (short)bestNeighbor, cellsInSector);
+                            FloodFill(costs, new int2(x, y), 255, (short)bestNeighbor, cellsInSector);
                         };
                     }
                 }
@@ -110,27 +142,27 @@ namespace FlowTiles.PortalPaths {
 
         // Flood fill using the scanline method. Based on...
         // https://simpledevcode.wordpress.com/2015/12/29/flood-fill-algorithm-using-c-net/
-        private void FloodFill(int2 startPoint, byte targetCost, short newColorIndex, int cellsInSector) {
+        private void FloodFill(CostMap costs, int2 startPoint, byte targetCost, short newColorIndex, int cellsInSector) {
             NativeStack<int2> points = new NativeStack<int2>(cellsInSector, Allocator.Temp);
             NativeHashSet<int2> visited = new NativeHashSet<int2>(cellsInSector, Allocator.Temp);
-            
+
             points.Push(startPoint);
             visited.Add(startPoint);
 
             while (points.Count != 0) {
                 int2 temp = points.Pop();
                 int row = temp.y;
-                while (row >= 0 && Costs[temp.x, row] == targetCost) {
+                while (row >= 0 && costs.Costs[temp.x, row] == targetCost) {
                     row--;
                 }
                 row++;
                 bool spanLeft = false;
                 bool spanRight = false;
 
-                while (row < Colors.Size.y && Costs[temp.x, row] == targetCost) {
+                while (row < Colors.Size.y && costs.Costs[temp.x, row] == targetCost) {
                     Colors[temp.x, row] = newColorIndex;
 
-                    if (!spanLeft && temp.x > 0 && Costs[temp.x - 1, row] == targetCost) {
+                    if (!spanLeft && temp.x > 0 && costs.Costs[temp.x - 1, row] == targetCost) {
                         var next = new int2(temp.x - 1, row);
                         if (!visited.Contains(next)) {
                             visited.Add(next);
@@ -138,11 +170,11 @@ namespace FlowTiles.PortalPaths {
                         }
                         spanLeft = true;
                     }
-                    else if (spanLeft && (temp.x - 1 == 0 || Costs[temp.x - 1, row] != targetCost)) {
+                    else if (spanLeft && (temp.x - 1 == 0 || costs.Costs[temp.x - 1, row] != targetCost)) {
                         spanLeft = false;
                     }
 
-                    if (!spanRight && temp.x < Colors.Size.x - 1 && Costs[temp.x + 1, row] == targetCost) {
+                    if (!spanRight && temp.x < Colors.Size.x - 1 && costs.Costs[temp.x + 1, row] == targetCost) {
                         var next = new int2(temp.x + 1, row);
                         if (!visited.Contains(next)) {
                             visited.Add(next);
@@ -150,7 +182,7 @@ namespace FlowTiles.PortalPaths {
                         }
                         spanRight = true;
                     }
-                    else if (spanRight && (temp.x < Colors.Size.x - 1 && Costs[temp.x + 1, row] != targetCost)) {
+                    else if (spanRight && (temp.x < Colors.Size.x - 1 && costs.Costs[temp.x + 1, row] != targetCost)) {
                         spanRight = false;
                     }
                     row++;

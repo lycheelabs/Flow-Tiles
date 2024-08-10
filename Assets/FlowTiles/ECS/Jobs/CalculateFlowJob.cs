@@ -12,7 +12,7 @@ namespace FlowTiles.ECS {
     public struct CalculateFlowJob : IJob {
 
         public static FlowField ScheduleAndComplete(SectorMap map, CellRect goalBounds, int2 exitDirection) {
-            var job = new CalculateFlowJob(map.Costs, goalBounds, exitDirection);
+            var job = new CalculateFlowJob(map, goalBounds, exitDirection);
             job.Schedule().Complete();
 
             var result = new FlowField {
@@ -29,7 +29,7 @@ namespace FlowTiles.ECS {
 
         // --------------------------------------------------------
 
-        [ReadOnly] public CostMap Sector;
+        [ReadOnly] public SectorMap Sector;
         [ReadOnly] public CellRect GoalBounds;
         [ReadOnly] public int2 ExitDirection;
 
@@ -37,7 +37,7 @@ namespace FlowTiles.ECS {
         public NativeReference<UnsafeField<float2>> Flow;
         public NativeReference<short> Color;
 
-        public CalculateFlowJob (CostMap sector, CellRect goalBounds, int2 exitDirection) {
+        public CalculateFlowJob (SectorMap sector, CellRect goalBounds, int2 exitDirection) {
             Sector = sector;
             GoalBounds = goalBounds;
             ExitDirection = exitDirection;
@@ -46,7 +46,7 @@ namespace FlowTiles.ECS {
         }
 
         public void Execute() {
-            var calculator = new FlowCalculator(Sector, GoalBounds, ExitDirection, Allocator.Temp);
+            var calculator = new FlowCalculator(Sector.Costs, Sector.Colors, GoalBounds, ExitDirection, Allocator.Temp);
             calculator.Calculate();
             Flow.Value = calculator.Flow;
             Color.Value = calculator.Color;

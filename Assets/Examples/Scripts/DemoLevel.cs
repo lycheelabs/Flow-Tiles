@@ -122,7 +122,7 @@ namespace FlowTiles.Examples {
                 for (int y = 0; y < LevelSize.x; y++) {
                     for (int x = 0; x < LevelSize.y; x++) {
                         var sector = Graph.CellToSectorMap(new int2(x, y), 0);
-                        var color = sector.Costs.Colors[x % Resolution, y % Resolution];
+                        var color = sector.Colors.Colors[x % Resolution, y % Resolution];
                         if (color > 0) {
                             ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
                         } else {
@@ -215,7 +215,7 @@ namespace FlowTiles.Examples {
             var bounds = Graph.Layout.GetSectorBounds(flowField.SectorIndex);
             for (int x = 0; x < bounds.SizeCells.x; x++) {
                 for (int y = 0; y < bounds.SizeCells.y; y++) {
-                    var colors = Graph.CellToSectorMap(new int2(x, y), 0).Costs;
+                    var colors = Graph.CellToSectorMap(new int2(x, y), 0).Colors;
                     var mapCell = new int2(x + bounds.MinCell.x, y + bounds.MinCell.y);
                     var flow = flowField.GetFlow(x, y);
                     var cellColor = colors.Colors[x, y];

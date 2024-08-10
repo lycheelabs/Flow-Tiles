@@ -118,10 +118,6 @@ namespace FlowTiles.PortalPaths {
                     portalCost1 = costs1.GetCostAt(cell1);
                     portalCost2 = costs2.GetCostAt(cell2);
 
-                    if (portalCost1 == 3 || portalCost2 == 3) {
-                        var x = 0;
-                    }
-
                     var bothSidesOpen = portalCost1 < 255 && portalCost2 < 255;
                     if (bothSidesOpen) {
                         if (lineSize == 0 || (portalCost1 == oldCost1 && portalCost2 == oldCost2)) {
@@ -152,8 +148,8 @@ namespace FlowTiles.PortalPaths {
             var sector = Sectors[index];
             for (int travelType = 0; travelType < NumTravelTypes; travelType++) {
                 var map = sector.Maps[travelType];
-                map.Costs.CalculateColors();
-                map.Portals.BuildInternalConnections(map.Costs, pathfinder);
+                map.Colors.CalculateColors(map.Costs);
+                map.Portals.BuildInternalConnections(map.Costs, map.Colors, pathfinder);
                 sector.Maps[travelType] = map;
             }
         }
@@ -198,6 +194,7 @@ namespace FlowTiles.PortalPaths {
         public readonly int Version;
 
         public CostMap Costs;
+        public ColorMap Colors;
         public PortalMap Portals;
 
         public SectorMap(int index, CellRect boundaries, int travelType, int version) {
@@ -206,6 +203,7 @@ namespace FlowTiles.PortalPaths {
             Version = version;
 
             Costs = new CostMap(index, boundaries, travelType);
+            Colors = new ColorMap(index, boundaries);
             Portals = new PortalMap(index, boundaries);
         }
 
@@ -220,12 +218,12 @@ namespace FlowTiles.PortalPaths {
 
         public int GetCellColor(int2 cell) {
             var localCell = cell - Bounds.MinCell;
-            return Costs.Colors[localCell.x, localCell.y];
+            return Colors.Colors[localCell.x, localCell.y];
         }
 
         public Portal GetRootPortal(int2 cell) {
             var localCell = cell - Bounds.MinCell;
-            var color = Costs.Colors[localCell.x, localCell.y];
+            var color = Colors.Colors[localCell.x, localCell.y];
             return Portals.RootPortals[color - 1];
         }
 

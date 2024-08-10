@@ -16,8 +16,11 @@ namespace FlowTiles.Examples {
         void Start() {
 
             var map = new PathableLevel(LevelSize, LevelSize, Resolution, 1, 2);
-            map.SetTerrainCost(0, (int)TerrainType.WATER, 3);
-            LevelGeneration.InitialiseRandomObstacles(map, false);
+            //map.SetTerrainCost(0, (int)TerrainType.WATER, 3);
+            map.SetTerrainCost(0, (int)TerrainType.GROUND, 2);
+
+            //LevelGeneration.InitialiseRandomObstacles(map, false);
+            LevelGeneration.InitialiseWaterPools(map);
 
             Level = new DemoLevel(map, Resolution);
 
@@ -34,13 +37,12 @@ namespace FlowTiles.Examples {
 
                 if (Input.GetMouseButtonDown(0)) {
                     startCell = mouseCell;
-                    Level.FlipTerrainAt(mouseCell);
                 }
                 if (Input.GetMouseButtonDown(1)) {
                     Level.FlipWallAt(mouseCell);
                 }
 
-                //Level.VisualiseTestPath(startCell, mouseCell, true);
+                Level.VisualiseTestPath(startCell, mouseCell, true);
             }
 
         }

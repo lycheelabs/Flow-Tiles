@@ -132,25 +132,25 @@ namespace FlowTiles.PortalPaths {
         /// Connect all exit portals inside this sector together (if their colors match)
         /// and build a root cluster
         /// </summary>
-        public void BuildInternalConnections (CostMap costs, SectorPathfinder pathfinder) {
-            ColorExitPortals(costs);
-            BuildRootConnections(costs);
+        public void BuildInternalConnections (CostMap costs, ColorMap colors, SectorPathfinder pathfinder) {
+            ColorExitPortals(colors);
+            BuildRootConnections(colors);
             BuildExitConnections(costs, pathfinder);
         }
 
         // --------------------------------------------------------------
 
-        private void ColorExitPortals(CostMap costs) {
+        private void ColorExitPortals(ColorMap colors) {
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
                 var tile = portal.Position.Cell - Bounds.MinCell;
-                var color = costs.Colors[tile.x, tile.y];
+                var color = colors.Colors[tile.x, tile.y];
                 portal.Color = color;
                 ExitPortals[i] = portal;
             }
         }
 
-        private void BuildRootConnections (CostMap costs) {
+        private void BuildRootConnections (ColorMap costs) {
 
             // Color the edge portals
             for (int i = 0; i < ExitPortals.Length; i++) {

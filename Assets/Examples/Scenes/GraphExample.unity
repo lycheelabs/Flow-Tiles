@@ -357,9 +357,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39ca6ebc4593ca94792179d55ba468ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  LevelSize: 10
-  Resolution: 5
-  VisualiseConnections: 1
+  LevelSize: 28
+  Resolution: 7
+  VisualiseConnections: 0
+  VisualiseColors: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

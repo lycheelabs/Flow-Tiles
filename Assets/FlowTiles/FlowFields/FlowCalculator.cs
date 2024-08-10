@@ -9,6 +9,7 @@ namespace FlowTiles.FlowFields {
 
         [ReadOnly] public int2 Size;
         [ReadOnly] public CostMap Costs;
+        [ReadOnly] public ColorMap Colors;
         [ReadOnly] public CellRect GoalBounds;
         [ReadOnly] public float2 ExitDirection;
 
@@ -21,9 +22,10 @@ namespace FlowTiles.FlowFields {
         private NativeMinHeap Queue;
         private NativeArray<int2> Directions;
 
-        public FlowCalculator(CostMap sector, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
+        public FlowCalculator(CostMap sector, ColorMap colors, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
             Size = sector.Bounds.SizeCells;
             Costs = sector;
+            Colors = colors;
             GoalBounds = goalBounds;
             ExitDirection = exitDirection;
 
@@ -63,7 +65,7 @@ namespace FlowTiles.FlowFields {
                     Queue.Push(new MinHeapNode(goal, 0));
                 }
             }
-            Color = Costs.Colors[goalMin.x, goalMin.y];
+            Color = Colors.Colors[goalMin.x, goalMin.y];
 
             // Iterate over the cells once in least-cost order
             int2 current;
