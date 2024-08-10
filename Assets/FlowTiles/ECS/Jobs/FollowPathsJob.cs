@@ -42,12 +42,14 @@ namespace FlowTiles.ECS {
                 return;
             }
 
-            var travelType = 0;
+            var travelType = goal.ValueRO.TravelType;
             var startMap = Graph.CellToSectorMap(current, travelType);
             var startColor = startMap.GetCellColor(current);
             var destMap = Graph.CellToSectorMap(dest, travelType);
             var destColor = destMap.GetCellColor(dest);
             var destKey = Graph.Layout.IndexOfCell(dest);
+
+            UnityEngine.Debug.Log(travelType);
 
             // Attach to a path
             if (!progress.HasPath) {
@@ -58,7 +60,7 @@ namespace FlowTiles.ECS {
                 var startKeyCell = startCluster.Position.Cell;
                     
                 if (startMap.Index != destMap.Index || startColor != destColor) {
-                    if (startMap.Portals.TryGetClosestExitPortal(current, startCluster.Color, out var closest)) {
+                    if (startMap.Portals.TryGetClosestExitPortal(current, dest, startCluster.Color, out var closest)) {
                         start = closest.Position.Cell;
                         startKeyCell = start;
                     }
@@ -72,6 +74,7 @@ namespace FlowTiles.ECS {
                     ECB.AddComponent(sortKey, entity, new MissingPathData {
                         Start = start,
                         Dest = dest,
+                        TravelType = travelType,
                         Key = pathKey,
                     });
                     return;
@@ -181,6 +184,7 @@ namespace FlowTiles.ECS {
                     ECB.AddComponent(sortKey, entity, new MissingFlowData {
                         Cell = pathNode.Position.Cell,
                         Direction = pathNode.Direction,
+                        TravelType = travelType,
                         Key = flowKey,
                     });
                     return;

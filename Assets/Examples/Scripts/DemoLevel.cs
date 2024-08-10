@@ -91,6 +91,9 @@ namespace FlowTiles.Examples {
                     foreach (var spawn in AgentSpawns) {
 
                         var agent = em.Instantiate(prefabs.Agent);
+                        em.SetComponentData(agent, new AgentData {
+                            TravelType = spawn.TravelType,
+                        });
                         em.SetComponentData(agent, new LocalTransform {
                             Position = new float3(spawn.Cell, -1),
                             Scale = 1,
@@ -118,7 +121,7 @@ namespace FlowTiles.Examples {
             AgentSpawns.Add(new SpawnAgentCommand {
                 Cell = cell,
                 Type = type,
-
+                TravelType = travelType,
             });
         }
 
@@ -213,6 +216,19 @@ namespace FlowTiles.Examples {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var query = em.CreateEntityQuery(new ComponentType[] { typeof(T) });
             return query.ToComponentDataArray<T>(Allocator.Temp);
+        }
+
+        public void SetAgentDestinations(int2 newDestination) {
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var agents = GetEntityArray<AgentData>();
+            foreach (var agent in agents) {
+                var data = em.GetComponentData<AgentData>(agent);
+                em.SetComponentData(agent, new FlowGoal {
+                    HasGoal = true,
+                    Goal = newDestination,
+                    TravelType = data.TravelType,
+                });
+            }
         }
 
     }

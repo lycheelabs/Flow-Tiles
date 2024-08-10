@@ -8,6 +8,7 @@ namespace FlowTiles.ECS {
 
         public bool HasGoal;
         public int2 Goal;
+        public int TravelType;
 
     }
 

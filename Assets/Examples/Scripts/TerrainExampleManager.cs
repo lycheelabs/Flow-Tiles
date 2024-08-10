@@ -22,8 +22,11 @@ namespace FlowTiles.Examples {
             LevelGeneration.InitialiseWaterPools(map);
 
             Level = new DemoLevel(map, Resolution);
-            Level.SpawnAgentAt(new int2(0, (int)(LevelSize * 0.33f)), AgentType.SINGLE);
-            Level.SpawnAgentAt(new int2(0, (int)(LevelSize * 0.66f)), AgentType.MULTIPLE);
+
+            var pos1 = new int2(0, (int)(LevelSize * 0.33f));
+            var pos2 = new int2(0, (int)(LevelSize * 0.66f));
+            Level.SpawnAgentAt(pos1, AgentType.SINGLE, travelType: (int)TravelType.GROUND_ONLY);
+            Level.SpawnAgentAt(pos2, AgentType.MULTIPLE, travelType: (int)TravelType.AMPHIBIOUS);
 
         }
 
@@ -37,22 +40,11 @@ namespace FlowTiles.Examples {
             if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
 
                 if (Input.GetMouseButtonDown(0)) {
-                    SetAgentDestinations(mouseCell);
+                    Level.SetAgentDestinations(mouseCell);
                 }
 
             }
 
-        }
-
-        private void SetAgentDestinations(int2 newDestination) {
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var agents = Level.GetEntityArray<AgentData>();
-            foreach (var agent in agents) {
-                em.SetComponentData(agent, new FlowGoal {
-                    HasGoal = true,
-                    Goal = newDestination
-                });
-            }
         }
 
     }

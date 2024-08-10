@@ -10,8 +10,8 @@ namespace FlowTiles.ECS {
     [BurstCompile]
     public struct PortalPathJob : IJob {
 
-        public static bool ScheduleAndComplete (PathableGraph graph, int2 start, int2 dest, out UnsafeList<PortalPathNode> result) {
-            var job = new PortalPathJob(graph, start, dest);
+        public static bool ScheduleAndComplete (PathableGraph graph, int2 start, int2 dest, int travelType, out UnsafeList<PortalPathNode> result) {
+            var job = new PortalPathJob(graph, start, dest, travelType);
             job.Schedule().Complete();
             
             result = job.Result.Value;
@@ -26,14 +26,16 @@ namespace FlowTiles.ECS {
         public PathableGraph Graph;
         public int2 Start;
         public int2 Dest;
+        public int TravelType;
 
         public NativeReference<UnsafeList<PortalPathNode>> Result;
         public NativeReference<bool> Success;
 
-        public PortalPathJob (PathableGraph graph, int2 start, int2 dest) {
+        public PortalPathJob (PathableGraph graph, int2 start, int2 dest, int travelType) {
             Graph = graph;
             Start = start;
             Dest = dest;
+            TravelType = travelType;
 
             Result = new NativeReference<UnsafeList<PortalPathNode>>(Allocator.TempJob);
             Success = new NativeReference<bool>(Allocator.TempJob);
@@ -46,7 +48,7 @@ namespace FlowTiles.ECS {
         public void Execute() {
             var pathfinder = new PortalPathfinder(Graph);
             var path = Result.Value;
-            Success.Value = pathfinder.TryFindPath(Start, Dest, 0, ref path);
+            Success.Value = pathfinder.TryFindPath(Start, Dest, TravelType, ref path);
             Result.Value = path;
         }
 

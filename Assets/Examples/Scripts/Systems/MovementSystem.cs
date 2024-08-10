@@ -30,10 +30,10 @@ namespace FlowTiles.Examples {
 
             [BurstCompile]
             private void Execute(ref AgentData agent, ref FlowPosition cell, ref FlowDirection direction, ref LocalTransform transform) {
-                var speed = agent.speed;
+                var speed = agent.Speed;
                 var dir = direction.Direction;
                 speed = math.lerp(speed, (float2)dir, math.saturate(DeltaTime * 5));
-                agent.speed = speed;
+                agent.Speed = speed;
 
                 var position = transform.Position;
                 position += new float3(speed * DeltaTime * 3.3f, 0);

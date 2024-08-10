@@ -22,6 +22,7 @@ namespace FlowTiles.ECS {
                 PathRequests.Add(new PathRequest {
                     originCell = data.ValueRO.Start,
                     destCell = data.ValueRO.Dest,
+                    travelType = data.ValueRO.TravelType,
                     cacheKey = key,
                 });
 

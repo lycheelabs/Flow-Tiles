@@ -33,7 +33,7 @@ namespace FlowTiles.Examples {
             if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
 
                 if (Input.GetMouseButtonDown(0)) {
-                    SetAgentDestinations(mouseCell);
+                    Level.SetAgentDestinations(mouseCell);
                 }
                 if (Input.GetMouseButtonDown(1)) {
                     Level.FlipWallAt(mouseCell);
@@ -41,17 +41,6 @@ namespace FlowTiles.Examples {
 
             }
 
-        }
-
-        private void SetAgentDestinations(int2 newDestination) {
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var agents = Level.GetEntityArray<AgentData>();;
-            foreach (var agent in agents) {
-                em.SetComponentData(agent, new FlowGoal {
-                    HasGoal = true,
-                    Goal = newDestination
-                });
-            }
         }
 
     }

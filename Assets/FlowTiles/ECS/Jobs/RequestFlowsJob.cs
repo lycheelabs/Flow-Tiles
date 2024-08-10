@@ -22,6 +22,7 @@ namespace FlowTiles.ECS {
                 FlowRequests.Add(new FlowRequest {
                     goalCell = data.ValueRO.Cell,
                     goalDirection = data.ValueRO.Direction,
+                    travelType = data.ValueRO.TravelType,
                     cacheKey = data.ValueRO.Key,
                 });
 

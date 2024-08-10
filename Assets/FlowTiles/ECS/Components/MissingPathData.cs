@@ -7,6 +7,7 @@ namespace FlowTiles.ECS {
         public int4 Key;
         public int2 Start;
         public int2 Dest;
+        public int TravelType;
 
     }
 }

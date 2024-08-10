@@ -7,6 +7,7 @@ namespace FlowTiles.ECS {
         public int4 Key;
         public int2 Cell;
         public int2 Direction;
+        public int TravelType;
 
     }
 

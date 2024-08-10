@@ -100,6 +100,30 @@ namespace FlowTiles.ECS {
 
         }
 
+        private void ProcessPathRequests(PathableGraph graph) {
+            foreach (var request in PathRequests) {
+
+                // Discard duplicate requests
+                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && !existing.IsPending) {
+                    continue;
+                }
+
+                // Calculate the path
+                var origin = request.originCell;
+                var dest = request.destCell;
+                var travelType = request.travelType;
+                var success = PortalPathJob.ScheduleAndComplete(graph, origin, dest, travelType, out var path);
+
+                // Cache the path
+                PathCache.Cache[request.cacheKey] = new CachedPortalPath {
+                    IsPending = false,
+                    NoPathExists = !success,
+                    Nodes = path
+                };
+            }
+            PathRequests.Clear();
+        }
+
         private void ProcessFlowRequests(PathableGraph graph) {
             foreach (var request in FlowRequests) {
 
@@ -110,7 +134,8 @@ namespace FlowTiles.ECS {
 
                 // Find the goal boundaries
                 var goal = request.goalCell;
-                var goalMap = graph.CellToSectorMap(goal, travelType: 0);
+                var travelType = request.travelType;
+                var goalMap = graph.CellToSectorMap(goal, travelType);
                 var goalBounds = new CellRect(goal, goal);
 
                 if (!request.goalDirection.Equals(0)) {
@@ -129,29 +154,6 @@ namespace FlowTiles.ECS {
                 };
             }
             FlowRequests.Clear();
-        }
-
-        private void ProcessPathRequests(PathableGraph graph) {
-            foreach (var request in PathRequests) {
-
-                // Discard duplicate requests
-                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && !existing.IsPending) {
-                    continue;
-                }
-
-                // Calculate the path
-                var origin = request.originCell;
-                var dest = request.destCell;
-                var success = PortalPathJob.ScheduleAndComplete(graph, origin, dest, out var path);
-
-                // Cache the path
-                PathCache.Cache[request.cacheKey] = new CachedPortalPath {
-                    IsPending = false,
-                    NoPathExists = !success,
-                    Nodes = path
-                };
-            }
-            PathRequests.Clear();
         }
 
         private void RebuildDirtySectors(ref PathableLevel level, ref PathableGraph graph, ref SystemState state) {

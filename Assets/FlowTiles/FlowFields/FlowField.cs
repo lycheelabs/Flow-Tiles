@@ -17,7 +17,8 @@ namespace FlowTiles.FlowFields {
         }
 
         public float2 GetFlow (int x, int y) {
-            return Directions[x + 1, y + 1];
+            return Directions[x, y];
+            //return Directions[x + 1, y + 1];
         }
 
     }

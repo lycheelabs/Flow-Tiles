@@ -17,10 +17,10 @@ namespace FlowTiles.ECS {
 
             var result = new FlowField {
                 SectorIndex = map.Index,
+                Version = map.Version,
                 Color = job.Color.Value,
                 Size = map.Bounds.SizeCells,
                 Directions = job.Flow.Value,
-                Version = map.Version,
             };
 
             job.Dispose();
@@ -46,7 +46,7 @@ namespace FlowTiles.ECS {
         }
 
         public void Execute() {
-            var calculator = new FlowCalculator(Sector, GoalBounds, ExitDirection);
+            var calculator = new FlowCalculator(Sector, GoalBounds, ExitDirection, Allocator.Temp);
             calculator.Calculate();
             Flow.Value = calculator.Flow;
             Color.Value = calculator.Color;
