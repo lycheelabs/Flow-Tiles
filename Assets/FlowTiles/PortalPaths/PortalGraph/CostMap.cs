@@ -86,7 +86,7 @@ namespace FlowTiles.PortalPaths {
                 for (var y = 0; y < Colors.Size.y; y++) {
                     if (Colors[x, y] == 0) {
                         NumColors++;
-                        FloodFill(new int2(x, y), 0, NumColors, cellsInSector);
+                        FloodFill(new int2(x, y), Costs[x, y], NumColors, cellsInSector);
                     }
                 }
             }
@@ -101,7 +101,7 @@ namespace FlowTiles.PortalPaths {
                         var c4 = TryGetColor(x, y + 1);
                         var bestNeighbor = math.max(math.max(c1, c2), math.max(c3, c4));
                         if (bestNeighbor > 0) {
-                            FloodFill(new int2(x, y), -1, (short)bestNeighbor, cellsInSector);
+                            FloodFill(new int2(x, y), 255, (short)bestNeighbor, cellsInSector);
                         };
                     }
                 }
@@ -110,39 +110,50 @@ namespace FlowTiles.PortalPaths {
 
         // Flood fill using the scanline method. Based on...
         // https://simpledevcode.wordpress.com/2015/12/29/flood-fill-algorithm-using-c-net/
-        private void FloodFill(int2 startPoint, short oldColorIndex, short newColorIndex, int cellsInSector) {
+        private void FloodFill(int2 startPoint, byte targetCost, short newColorIndex, int cellsInSector) {
             NativeStack<int2> points = new NativeStack<int2>(cellsInSector, Allocator.Temp);
+            NativeHashSet<int2> visited = new NativeHashSet<int2>(cellsInSector, Allocator.Temp);
+            
             points.Push(startPoint);
+            visited.Add(startPoint);
 
             while (points.Count != 0) {
                 int2 temp = points.Pop();
-                int y1 = temp.y;
-                while (y1 >= 0 && Colors[temp.x, y1] == oldColorIndex) {
-                    y1--;
+                int row = temp.y;
+                while (row >= 0 && Costs[temp.x, row] == targetCost) {
+                    row--;
                 }
-                y1++;
+                row++;
                 bool spanLeft = false;
                 bool spanRight = false;
 
-                while (y1 < Colors.Size.y && Colors[temp.x, y1] == oldColorIndex) {
-                    Colors[temp.x, y1] = newColorIndex;
+                while (row < Colors.Size.y && Costs[temp.x, row] == targetCost) {
+                    Colors[temp.x, row] = newColorIndex;
 
-                    if (!spanLeft && temp.x > 0 && Colors[temp.x - 1, y1] == oldColorIndex) {
-                        points.Push(new int2(temp.x - 1, y1));
+                    if (!spanLeft && temp.x > 0 && Costs[temp.x - 1, row] == targetCost) {
+                        var next = new int2(temp.x - 1, row);
+                        if (!visited.Contains(next)) {
+                            visited.Add(next);
+                            points.Push(next);
+                        }
                         spanLeft = true;
                     }
-                    else if (spanLeft && (temp.x - 1 == 0 || Colors[temp.x - 1, y1] != oldColorIndex)) {
+                    else if (spanLeft && (temp.x - 1 == 0 || Costs[temp.x - 1, row] != targetCost)) {
                         spanLeft = false;
                     }
 
-                    if (!spanRight && temp.x < Colors.Size.x - 1 && Colors[temp.x + 1, y1] == oldColorIndex) {
-                        points.Push(new int2(temp.x + 1, y1));
+                    if (!spanRight && temp.x < Colors.Size.x - 1 && Costs[temp.x + 1, row] == targetCost) {
+                        var next = new int2(temp.x + 1, row);
+                        if (!visited.Contains(next)) {
+                            visited.Add(next);
+                            points.Push(next);
+                        }
                         spanRight = true;
                     }
-                    else if (spanRight && (temp.x < Colors.Size.x - 1 && Colors[temp.x + 1, y1] != oldColorIndex)) {
+                    else if (spanRight && (temp.x < Colors.Size.x - 1 && Costs[temp.x + 1, row] != targetCost)) {
                         spanRight = false;
                     }
-                    y1++;
+                    row++;
                 }
             }
         }

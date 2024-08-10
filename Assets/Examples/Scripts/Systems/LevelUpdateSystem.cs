@@ -10,8 +10,6 @@ namespace FlowTiles.Examples {
     [BurstCompile]
     public partial struct LevelUpdateSystem : ISystem {
 
-        public const bool VISUALISE_GRAPH_COLORS = false;
-
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<LevelSetup>();
         }
@@ -25,6 +23,7 @@ namespace FlowTiles.Examples {
                 LevelWalls = setup.Walls,
                 LevelTerrain = setup.Terrain,
                 LevelColors = setup.Colors,
+                VisualiseColors = setup.VisualiseColors,
             }.ScheduleParallel();
 
             new FlowJob {
@@ -37,6 +36,7 @@ namespace FlowTiles.Examples {
         public partial struct WallsJob : IJobEntity {
 
             public int2 LevelSize;
+            public bool VisualiseColors;
             [ReadOnly] public NativeField<bool> LevelWalls;
             [ReadOnly] public NativeField<byte> LevelTerrain;
             [ReadOnly] public NativeField<float4> LevelColors;
@@ -51,12 +51,11 @@ namespace FlowTiles.Examples {
                 if (terrain == (byte)TerrainType.WATER) {
                     color = new float4(0.2f, 0.36f, 1f, 1f);
                 }
+                if (VisualiseColors) {
+                    color = LevelColors[cell.x, cell.y];
+                }
                 if (wall) {
                     color = 0;
-                }
-
-                if (VISUALISE_GRAPH_COLORS) {
-                    color *= LevelColors[cell.x, cell.y];
                 }
 
                 quad.Color = color;

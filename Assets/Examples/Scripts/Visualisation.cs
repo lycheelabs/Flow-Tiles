@@ -7,12 +7,12 @@ namespace FlowTiles.Examples {
 
     public static class Visualisation {
 
-        public static void DrawSectors (PathableGraph graph, bool showPortalEdges) {
+        public static void DrawSectors (PathableGraph graph, bool showPortalEdges, int travelType) {
             var numSectors = graph.Layout.NumSectorsInLevel;
             for (int index = 0; index < numSectors; index++) {
                 if (!graph.SectorIsInitialised(index)) continue;
 
-                var sector = graph.IndexToSectorMap(index, 0);
+                var sector = graph.IndexToSectorMap(index, travelType);
                 var nodes = sector.Portals.ExitPortals;
 
                 DrawSectorBoundaries(sector.Portals);

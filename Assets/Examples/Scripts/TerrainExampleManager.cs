@@ -1,5 +1,3 @@
-using FlowTiles.ECS;
-using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -9,7 +7,9 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 10;
+        public TravelType VisualisedTravelType;
         public bool VisualiseConnections;
+        public bool VisualiseFlow;
 
         private DemoLevel Level;
 
@@ -26,14 +26,16 @@ namespace FlowTiles.Examples {
             var pos1 = new int2(0, (int)(LevelSize * 0.33f));
             var pos2 = new int2(0, (int)(LevelSize * 0.66f));
             Level.SpawnAgentAt(pos1, AgentType.SINGLE, travelType: (int)TravelType.GROUND_ONLY);
-            Level.SpawnAgentAt(pos2, AgentType.MULTIPLE, travelType: (int)TravelType.AMPHIBIOUS);
+            Level.SpawnAgentAt(pos2, AgentType.SINGLE, travelType: (int)TravelType.AMPHIBIOUS);
 
         }
 
         void Update() {
             Level.Update();
-            Level.VisualiseSectors(VisualiseConnections);
-            Level.VisualiseAgentFlows();
+            Level.VisualiseSectors(VisualiseConnections, (int)VisualisedTravelType);
+            if (VisualiseFlow) {
+                Level.VisualiseAgentFlows((int)VisualisedTravelType);
+            }
 
             var position = Camera.main.ScreenToWorldPoint(Input.mousePosition); 
             var mouseCell = new int2((int)(position.x + 0.5f), (int)(position.y + 0.5f));

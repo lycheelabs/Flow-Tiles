@@ -36,9 +36,9 @@ namespace FlowTiles.Examples {
         private NativeField<float4> ColorData;
         private NativeField<float2> FlowData;
         private PathableGraph Graph;
+        private Entity Singleton;
 
         private List<SpawnAgentCommand> AgentSpawns = new List<SpawnAgentCommand>();
-        private bool isVisualisingColors;
 
         public DemoLevel (PathableLevel level, int resolution) {
             Level = level;
@@ -54,17 +54,18 @@ namespace FlowTiles.Examples {
 
             // Initialise the ECS simulation
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var singleton = em.CreateEntity();
-            em.AddComponent<LevelSetup>(singleton);
-            em.AddComponent<GlobalPathfindingData>(singleton);
-            em.SetComponentData(singleton, new LevelSetup {
+            Singleton = em.CreateEntity();
+            em.AddComponent<LevelSetup>(Singleton);
+            em.AddComponent<GlobalPathfindingData>(Singleton);
+            em.SetComponentData(Singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = Level.Obstacles,
                 Terrain = Level.Terrain,
-                Colors = ColorData,
                 Flows = FlowData,
+                VisualiseColors = false,
+                Colors = ColorData,
             });
-            em.SetComponentData(singleton, new GlobalPathfindingData {
+            em.SetComponentData(Singleton, new GlobalPathfindingData {
                 Level = level,
                 Graph = Graph,
             });
@@ -77,9 +78,18 @@ namespace FlowTiles.Examples {
         }
 
         public void Update() {
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            em.SetComponentData(Singleton, new LevelSetup {
+                Size = LevelSize,
+                Walls = Level.Obstacles,
+                Terrain = Level.Terrain,
+                Flows = FlowData,
+                VisualiseColors = VisualiseColors,
+                Colors = ColorData,
+            });
+
             if (AgentSpawns.Count > 0) {
                 if (TryGetSingleton(out PrefabLinks prefabs)) {
-                    var em = World.DefaultGameObjectInjectionWorld.EntityManager;
                     foreach (var spawn in AgentSpawns) {
 
                         var agent = em.Instantiate(prefabs.Agent);
@@ -109,7 +119,6 @@ namespace FlowTiles.Examples {
             }
 
             if (VisualiseColors) {
-                isVisualisingColors = true;
                 for (int y = 0; y < LevelSize.x; y++) {
                     for (int x = 0; x < LevelSize.y; x++) {
                         var sector = Graph.CellToSectorMap(new int2(x, y), 0);
@@ -119,14 +128,6 @@ namespace FlowTiles.Examples {
                         } else {
                             ColorData[x, y] = 1;
                         }
-                    }
-                }
-            }
-            else if (isVisualisingColors) {
-                isVisualisingColors = false;
-                for (int y = 0; y < LevelSize.x; y++) {
-                    for (int x = 0; x < LevelSize.y; x++) {
-                        ColorData[x, y] = 1;
                     }
                 }
             }
@@ -155,8 +156,8 @@ namespace FlowTiles.Examples {
             Level.SetTerrain(cell.x, cell.y, (byte)type);
         }
 
-        public void VisualiseSectors(bool visualiseConnections) {
-            Visualisation.DrawSectors(Graph, visualiseConnections);
+        public void VisualiseSectors(bool visualiseConnections, int travelType = 0) {
+            Visualisation.DrawSectors(Graph, visualiseConnections, travelType);
         }
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
@@ -194,12 +195,17 @@ namespace FlowTiles.Examples {
             }
         }
 
-        public void VisualiseAgentFlows() {
+        public void VisualiseAgentFlows(int travelType = 0) {
             FlowData.InitialiseTo(0);
             
-            var datas = GetComponentArray<FlowDebugData>();
-            foreach (var data in datas) {
-                CopyFlowVisualisationData(data.CurrentFlowTile);
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var agents = GetEntityArray<FlowDebugData>();
+            foreach (var agent in agents) {
+                var myTravelType = em.GetComponentData<AgentData>(agent).TravelType;
+                if (myTravelType == travelType) {
+                    var myFlowData = em.GetComponentData<FlowDebugData>(agent).CurrentFlowTile;
+                    CopyFlowVisualisationData(myFlowData);
+                }
             }
         }
 

@@ -193,11 +193,11 @@ namespace FlowTiles.PortalPaths {
                 n1 = ExitPortals[i];
                 for (j = i + 1; j < ExitPortals.Length; ++j) {
                     n2 = ExitPortals[j];
-                    if (n1.Color == n2.Color) {
+                    //if (n1.Color == n2.Color) {
                         TryConnectExits(ref n1, ref n2, costs, pathfinder);
                         ExitPortals[i] = n1;
                         ExitPortals[j] = n2;
-                    }
+                    //}
                 }
             }
         }
