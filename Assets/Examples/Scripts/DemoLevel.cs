@@ -185,7 +185,7 @@ namespace FlowTiles.Examples {
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
 
             var pathfinder = new PortalPathfinder(Graph);
-            var path = new UnsafeList<PortalPathNode>(32, Allocator.Temp);
+            var path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Temp);
             var success = pathfinder.TryFindPath(start, dest, 0, ref path);
 
             if (success) {
@@ -210,8 +210,18 @@ namespace FlowTiles.Examples {
                     for (int i = 0; i < path.Length; i++) {
                         var node = path[i];
                         var map = Graph.IndexToSectorMap(node.Position.SectorIndex, 0);
-                        var flow = CalculateFlowJob.ScheduleAndComplete(map, node.GoalBounds, node.Direction);
-                        CopyFlowVisualisationData(flow);
+                        var flow = new UnsafeField<float2>(map.Bounds.SizeCells, Allocator.Temp);
+                        var task = new FindFlowsJob.Task {
+                            CacheKey = 0,
+                            Sector = map,
+                            GoalBounds = node.GoalBounds,
+                            ExitDirection = node.Direction,
+                            Color = 0,
+                            Flow = flow,
+                        };
+                        var calculator = new FlowCalculator(task, Allocator.Temp);
+                        calculator.Calculate(ref flow);
+                        CopyFlowVisualisationData(task.ResultAsFlowField());
                     }
                 }
             }

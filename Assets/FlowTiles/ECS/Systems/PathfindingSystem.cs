@@ -22,7 +22,8 @@ namespace FlowTiles.ECS {
         private NativeList<PathRequest> PathRequests;
         private NativeList<FlowRequest> FlowRequests;
 
-        //private JobHandle RebuildJob;
+        private FindPathsJob PathsJob;
+        private FindFlowsJob FlowsJob;
 
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<GlobalPathfindingData>();
@@ -58,7 +59,7 @@ namespace FlowTiles.ECS {
 
             // Process path and flow requests, and cache the results
             ProcessPathRequests(graph, ref state);
-            ProcessFlowRequests(graph);
+            ProcessFlowRequests(graph, ref state);
 
             // Invalidate old paths
             new InvalidatePathsJob {
@@ -101,88 +102,6 @@ namespace FlowTiles.ECS {
 
         }
 
-        private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
-            var numRequests = PathRequests.Length;
-            if (numRequests == 0) {
-                return;
-            }
-
-            var tasks = new NativeList<PortalPathJob.Task>(numRequests, Allocator.TempJob);
-            for (int i = 0; i < numRequests; i++) {
-                var request = PathRequests[i];
-
-                // Discard duplicate requests
-                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && existing.HasBeenQueued) {
-                    continue;
-                }
-
-                // Calculate the path
-                var task = new PortalPathJob.Task {
-                    CacheKey = request.cacheKey,
-                    Start = request.originCell,
-                    Dest = request.destCell,
-                    TravelType = request.travelType,
-                    Path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Persistent),
-                    Success = false
-                };
-                tasks.Add(task);
-
-                // Cache the path
-                PathCache.Cache[request.cacheKey] = new CachedPortalPath {
-                    IsPending = true,
-                    HasBeenQueued = true,
-                };
-            }
-            PathRequests.Clear();
-
-            var job = new PortalPathJob(graph, tasks.AsArray());
-            state.Dependency = job.ScheduleParallel(tasks.Length, 2, state.Dependency);
-            state.Dependency.Complete();
-
-            for (int i = 0; i < job.Tasks.Length; i++) {
-                // Cache the path
-                var task = job.Tasks[i];
-                PathCache.Cache[task.CacheKey] = new CachedPortalPath {
-                    IsPending = false,
-                    NoPathExists = !task.Success,
-                    Nodes = task.Path
-                };
-            }
-            job.Tasks.Dispose();
-        }
-
-        private void ProcessFlowRequests(PathableGraph graph) {
-            foreach (var request in FlowRequests) {
-
-                // Discard duplicate requests
-                if (FlowCache.Cache.TryGetValue(request.cacheKey, out var existing) && !existing.IsPending) {
-                    continue;
-                }
-
-                // Find the goal boundaries
-                var goal = request.goalCell;
-                var travelType = request.travelType;
-                var goalMap = graph.CellToSectorMap(goal, travelType);
-                var goalBounds = new CellRect(goal, goal);
-
-                if (!request.goalDirection.Equals(0)) {
-                    if (goalMap.TryGetExitPortal(goal, out var portal)) {
-                        goalBounds = portal.Bounds;
-                    }
-                }
-
-                // Calculate the flow tile
-                var goalDir = request.goalDirection;
-                var flow = CalculateFlowJob.ScheduleAndComplete(goalMap, goalBounds, goalDir);
-
-                FlowCache.Cache[request.cacheKey] = new CachedFlowField {
-                    IsPending = false,
-                    FlowField = flow
-                };
-            }
-            FlowRequests.Clear();
-        }
-
         private void RebuildDirtySectors(ref PathableLevel level, ref PathableGraph graph, ref SystemState state) {
             RebuildRequests.Clear();
             for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
@@ -204,6 +123,129 @@ namespace FlowTiles.ECS {
             state.Dependency = job.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
 
             level.NeedsRebuilding.Value = false;
+        }
+
+        private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
+
+            // Cache the paths
+            if (PathsJob.Tasks.IsCreated) {
+                for (int i = 0; i < PathsJob.Tasks.Length; i++) {
+                    var task = PathsJob.Tasks[i];
+                    PathCache.Cache[task.CacheKey] = new CachedPortalPath {
+                        IsPending = false,
+                        HasBeenQueued = false,
+                        NoPathExists = !task.Success,
+                        Nodes = task.Path
+                    };
+                }
+                PathsJob.Tasks.Dispose();
+            }
+
+            var numRequests = PathRequests.Length;
+            if (numRequests == 0) {
+                return;
+            }
+
+            // Allocate the tasks
+            var tasks = new NativeList<FindPathsJob.Task>(numRequests, Allocator.TempJob);
+            for (int i = 0; i < numRequests; i++) {
+                var request = PathRequests[i];
+
+                // Discard duplicate requests
+                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && existing.HasBeenQueued) {
+                    continue;
+                }
+
+                // Prepare the task
+                var task = new FindPathsJob.Task {
+                    CacheKey = request.cacheKey,
+                    Start = request.originCell,
+                    Dest = request.destCell,
+                    TravelType = request.travelType,
+                    Path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Persistent),
+                    Success = false
+                };
+                tasks.Add(task);
+
+                // Update the cache
+                PathCache.Cache[request.cacheKey] = new CachedPortalPath {
+                    IsPending = true,
+                    HasBeenQueued = true,
+                };
+
+            }
+            PathRequests.Clear();
+
+            // Schedule the tasks
+            PathsJob = new FindPathsJob(graph, tasks.AsArray());
+            state.Dependency = PathsJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
+
+        }
+
+        private void ProcessFlowRequests(PathableGraph graph, ref SystemState state) {
+
+            // Cache the flows
+            if (FlowsJob.Tasks.IsCreated) {
+                for (int i = 0; i < FlowsJob.Tasks.Length; i++) {
+                    var task = FlowsJob.Tasks[i];
+                    FlowCache.Cache[task.CacheKey] = new CachedFlowField {
+                        IsPending = false,
+                        HasBeenQueued = false,
+                        FlowField = task.ResultAsFlowField(),
+                    };
+                }
+                FlowsJob.Tasks.Dispose();
+            }
+
+            var numRequests = FlowRequests.Length;
+            if (numRequests == 0) {
+                return;
+            }
+
+            // Allocate the tasks
+            var tasks = new NativeList<FindFlowsJob.Task>(numRequests, Allocator.TempJob);
+            for (int i = 0; i < numRequests; i++) {
+                var request = FlowRequests[i];
+
+                // Discard duplicate requests
+                if (FlowCache.Cache.TryGetValue(request.cacheKey, out var existing) && existing.HasBeenQueued) {
+                    continue;
+                }
+
+                // Find the goal boundaries
+                var goal = request.goalCell;
+                var travelType = request.travelType;
+                var goalMap = graph.CellToSectorMap(goal, travelType);
+                var goalBounds = new CellRect(goal, goal);
+
+                if (!request.goalDirection.Equals(0)) {
+                    if (goalMap.TryGetExitPortal(goal, out var portal)) {
+                        goalBounds = portal.Bounds;
+                    }
+                }
+
+                // Prepare the task
+                var task = new FindFlowsJob.Task {
+                    CacheKey = request.cacheKey,
+                    Sector = goalMap,
+                    GoalBounds = goalBounds,
+                    ExitDirection = request.goalDirection,
+                    Flow = new Utils.UnsafeField<float2>(goalMap.Bounds.SizeCells, Allocator.Persistent),
+                    Color = 0,
+                };
+                tasks.Add(task);
+
+                FlowCache.Cache[request.cacheKey] = new CachedFlowField {
+                    IsPending = true,
+                    HasBeenQueued = true,
+                };
+            }
+            FlowRequests.Clear();
+
+            // Schedule the tasks
+            FlowsJob = new FindFlowsJob(tasks.AsArray());
+            state.Dependency = FlowsJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
+
         }
 
         public void OnDestroy (ref SystemState state) {

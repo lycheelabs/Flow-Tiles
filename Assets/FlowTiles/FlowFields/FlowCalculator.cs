@@ -1,3 +1,4 @@
+using FlowTiles.ECS;
 using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
 using Unity.Collections;
@@ -22,10 +23,13 @@ namespace FlowTiles.FlowFields {
         private NativeMinHeap Queue;
         private NativeArray<int2> Directions;
 
-        public FlowCalculator(CostMap sector, ColorMap colors, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
+        public FlowCalculator(FindFlowsJob.Task task, Allocator allocator) 
+            : this (task.Sector, task.GoalBounds, task.ExitDirection, allocator) {}
+
+        public FlowCalculator(SectorMap sector, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
             Size = sector.Bounds.SizeCells;
-            Costs = sector;
-            Colors = colors;
+            Costs = sector.Costs;
+            Colors = sector.Colors;
             GoalBounds = goalBounds;
             ExitDirection = exitDirection;
 
@@ -44,7 +48,7 @@ namespace FlowTiles.FlowFields {
             Directions[3] = new int2(0, -1);
         }
 
-        public void Calculate() {
+        public void Calculate(ref UnsafeField<float2> flow) {
 
             Visited.Clear();
             Distance.Clear();
@@ -60,7 +64,7 @@ namespace FlowTiles.FlowFields {
                 for (int y = goalMin.y; y <= goalMax.y; y++) {
                     var goal = new int2(x, y );
 
-                    Flow[goal.x, goal.y] = ExitDirection;
+                    flow[goal.x, goal.y] = ExitDirection;
                     Distance[goal] = 0;
                     Queue.Push(new MinHeapNode(goal, 0));
                 }
@@ -95,7 +99,7 @@ namespace FlowTiles.FlowFields {
                     }
 
                     //Otherwise store the new value and add the destination into the queue
-                    Flow[next.x, next.y] = (current - next);
+                    flow[next.x, next.y] = (current - next);
                     Distance[next] = newCost;
 
                     Queue.Push(new MinHeapNode(next, newCost));

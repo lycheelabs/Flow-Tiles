@@ -8,13 +8,13 @@ using Unity.Mathematics;
 namespace FlowTiles.ECS {
 
     [BurstCompile]
-    public struct PortalPathJob : IJobFor {
+    public struct FindPathsJob : IJobFor {
 
         public struct Task {
-            public int4 CacheKey;
-            public int2 Start;
-            public int2 Dest;
-            public int TravelType;
+            [ReadOnly] public int4 CacheKey;
+            [ReadOnly] public int2 Start;
+            [ReadOnly] public int2 Dest;
+            [ReadOnly] public int TravelType;
 
             public bool Success;
             public UnsafeList<PortalPathNode> Path;
@@ -23,7 +23,7 @@ namespace FlowTiles.ECS {
         [ReadOnly] public PathableGraph Graph;
         public NativeArray<Task> Tasks;
 
-        public PortalPathJob (PathableGraph graph, NativeArray<Task> tasks) {
+        public FindPathsJob (PathableGraph graph, NativeArray<Task> tasks) {
             Graph = graph;
             Tasks = tasks;
         }
