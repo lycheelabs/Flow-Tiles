@@ -28,28 +28,5 @@ namespace FlowTiles.ECS {
         }
     }
 
-    [BurstCompile]
-    public partial struct InvalidateFlowsJob : IJobEntity {
-
-        public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
-        public EntityCommandBuffer ECB;
-
-        [BurstCompile]
-        private void Execute(RefRO<InvalidFlowData> data, Entity entity) {
-            var key = data.ValueRO.Key;
-            if (FlowCache.ContainsKey(key)) {
-
-                // Dispose of the invalid path
-                var oldFlow = FlowCache[key];
-                oldFlow.Dispose();
-                FlowCache.Remove(key);
-
-            }
-
-            // Remove component
-            ECB.RemoveComponent<InvalidFlowData>(entity);
-        }
-    }
-
 }
 

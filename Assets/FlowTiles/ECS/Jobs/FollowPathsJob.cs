@@ -12,7 +12,7 @@ namespace FlowTiles.ECS {
 
         [ReadOnly] public PathableGraph Graph;
         [ReadOnly] public NativeParallelHashMap<int4, CachedPortalPath> PathCache;
-        [ReadOnly] public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
+        [ReadOnly] public FlowCache FlowCache;
 
         public EntityCommandBuffer.ParallelWriter ECB;
 
@@ -26,10 +26,10 @@ namespace FlowTiles.ECS {
                 [ChunkIndexInQuery] int sortKey) {
 
             result.Direction = 0;
+            progress.HasFlow = false;
 
             if (!goal.ValueRO.HasGoal) {
                 progress.HasPath = false;
-                progress.HasFlow = false;
                 return;
             }
 
@@ -38,7 +38,6 @@ namespace FlowTiles.ECS {
             var dest = goal.ValueRO.Goal;
             if (!Graph.Bounds.ContainsCell(current) || !Graph.Bounds.ContainsCell(dest)) {
                 progress.HasPath = false;
-                progress.HasFlow = false;
                 return;
             }
 
@@ -91,7 +90,6 @@ namespace FlowTiles.ECS {
                 // Check destination hasn't changed
                 if (destKey != progress.PathKey.z || travelType != progress.PathKey.w) {
                     progress.HasPath = false;
-                    progress.HasFlow = false;
                     return;
                 }
 
@@ -99,7 +97,6 @@ namespace FlowTiles.ECS {
                 var pathFound = PathCache.TryGetValue(progress.PathKey, out var path);
                 if (!pathFound || path.NoPathExists) {
                     progress.HasPath = false;
-                    progress.HasFlow = false;
                     return;
                 }
 
@@ -155,7 +152,6 @@ namespace FlowTiles.ECS {
                     // Fallback: Cancel path
                     if (!foundNode) {
                         progress.HasPath = false;
-                        progress.HasFlow = false;
                         return;
                     }
 
@@ -171,7 +167,6 @@ namespace FlowTiles.ECS {
                             Key = progress.PathKey,
                         });
                         progress.HasPath = false;
-                        progress.HasFlow = false;
                         return;
                     }
                 }
@@ -179,10 +174,12 @@ namespace FlowTiles.ECS {
                 // Generate or retrieve a flow
                 var pathNode = path.Nodes[progress.NodeIndex];
                 var flowKey = pathNode.CacheKey(travelType);
-                var flowCacheHit = FlowCache.TryGetValue(flowKey, out var flow);
+                var flowCacheHit = FlowCache.TryGetField(flowKey, out var flow);
+                var cell = pathNode.Position.Cell;
                 if (!flowCacheHit) {
                     ECB.AddComponent(sortKey, entity, new MissingFlowData {
-                        Cell = pathNode.Position.Cell,
+                        SectorIndex = Graph.Layout.CellToSectorIndex(cell),
+                        Cell = cell,
                         Direction = pathNode.Direction,
                         TravelType = travelType,
                         Key = flowKey,
@@ -192,18 +189,13 @@ namespace FlowTiles.ECS {
 
                 // Wait for flow to generate...
                 if (flow.IsPending) {
-                    progress.HasFlow = false;
                     return;
                 }
 
                 // Check flow version
                 var flowMap = Graph.CellToSector(pathNode.Position.Cell);
                 if (flow.FlowField.Version != flowMap.Version) {
-                    ECB.AddComponent(sortKey, entity, new InvalidFlowData {
-                        Key = flowKey,
-                    });
                     progress.HasPath = false;
-                    progress.HasFlow = false;
                     return;
                 }
 

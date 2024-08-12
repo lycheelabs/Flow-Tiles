@@ -8,7 +8,7 @@ namespace FlowTiles.ECS {
     [BurstCompile]
     public partial struct DebugPathsJob : IJobEntity {
 
-        [ReadOnly] public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
+        [ReadOnly] public FlowCache FlowCache;
 
         [BurstCompile]
         private void Execute(RefRO<FlowProgress> progress, ref FlowDebugData debug) {
@@ -17,7 +17,7 @@ namespace FlowTiles.ECS {
             if (!progress.ValueRO.HasFlow) {
                 return;
             }
-            var foundFlow = FlowCache.TryGetValue(progress.ValueRO.FlowKey, out var flow);
+            var foundFlow = FlowCache.TryGetField(progress.ValueRO.FlowKey, out var flow);
             if (!foundFlow || flow.IsPending) {
                 return;
             }

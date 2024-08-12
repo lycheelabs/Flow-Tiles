@@ -32,9 +32,7 @@ namespace FlowTiles.ECS {
             PathCache = new PathCache {
                 Cache = new NativeParallelHashMap<int4, CachedPortalPath>(CACHE_CAPACITY, Allocator.Persistent) 
             };
-            FlowCache = new FlowCache {
-                Cache = new NativeParallelHashMap<int4, CachedFlowField>(CACHE_CAPACITY, Allocator.Persistent)
-            };
+            FlowCache = new FlowCache(CACHE_CAPACITY);
 
             // Build the request buffers
             RebuildRequests = new NativeList<int>(50, Allocator.Persistent);
@@ -67,12 +65,6 @@ namespace FlowTiles.ECS {
                 ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
 
-            // Invalidate old flows
-            new InvalidateFlowsJob {
-                FlowCache = FlowCache.Cache,
-                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
-
             // Accumulate path rquests
             new RequestPathsJob {
                 PathCache = PathCache.Cache,
@@ -82,7 +74,7 @@ namespace FlowTiles.ECS {
 
             // Accumulate flow rquests
             new RequestFlowsJob {
-                FlowCache = FlowCache.Cache,
+                FlowCache = FlowCache,
                 FlowRequests = FlowRequests,
                 ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
@@ -91,13 +83,13 @@ namespace FlowTiles.ECS {
             new FollowPathsJob {
                 Graph = graph,
                 PathCache = PathCache.Cache,
-                FlowCache = FlowCache.Cache,
+                FlowCache = FlowCache,
                 ECB = ecbLate.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
             }.ScheduleParallel();
 
             // Visualises pathing data
             new DebugPathsJob {
-                FlowCache = FlowCache.Cache,
+                FlowCache = FlowCache,
             }.ScheduleParallel();
 
         }
@@ -106,14 +98,16 @@ namespace FlowTiles.ECS {
             RebuildRequests.Clear();
             for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
                 if (level.SectorFlags[index].NeedsRebuilding) {
+                    FlowCache.ClearSector(index);
                     graph.ReinitialiseSector(index, level);
                     level.SectorFlags[index] = default;
                     RebuildRequests.Add(index);
                 }
             }
 
-            for (int index = 0; index < RebuildRequests.Length; index++) {
-                graph.BuildSectorExits(RebuildRequests[index]);
+            for (int request = 0; request < RebuildRequests.Length; request++) {
+                var index = RebuildRequests[request];
+                graph.BuildSectorExits(index);
             }
 
             var job = new RebuildGraphJob {
@@ -188,11 +182,12 @@ namespace FlowTiles.ECS {
             if (FlowsJob.Tasks.IsCreated) {
                 for (int i = 0; i < FlowsJob.Tasks.Length; i++) {
                     var task = FlowsJob.Tasks[i];
-                    FlowCache.Cache[task.CacheKey] = new CachedFlowField {
+                    var result = task.ResultAsFlowField();
+                    FlowCache.StoreField (result.SectorIndex, task.CacheKey, new CachedFlowField {
                         IsPending = false,
                         HasBeenQueued = false,
-                        FlowField = task.ResultAsFlowField(),
-                    };
+                        FlowField = result,
+                    });
                 }
                 FlowsJob.Tasks.Dispose();
             }
@@ -208,7 +203,7 @@ namespace FlowTiles.ECS {
                 var request = FlowRequests[i];
 
                 // Discard duplicate requests
-                if (FlowCache.Cache.TryGetValue(request.cacheKey, out var existing) && existing.HasBeenQueued) {
+                if (FlowCache.TryGetField(request.cacheKey, out var existing) && existing.HasBeenQueued) {
                     continue;
                 }
 
@@ -235,10 +230,10 @@ namespace FlowTiles.ECS {
                 };
                 tasks.Add(task);
 
-                FlowCache.Cache[request.cacheKey] = new CachedFlowField {
+                FlowCache.StoreField (goalMap.Index, request.cacheKey, new CachedFlowField {
                     IsPending = true,
                     HasBeenQueued = true,
-                };
+                });
             }
             FlowRequests.Clear();
 
@@ -250,7 +245,7 @@ namespace FlowTiles.ECS {
 
         public void OnDestroy (ref SystemState state) {
             PathCache.Cache.Dispose();
-            FlowCache.Cache.Dispose();
+            FlowCache.Dispose();
             PathRequests.Dispose();
             FlowRequests.Dispose();
         }

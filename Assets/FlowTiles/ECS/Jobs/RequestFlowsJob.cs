@@ -8,7 +8,7 @@ namespace FlowTiles.ECS {
     [BurstCompile]
     public partial struct RequestFlowsJob : IJobEntity {
 
-        public NativeParallelHashMap<int4, CachedFlowField> FlowCache;
+        public FlowCache FlowCache;
         public NativeList<FlowRequest> FlowRequests;
 
         public EntityCommandBuffer ECB;
@@ -16,7 +16,7 @@ namespace FlowTiles.ECS {
         [BurstCompile]
         private void Execute(RefRO<MissingFlowData> data, Entity entity) {
             var key = data.ValueRO.Key;
-            if (!FlowCache.ContainsKey(key)) {
+            if (!FlowCache.ContainsField(key)) {
 
                 // Request a flow be generated
                 FlowRequests.Add(new FlowRequest {
@@ -27,9 +27,10 @@ namespace FlowTiles.ECS {
                 });
 
                 // Store temp data in the cache
-                FlowCache[key] = new CachedFlowField {
+                var sector = data.ValueRO.SectorIndex;
+                FlowCache.StoreField (sector, key, new CachedFlowField {
                     IsPending = true
-                };
+                });
 
             }
 

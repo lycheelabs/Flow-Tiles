@@ -13,6 +13,7 @@ namespace FlowTiles.ECS {
     public struct FindFlowsJob : IJobFor {
 
         public struct Task {
+
             [ReadOnly] public int4 CacheKey;
             [ReadOnly] public SectorMap Sector;
             [ReadOnly] public CellRect GoalBounds;
