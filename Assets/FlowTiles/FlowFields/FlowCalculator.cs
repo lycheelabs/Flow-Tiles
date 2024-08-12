@@ -18,7 +18,7 @@ namespace FlowTiles.FlowFields {
         private UnsafeField<int2> BaseFlow;
         private NativeHashSet<int2> Visited;
         private NativeHashMap<int2, int> Distance;
-        private NativeMinHeap Queue;
+        private NativePriorityQueue<PathfinderNode> Queue;
         private NativeArray<int2> Directions;
 
         public FlowCalculator(FindFlowsJob.Task task, Allocator allocator) 
@@ -36,7 +36,7 @@ namespace FlowTiles.FlowFields {
             BaseFlow = new UnsafeField<int2>(numCells, allocator);
             Visited = new NativeHashSet<int2>(numCells, allocator);
             Distance = new NativeHashMap<int2, int>(numCells, allocator);
-            Queue = new NativeMinHeap(numCells * 2, allocator);
+            Queue = new NativePriorityQueue<PathfinderNode>(numCells * 2, allocator);
             Directions = new NativeArray<int2>(4, allocator);
 
             Directions[0] = new int2(1, 0);
@@ -63,15 +63,15 @@ namespace FlowTiles.FlowFields {
 
                     BaseFlow[goal.x, goal.y] = ExitDirection;
                     Distance[goal] = 0;
-                    Queue.Push(new MinHeapNode(goal, 0));
+                    Queue.Enqueue(new PathfinderNode(goal, 0));
                 }
             }
             Color = Colors.Cells[goalMin.x, goalMin.y];
 
             // Iterate over the cells once in least-cost order
             int2 current;
-            while (Queue.HasNext()) {
-                current = Queue[Queue.Pop()].Position;
+            while (!Queue.IsEmpty) {
+                current = Queue.Dequeue().Position;
                 Visited.Add(current);
 
                 //Visit all neighbours through edges going out of node
@@ -94,7 +94,7 @@ namespace FlowTiles.FlowFields {
                     BaseFlow[next.x, next.y] = (current - next);
                     Distance[next] = newCost;
 
-                    Queue.Push(new MinHeapNode(next, newCost));
+                    Queue.Enqueue(new PathfinderNode(next, newCost));
                 }
             }
 

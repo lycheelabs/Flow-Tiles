@@ -10,14 +10,14 @@ namespace FlowTiles.PortalPaths {
         private NativeHashSet<int2> Visited;
         private NativeHashMap<int2, int2> Parent;
         private NativeHashMap<int2, int> GScore;
-        private NativeMinHeap Queue;
+        private NativePriorityQueue<PathfinderNode> Queue;
         private NativeArray<int2> Directions;
 
         public SectorPathfinder(int sectorCells, Allocator allocator) {
             Visited = new NativeHashSet<int2>(sectorCells, allocator);
             Parent = new NativeHashMap<int2, int2>(sectorCells, allocator);
             GScore = new NativeHashMap<int2, int>(sectorCells, allocator);
-            Queue = new NativeMinHeap(sectorCells * 2, allocator);
+            Queue = new NativePriorityQueue<PathfinderNode>(sectorCells * 2, allocator);
             
             Directions = new NativeArray<int2>(4, allocator);
             Directions[0] = new int2(1, 0);
@@ -41,11 +41,11 @@ namespace FlowTiles.PortalPaths {
             Queue.Clear();
 
             GScore[start] = 0;
-            Queue.Push(new MinHeapNode(start, EuclidianDistance(start, dest)));
+            Queue.Enqueue(new PathfinderNode(start, EuclidianDistance(start, dest)));
             int2 current;
 
-            while (Queue.HasNext()) {
-                current = Queue[Queue.Pop()].Position;
+            while (!Queue.IsEmpty) {
+                current = Queue.Dequeue().Position;
 
                 if (current.Equals(dest)) {
                     //Rebuild path and return it
@@ -85,7 +85,7 @@ namespace FlowTiles.PortalPaths {
                     Parent[next] = current;
                     GScore[next] = temp_gCost;
 
-                    Queue.Push(new MinHeapNode(next, temp_gCost + EuclidianDistance(next, dest)));
+                    Queue.Enqueue(new PathfinderNode(next, temp_gCost + EuclidianDistance(next, dest)));
                 }
             }
 

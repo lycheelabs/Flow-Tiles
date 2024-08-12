@@ -31,7 +31,7 @@ namespace FlowTiles.ECS {
         [BurstCompile]
         public void Execute(int index) {
             var task = Tasks[index];
-            var pathfinder = new PortalPathfinder(Graph);
+            var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_GRAPH_NODES, Allocator.Temp);
             var path = task.Path;
 
             task.Success = pathfinder.TryFindPath(task.Start, task.Dest, task.TravelType, ref path);

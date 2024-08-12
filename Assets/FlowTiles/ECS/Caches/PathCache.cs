@@ -36,7 +36,6 @@ namespace FlowTiles.ECS {
                     if (Cache.TryGetValue(last, out var lastPath)) {
                         lastPath.Dispose();
                         Cache.Remove(last);
-                        UnityEngine.Debug.Log("Disposing path: "+ last);
                         break;
                     }
                 }

@@ -1,5 +1,4 @@
 using FlowTiles.Utils;
-using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -12,16 +11,14 @@ namespace FlowTiles.PortalPaths {
         private NativeHashSet<int2> Visited;
         private NativeHashMap<int2, PortalEdge> Parents;
         private NativeHashMap<int2, float> GScore;
-        private NativeMinHeap Queue;
-
-        public PortalPathfinder(PathableGraph graph) : this (graph, 1000, Allocator.Temp) {}
+        private NativePriorityQueue<PathfinderNode> Queue;
 
         public PortalPathfinder (PathableGraph graph, int capacity, Allocator allocator) {
             Graph = graph;
             Visited = new NativeHashSet<int2>(capacity, allocator);
             Parents = new NativeHashMap<int2, PortalEdge>(capacity, allocator);
             GScore = new NativeHashMap<int2, float>(capacity, allocator);
-            Queue = new NativeMinHeap(capacity, allocator);
+            Queue = new NativePriorityQueue<PathfinderNode>(capacity, allocator);
         }
 
         public bool TryFindPath(int2 start, int2 dest, int travelType, ref UnsafeList<PortalPathNode> result) {
@@ -75,11 +72,10 @@ namespace FlowTiles.PortalPaths {
             Queue.Clear();
 
             GScore[start.Position.Cell] = 0;
-            Queue.Push(new MinHeapNode(start.Position.Cell, EuclidianDistance(start, destCluster)));
+            Queue.Enqueue(new PathfinderNode(start.Position.Cell, EuclidianDistance(start, destCluster)));
 
-            while (Queue.HasNext()) {
-                var index = Queue.Pop();
-                var cell = Queue[index].Position;
+            while (!Queue.IsEmpty) {
+                var cell = Queue.Dequeue().Position;
                 var found = Graph.CellToSectorMap(cell, travelType).TryGetExitPortal(cell, out var current);
                 if (!found) {
                     current = start;
@@ -95,12 +91,6 @@ namespace FlowTiles.PortalPaths {
                 else {
                     // Visit all neighbours through edges going out of node
                     foreach (PortalEdge edge in current.Edges) {
-
-                        // Heap at capacity? Fail!
-                        if (Queue.IsFull()) {
-                            return default;
-                        }
-
                         ConsiderEdge(edge, current, destCluster);
                     }
                 }
@@ -126,7 +116,7 @@ namespace FlowTiles.PortalPaths {
             // Otherwise store the new value and add the destination into the queue
             Parents[nextCell] = edge;
             GScore[nextCell] = newGCost;
-            Queue.Push(new MinHeapNode(nextCell, newGCost + EuclidianDistance(nextCell, destCell)));
+            Queue.Enqueue(new PathfinderNode(nextCell, newGCost + EuclidianDistance(nextCell, destCell)));
         }
 
         private NativeList<PortalEdge> RebuildPath(Portal dest) {

@@ -184,7 +184,7 @@ namespace FlowTiles.Examples {
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
 
-            var pathfinder = new PortalPathfinder(Graph);
+            var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_GRAPH_NODES, Allocator.Temp);
             var path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Temp);
             var success = pathfinder.TryFindPath(start, dest, 0, ref path);
 

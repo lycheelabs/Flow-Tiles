@@ -10,6 +10,7 @@ namespace FlowTiles {
         public const int EXPECTED_MAX_EXITS = 16;
         public const int EXPECTED_MAX_EDGES = 16;
         public const int EXPECTED_MAX_PATH_LENGTH = 16;
+        public const int EXPECTED_MAX_GRAPH_NODES = 500;
 
         // This constant limits the number of paths that will be cached.
         // Older paths will be disposed when the limit is reached.
