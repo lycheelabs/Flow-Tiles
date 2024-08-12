@@ -11,7 +11,7 @@ namespace FlowTiles.ECS {
     public partial struct FollowPathsJob : IJobEntity {
 
         [ReadOnly] public PathableGraph Graph;
-        [ReadOnly] public NativeParallelHashMap<int4, CachedPortalPath> PathCache;
+        [ReadOnly] public PathCache PathCache;
         [ReadOnly] public FlowCache FlowCache;
 
         public EntityCommandBuffer.ParallelWriter ECB;
@@ -68,7 +68,7 @@ namespace FlowTiles.ECS {
                 // Generate or retrieve a path
                 var startKey = Graph.Layout.IndexOfCell(startKeyCell);
                 var pathKey = new int4(startKey, currentColor, destKey, travelType);
-                var pathCacheHit = PathCache.ContainsKey(pathKey);
+                var pathCacheHit = PathCache.ContainsPath(pathKey);
                 if (!pathCacheHit) {
                     ECB.AddComponent(sortKey, entity, new MissingPathData {
                         Start = start,
@@ -94,7 +94,7 @@ namespace FlowTiles.ECS {
                 }
 
                 // Check path exists
-                var pathFound = PathCache.TryGetValue(progress.PathKey, out var path);
+                var pathFound = PathCache.TryGetPath(progress.PathKey, out var path);
                 if (!pathFound || path.NoPathExists) {
                     progress.HasPath = false;
                     return;

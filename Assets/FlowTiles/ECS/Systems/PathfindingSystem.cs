@@ -29,9 +29,7 @@ namespace FlowTiles.ECS {
             state.RequireForUpdate<GlobalPathfindingData>();
 
             // Build the caches
-            PathCache = new PathCache {
-                Cache = new NativeParallelHashMap<int4, CachedPortalPath>(CACHE_CAPACITY, Allocator.Persistent) 
-            };
+            PathCache = new PathCache(CACHE_CAPACITY);
             FlowCache = new FlowCache(CACHE_CAPACITY);
 
             // Build the request buffers
@@ -61,13 +59,13 @@ namespace FlowTiles.ECS {
 
             // Invalidate old paths
             new InvalidatePathsJob {
-                PathCache = PathCache.Cache,
+                PathCache = PathCache,
                 ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
 
             // Accumulate path rquests
             new RequestPathsJob {
-                PathCache = PathCache.Cache,
+                PathCache = PathCache,
                 PathRequests = PathRequests,
                 ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
@@ -82,7 +80,7 @@ namespace FlowTiles.ECS {
             // Follow the paths
             new FollowPathsJob {
                 Graph = graph,
-                PathCache = PathCache.Cache,
+                PathCache = PathCache,
                 FlowCache = FlowCache,
                 ECB = ecbLate.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
             }.ScheduleParallel();
@@ -125,12 +123,12 @@ namespace FlowTiles.ECS {
             if (PathsJob.Tasks.IsCreated) {
                 for (int i = 0; i < PathsJob.Tasks.Length; i++) {
                     var task = PathsJob.Tasks[i];
-                    PathCache.Cache[task.CacheKey] = new CachedPortalPath {
+                    PathCache.StorePath(task.CacheKey, new CachedPortalPath {
                         IsPending = false,
                         HasBeenQueued = false,
                         NoPathExists = !task.Success,
                         Nodes = task.Path
-                    };
+                    });
                 }
                 PathsJob.Tasks.Dispose();
             }
@@ -146,7 +144,7 @@ namespace FlowTiles.ECS {
                 var request = PathRequests[i];
 
                 // Discard duplicate requests
-                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && existing.HasBeenQueued) {
+                if (PathCache.TryGetPath(request.cacheKey, out var existing) && existing.HasBeenQueued) {
                     continue;
                 }
 
@@ -162,10 +160,10 @@ namespace FlowTiles.ECS {
                 tasks.Add(task);
 
                 // Update the cache
-                PathCache.Cache[request.cacheKey] = new CachedPortalPath {
+                PathCache.StorePath(request.cacheKey, new CachedPortalPath {
                     IsPending = true,
                     HasBeenQueued = true,
-                };
+                });
 
             }
             PathRequests.Clear();
@@ -244,7 +242,7 @@ namespace FlowTiles.ECS {
         }
 
         public void OnDestroy (ref SystemState state) {
-            PathCache.Cache.Dispose();
+            PathCache.Dispose();
             FlowCache.Dispose();
             PathRequests.Dispose();
             FlowRequests.Dispose();

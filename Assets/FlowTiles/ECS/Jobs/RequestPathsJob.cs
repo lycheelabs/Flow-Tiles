@@ -8,7 +8,7 @@ namespace FlowTiles.ECS {
     [BurstCompile]
     public partial struct RequestPathsJob : IJobEntity {
 
-        public NativeParallelHashMap<int4, CachedPortalPath> PathCache;
+        public PathCache PathCache;
         public NativeList<PathRequest> PathRequests;
 
         public EntityCommandBuffer ECB;
@@ -16,7 +16,7 @@ namespace FlowTiles.ECS {
         [BurstCompile]
         private void Execute(RefRO<MissingPathData> data, Entity entity) {
             var key = data.ValueRO.Key;
-            if (!PathCache.ContainsKey(key)) {
+            if (!PathCache.ContainsPath(key)) {
 
                 // Request a path be generated
                 PathRequests.Add(new PathRequest {
@@ -27,9 +27,9 @@ namespace FlowTiles.ECS {
                 });
 
                 // Store temp data in the cache
-                PathCache[key] = new CachedPortalPath {
+                PathCache.StorePath(key, new CachedPortalPath {
                     IsPending = true
-                };
+                });
 
             }
 
