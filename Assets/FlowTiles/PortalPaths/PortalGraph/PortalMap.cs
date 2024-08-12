@@ -54,20 +54,18 @@ namespace FlowTiles.PortalPaths {
         /// Returns the closest reachable portal to this point, if one exists
         /// </summary>
         public bool TryGetClosestExitPortal(int2 pos, int2 dest, int color, out Portal closest) {
-            if (ExitPortals.Length == 0) {
-                closest = default;
+            closest = default;
+            var exits = RootPortals[color - 1].Edges;
+            if (exits.Length == 0) {
                 return false;
             }
 
-            closest = ExitPortals[0];
             var found = false;
             var bestDist = 0f;
 
-            for (int i = 0; i < ExitPortals.Length; i++) {
-                var portal = ExitPortals[i];
-                if (portal.Color != color) {
-                    continue;
-                }
+            for (int i = 0; i < exits.Length; i++) {
+                var portalIndex = ExitPortalLookup[exits[i].end.Cell];
+                var portal = ExitPortals[portalIndex];
 
                 var portalPos = portal.Bounds.CentreCell;
                 var f = math.distance(portalPos, pos);

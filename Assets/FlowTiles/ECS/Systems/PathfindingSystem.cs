@@ -12,8 +12,6 @@ namespace FlowTiles.ECS {
     [BurstCompile]
     public partial struct PathfindingSystem : ISystem {
 
-        public const int CACHE_CAPACITY = 1000;
-
         private PathCache PathCache;
         private FlowCache FlowCache;
 
@@ -29,8 +27,8 @@ namespace FlowTiles.ECS {
             state.RequireForUpdate<GlobalPathfindingData>();
 
             // Build the caches
-            PathCache = new PathCache(CACHE_CAPACITY);
-            FlowCache = new FlowCache(CACHE_CAPACITY);
+            PathCache = new PathCache(Constants.MAX_CACHED_PATHS);
+            FlowCache = new FlowCache(1000);
 
             // Build the request buffers
             RebuildRequests = new NativeList<int>(50, Allocator.Persistent);
@@ -85,7 +83,7 @@ namespace FlowTiles.ECS {
                 ECB = ecbLate.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
             }.ScheduleParallel();
 
-            // Visualises pathing data
+            // Expose flow data for visualisation
             new DebugPathsJob {
                 FlowCache = FlowCache,
             }.ScheduleParallel();

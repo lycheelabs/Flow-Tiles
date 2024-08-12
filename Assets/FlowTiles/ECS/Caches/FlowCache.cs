@@ -6,12 +6,12 @@ namespace FlowTiles.ECS {
 
     public struct FlowCache {
 
-        private NativeParallelHashMap<int4, CachedFlowField> Cache;
-        private NativeParallelHashMap<int, UnsafeList<int4>> Lookup;
+        private NativeHashMap<int4, CachedFlowField> Cache;
+        private NativeHashMap<int, UnsafeList<int4>> Lookup;
 
         public FlowCache (int capacity) {
-            Cache = new NativeParallelHashMap<int4, CachedFlowField>(capacity, Allocator.Persistent);
-            Lookup = new NativeParallelHashMap<int, UnsafeList<int4>>(capacity, Allocator.Persistent);
+            Cache = new NativeHashMap<int4, CachedFlowField>(capacity, Allocator.Persistent);
+            Lookup = new NativeHashMap<int, UnsafeList<int4>>(capacity, Allocator.Persistent);
         }
 
         /// <summary> Returns whether the given key has been cached </summary>

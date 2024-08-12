@@ -1,7 +1,5 @@
 ﻿using Unity.Burst;
-using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
 
 namespace FlowTiles.ECS {
 
@@ -13,10 +11,8 @@ namespace FlowTiles.ECS {
 
         [BurstCompile]
         private void Execute(RefRO<InvalidPathData> data, Entity entity) {
-            var key = data.ValueRO.Key;
-            if (PathCache.ContainsPath(key)) {
-                PathCache.DisposePath(key);
-            }
+
+            PathCache.DisposePath(data.ValueRO.Key);
 
             // Remove component
             ECB.RemoveComponent<InvalidPathData>(entity);

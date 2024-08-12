@@ -6,11 +6,13 @@ namespace FlowTiles.ECS {
 
     public struct PathCache {
 
-        private NativeParallelHashMap<int4, CachedPortalPath> Cache;
+        private int Capacity;
+        private NativeHashMap<int4, CachedPortalPath> Cache;
         private NativeQueue<int4> Queue;
 
         public PathCache(int capacity) {
-            Cache = new NativeParallelHashMap<int4, CachedPortalPath>(capacity, Allocator.Persistent);
+            Capacity = capacity;
+            Cache = new NativeHashMap<int4, CachedPortalPath>(capacity, Allocator.Persistent);
             Queue = new NativeQueue<int4>(Allocator.Persistent);
         }
 
@@ -28,12 +30,13 @@ namespace FlowTiles.ECS {
         public void StorePath(int4 key, CachedPortalPath item) {
 
             // If full, deallocate the oldest
-            if (Cache.Count() >= Cache.Capacity) {
+            if (Cache.Count >= Capacity) {
                 while (Queue.Count > 0) {
                     var last = Queue.Dequeue();
                     if (Cache.TryGetValue(last, out var lastPath)) {
                         lastPath.Dispose();
                         Cache.Remove(last);
+                        UnityEngine.Debug.Log("Disposing path: "+ last);
                         break;
                     }
                 }

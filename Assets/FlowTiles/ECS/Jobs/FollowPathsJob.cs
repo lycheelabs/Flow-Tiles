@@ -48,6 +48,7 @@ namespace FlowTiles.ECS {
 
             var destMap = Graph.CellToSectorMap(dest, travelType);
             var destColor = destMap.GetCellColor(dest);
+            var destIsland = destMap.GetCellIsland(dest);
             var destKey = Graph.Layout.IndexOfCell(dest);
 
             // Attach to a path
@@ -58,7 +59,7 @@ namespace FlowTiles.ECS {
                 var startCluster = currentMap.GetRootPortal(current);
                 var startKeyCell = startCluster.Position.Cell;
                     
-                if (currentMap.Index != destMap.Index || currentColor != destColor) {
+                if (currentMap.Index != destMap.Index || currentIsland != destIsland) {
                     if (currentMap.Portals.TryGetClosestExitPortal(current, dest, startCluster.Color, out var closest)) {
                         start = closest.Position.Cell;
                         startKeyCell = start;
@@ -118,7 +119,6 @@ namespace FlowTiles.ECS {
 
                 // Connect to a sector
                 if (!nodeIsValid) {
-                    var foundNode = false;
                     versionCheckDistance = 3;
 
                     // Default: Check next sector
@@ -130,12 +130,12 @@ namespace FlowTiles.ECS {
                         var newIsland = newMap.GetCellIsland(newCell);
                         if (newMap.Index == currentMap.Index && newIsland == currentIsland) {
                             progress.NodeIndex = newIndex;
-                            foundNode = true;
+                            nodeIsValid = true;
                         }
                     }
 
                     // Fallback: Check all sectors
-                    if (!foundNode) {
+                    if (!nodeIsValid) {
                         for (int index = 0; index < path.Nodes.Length; index++) {
                             var newNode = path.Nodes[index];
                             var newCell = newNode.Position.Cell;
@@ -143,14 +143,14 @@ namespace FlowTiles.ECS {
                             var newIsland = newMap.GetCellIsland(newCell);
                             if (newMap.Index == currentMap.Index && newIsland == currentIsland) {
                                 progress.NodeIndex = index;
-                                foundNode = true;
+                                nodeIsValid = true;
                                 break;
                             }
                         }
                     }
 
                     // Fallback: Cancel path
-                    if (!foundNode) {
+                    if (!nodeIsValid) {
                         progress.HasPath = false;
                         return;
                     }
