@@ -58,7 +58,7 @@ namespace FlowTiles {
         }
 
         public void SetTerrainCost(int travelType, int terrainType, byte newCost) {
-            if (newCost <= 0 || newCost > 255) {
+            if (newCost <= 0 || newCost > WALL_COST) {
                 throw new ArgumentException("Terrain costs must be in range 1-255");
             }
             if (travelType < 0 || travelType >= NumTravelTypes) {

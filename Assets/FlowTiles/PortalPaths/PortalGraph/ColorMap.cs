@@ -77,7 +77,7 @@ namespace FlowTiles.PortalPaths {
                         var c4 = TryGetColor(x, y + 1);
                         var bestNeighbor = math.max(math.max(c1, c2), math.max(c3, c4));
                         if (bestNeighbor > 0) {
-                            FloodFill(costs, new int2(x, y), 255, (short)bestNeighbor, cellsInSector);
+                            FloodFill(costs, new int2(x, y), PathableLevel.WALL_COST, (short)bestNeighbor, cellsInSector);
                         };
                     }
                 }

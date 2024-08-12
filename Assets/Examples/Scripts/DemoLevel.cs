@@ -104,7 +104,7 @@ namespace FlowTiles.Examples {
                             TravelType = spawn.TravelType,
                         });
                         em.SetComponentData(agent, new LocalTransform {
-                            Position = new float3(spawn.Cell, -1 - UnityEngine.Random.Range(0, -4)),
+                            Position = new float3(spawn.Cell, -1 - UnityEngine.Random.Range(0, 4)),
                             Scale = 1,
                         });
                         em.SetComponentData(agent, new FlowPosition {
@@ -221,6 +221,7 @@ namespace FlowTiles.Examples {
                         };
                         var calculator = new FlowCalculator(task, Allocator.Temp);
                         calculator.Calculate(ref flow);
+                        task.Flow = flow;
                         CopyFlowVisualisationData(task.ResultAsFlowField());
                     }
                 }

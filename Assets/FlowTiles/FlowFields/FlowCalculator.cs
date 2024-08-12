@@ -12,12 +12,10 @@ namespace FlowTiles.FlowFields {
         [ReadOnly] public CostMap Costs;
         [ReadOnly] public ColorMap Colors;
         [ReadOnly] public CellRect GoalBounds;
-        [ReadOnly] public float2 ExitDirection;
-
-        // Result
-        public UnsafeField<float2> Flow;
+        [ReadOnly] public int2 ExitDirection;
         public short Color;
 
+        private UnsafeField<int2> BaseFlow;
         private NativeHashSet<int2> Visited;
         private NativeHashMap<int2, int> Distance;
         private NativeMinHeap Queue;
@@ -32,11 +30,10 @@ namespace FlowTiles.FlowFields {
             Colors = sector.Colors;
             GoalBounds = goalBounds;
             ExitDirection = exitDirection;
-
-            Flow = new UnsafeField<float2>(Size, Allocator.Persistent);
             Color = 0;
 
             var numCells = sector.Bounds.WidthCells * sector.Bounds.HeightCells;
+            BaseFlow = new UnsafeField<int2>(numCells, allocator);
             Visited = new NativeHashSet<int2>(numCells, allocator);
             Distance = new NativeHashMap<int2, int>(numCells, allocator);
             Queue = new NativeMinHeap(numCells * 2, allocator);
@@ -62,9 +59,9 @@ namespace FlowTiles.FlowFields {
             var goalMax = GoalBounds.MaxCell - sectorBounds.MinCell;
             for (int x = goalMin.x; x <= goalMax.x; x++) {
                 for (int y = goalMin.y; y <= goalMax.y; y++) {
-                    var goal = new int2(x, y );
+                    var goal = new int2(x, y);
 
-                    flow[goal.x, goal.y] = ExitDirection;
+                    BaseFlow[goal.x, goal.y] = ExitDirection;
                     Distance[goal] = 0;
                     Queue.Push(new MinHeapNode(goal, 0));
                 }
@@ -86,23 +83,41 @@ namespace FlowTiles.FlowFields {
                         continue;
                     }
 
-                    // Check if the cell is passable
-                    var cost = Costs.Cells[next.x, next.y];
-                    if (cost == PathableLevel.WALL_COST) {
-                        continue;
-                    }
-
                     // Calculate the new cost and compare against best cost
+                    var cost = Costs.Cells[next.x, next.y];
                     int newCost = Distance[current] + cost;
                     if (Distance.TryGetValue(next, out int prev_gCost) && newCost >= prev_gCost) {
                         continue;
                     }
 
                     //Otherwise store the new value and add the destination into the queue
-                    flow[next.x, next.y] = (current - next);
+                    BaseFlow[next.x, next.y] = (current - next);
                     Distance[next] = newCost;
 
                     Queue.Push(new MinHeapNode(next, newCost));
+                }
+            }
+
+            // Combine flow directions to create diagonals
+            for (int x = 0; x < Size.x; x++) {
+                for (int y = 0; y < Size.y; y++) {
+                    var cell1 = new int2(x, y);
+                    var flow1 = BaseFlow[x, y];
+                    flow[x, y] = flow1;
+
+                    if (flow1.Equals(0)) continue;
+
+                    var cell2 = cell1 + flow1;
+                    if (IsIn(cell2) && Costs.Cells[cell2.x, cell2.y] < PathableLevel.WALL_COST) {
+                        var flow2 = BaseFlow[cell2.x, cell2.y];
+
+                        var cell3 = cell1 + flow2;
+                        if (IsIn(cell3) && Costs.Cells[cell3.x, cell3.y] < PathableLevel.WALL_COST) {
+
+                            var combinedFlow = math.normalize(flow1 + flow2);
+                            flow[x, y] = combinedFlow;
+                        }
+                    }
                 }
             }
         }
