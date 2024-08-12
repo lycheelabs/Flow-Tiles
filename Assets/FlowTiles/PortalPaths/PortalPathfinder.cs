@@ -16,12 +16,12 @@ namespace FlowTiles.PortalPaths {
 
         public PortalPathfinder(PathableGraph graph) : this (graph, 1000, Allocator.Temp) {}
 
-        public PortalPathfinder (PathableGraph graph, int capacitry, Allocator allocator) {
+        public PortalPathfinder (PathableGraph graph, int capacity, Allocator allocator) {
             Graph = graph;
-            Visited = new NativeHashSet<int2>(capacitry, allocator);
-            Parents = new NativeHashMap<int2, PortalEdge>(capacitry, allocator);
-            GScore = new NativeHashMap<int2, float>(capacitry, allocator);
-            Queue = new NativeMinHeap(capacitry, allocator);
+            Visited = new NativeHashSet<int2>(capacity, allocator);
+            Parents = new NativeHashMap<int2, PortalEdge>(capacity, allocator);
+            GScore = new NativeHashMap<int2, float>(capacity, allocator);
+            Queue = new NativeMinHeap(capacity, allocator);
         }
 
         public bool TryFindPath(int2 start, int2 dest, int travelType, ref UnsafeList<PortalPathNode> result) {

@@ -6,6 +6,7 @@ namespace FlowTiles.ECS {
     public struct CachedPortalPath {
 
         public bool IsPending;
+        public bool HasBeenQueued;
         public bool NoPathExists;
         public UnsafeList<PortalPathNode> Nodes;
 

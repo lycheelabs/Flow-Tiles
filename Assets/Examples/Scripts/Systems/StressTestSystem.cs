@@ -27,7 +27,7 @@ namespace FlowTiles.Examples {
             public int2 LevelSize;
 
             [BurstCompile]
-            private void Execute(ref FlowPosition cell, ref FlowGoal goal, ref LocalTransform transform, ref StressTestData data) {
+            private void Execute(ref AgentData agent, ref FlowPosition cell, ref FlowGoal goal, ref LocalTransform transform, ref StressTestData data) {
                 var random = data.Random;
                 
                 var position = cell.Position;
@@ -36,7 +36,8 @@ namespace FlowTiles.Examples {
                     if (position.y == 0) {
                         var newPosition = new int2(random.NextInt(LevelSize.x), LevelSize.y - 1);
                         cell.Position = newPosition;
-                        transform.Position = new float3(newPosition.x, newPosition.y, -1);
+                        transform.Position = new float3(newPosition.x, newPosition.y, transform.Position.z);
+                        agent.Speed = 0;
                     }
 
                     var newGoal = new int2(random.NextInt(LevelSize.x), 0);

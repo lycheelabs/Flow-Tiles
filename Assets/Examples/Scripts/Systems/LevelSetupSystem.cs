@@ -31,7 +31,7 @@ namespace FlowTiles.Examples {
                         cell = new int2(i, j),
                     });
                     state.EntityManager.SetComponentData(wall, new LocalTransform {
-                        Position = new float3(i, j, 0),
+                        Position = new float3(i, j, 0f),
                         Scale = 1,
                     });
 
@@ -44,6 +44,7 @@ namespace FlowTiles.Examples {
                         Position = new float3(i, j, -0.5f),
                         Scale = 0,
                     });
+
                 }
             }
 

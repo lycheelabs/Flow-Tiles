@@ -9,6 +9,7 @@ namespace FlowTiles {
         public const int EXPECTED_MAX_COLORS = 8;
         public const int EXPECTED_MAX_EXITS = 16;
         public const int EXPECTED_MAX_EDGES = 16;
+        public const int EXPECTED_MAX_PATH_LENGTH = 32;
 
     }
 

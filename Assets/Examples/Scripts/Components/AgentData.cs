@@ -5,7 +5,6 @@ namespace FlowTiles.Examples {
 
     public struct AgentData : IComponentData {
 
-        public float2 Position;
         public float2 Speed;
         public int TravelType;
 

@@ -20,15 +20,26 @@ namespace FlowTiles.Examples {
 
             for (int x = 0; x < LevelSize; x++) {
                 for (int y = 0; y < LevelSize; y++) {
-                    Level.SpawnAgentAt(new int2(x, y), AgentType.STRESS_TEST);
+                    if (!map.Obstacles[x, y]) {
+                        Level.SpawnAgentAt(new int2(x, y), AgentType.STRESS_TEST);
+                    }
                 }
             }
 
         }
 
         void Update() {
-            Level.Update();
-            //Level.VisualiseSectors(false);
+            Level.Update(); 
+            
+            var position = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            var mouseCell = new int2((int)(position.x + 0.5f), (int)(position.y + 0.5f));
+            if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
+
+                if (Input.GetMouseButtonDown(1)) {
+                    Level.FlipWallAt(mouseCell);
+                }
+            }
+
         }
 
     }

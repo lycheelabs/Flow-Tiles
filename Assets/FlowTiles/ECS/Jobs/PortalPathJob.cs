@@ -8,53 +8,35 @@ using Unity.Mathematics;
 namespace FlowTiles.ECS {
 
     [BurstCompile]
-    public struct PortalPathJob : IJob {
+    public struct PortalPathJob : IJobFor {
 
-        public static bool ScheduleAndComplete (PathableGraph graph, int2 start, int2 dest, int travelType, out UnsafeList<PortalPathNode> result) {
-            var job = new PortalPathJob(graph, start, dest, travelType);
-            job.Schedule().Complete();
-            
-            result = job.Result.Value;
-            var success = job.Success.Value;
-            
-            job.Dispose();
-            return success;
+        public struct Task {
+            public int4 CacheKey;
+            public int2 Start;
+            public int2 Dest;
+            public int TravelType;
+
+            public bool Success;
+            public UnsafeList<PortalPathNode> Path;
         }
 
-        // ------------------------------------------------
+        [ReadOnly] public PathableGraph Graph;
+        public NativeArray<Task> Tasks;
 
-        public PathableGraph Graph;
-        public int2 Start;
-        public int2 Dest;
-        public int TravelType;
-
-        public NativeReference<UnsafeList<PortalPathNode>> Result;
-        public NativeReference<bool> Success;
-
-        public PortalPathJob (PathableGraph graph, int2 start, int2 dest, int travelType) {
+        public PortalPathJob (PathableGraph graph, NativeArray<Task> tasks) {
             Graph = graph;
-            Start = start;
-            Dest = dest;
-            TravelType = travelType;
-
-            Result = new NativeReference<UnsafeList<PortalPathNode>>(Allocator.TempJob);
-            Success = new NativeReference<bool>(Allocator.TempJob);
-
-            Result.Value = new UnsafeList<PortalPathNode>(32, Allocator.Persistent);
-            Success.Value = false;
+            Tasks = tasks;
         }
 
         [BurstCompile]
-        public void Execute() {
+        public void Execute(int index) {
+            var task = Tasks[index];
             var pathfinder = new PortalPathfinder(Graph);
-            var path = Result.Value;
-            Success.Value = pathfinder.TryFindPath(Start, Dest, TravelType, ref path);
-            Result.Value = path;
-        }
+            var path = task.Path;
 
-        public void Dispose() {
-            Success.Dispose();
-            Result.Dispose();
+            task.Success = pathfinder.TryFindPath(task.Start, task.Dest, task.TravelType, ref path);
+            task.Path = path;
+            Tasks[index] = task;
         }
 
     }

@@ -2,6 +2,7 @@
 using FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -56,7 +57,7 @@ namespace FlowTiles.ECS {
             }
 
             // Process path and flow requests, and cache the results
-            ProcessPathRequests(graph);
+            ProcessPathRequests(graph, ref state);
             ProcessFlowRequests(graph);
 
             // Invalidate old paths
@@ -100,28 +101,54 @@ namespace FlowTiles.ECS {
 
         }
 
-        private void ProcessPathRequests(PathableGraph graph) {
-            foreach (var request in PathRequests) {
+        private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
+            var numRequests = PathRequests.Length;
+            if (numRequests == 0) {
+                return;
+            }
+
+            var tasks = new NativeList<PortalPathJob.Task>(numRequests, Allocator.TempJob);
+            for (int i = 0; i < numRequests; i++) {
+                var request = PathRequests[i];
 
                 // Discard duplicate requests
-                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && !existing.IsPending) {
+                if (PathCache.Cache.TryGetValue(request.cacheKey, out var existing) && existing.HasBeenQueued) {
                     continue;
                 }
 
                 // Calculate the path
-                var origin = request.originCell;
-                var dest = request.destCell;
-                var travelType = request.travelType;
-                var success = PortalPathJob.ScheduleAndComplete(graph, origin, dest, travelType, out var path);
+                var task = new PortalPathJob.Task {
+                    CacheKey = request.cacheKey,
+                    Start = request.originCell,
+                    Dest = request.destCell,
+                    TravelType = request.travelType,
+                    Path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Persistent),
+                    Success = false
+                };
+                tasks.Add(task);
 
                 // Cache the path
                 PathCache.Cache[request.cacheKey] = new CachedPortalPath {
-                    IsPending = false,
-                    NoPathExists = !success,
-                    Nodes = path
+                    IsPending = true,
+                    HasBeenQueued = true,
                 };
             }
             PathRequests.Clear();
+
+            var job = new PortalPathJob(graph, tasks.AsArray());
+            state.Dependency = job.ScheduleParallel(tasks.Length, 2, state.Dependency);
+            state.Dependency.Complete();
+
+            for (int i = 0; i < job.Tasks.Length; i++) {
+                // Cache the path
+                var task = job.Tasks[i];
+                PathCache.Cache[task.CacheKey] = new CachedPortalPath {
+                    IsPending = false,
+                    NoPathExists = !task.Success,
+                    Nodes = task.Path
+                };
+            }
+            job.Tasks.Dispose();
         }
 
         private void ProcessFlowRequests(PathableGraph graph) {
