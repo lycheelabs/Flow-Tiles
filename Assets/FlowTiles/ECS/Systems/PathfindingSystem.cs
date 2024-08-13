@@ -15,10 +15,9 @@ namespace FlowTiles.ECS {
         private PathCache PathCache;
         private FlowCache FlowCache;
 
-        //private Entity BufferSingleton;
         private NativeList<int> RebuildRequests;
-        private NativeList<PathRequest> PathRequests;
-        private NativeList<FlowRequest> FlowRequests;
+        private NativeQueue<PathRequest> PathRequests;
+        private NativeQueue<FlowRequest> FlowRequests;
 
         private FindPathsJob PathsJob;
         private FindFlowsJob FlowsJob;
@@ -32,8 +31,8 @@ namespace FlowTiles.ECS {
 
             // Build the request buffers
             RebuildRequests = new NativeList<int>(50, Allocator.Persistent);
-            PathRequests = new NativeList<PathRequest>(200, Allocator.Persistent);
-            FlowRequests = new NativeList<FlowRequest>(200, Allocator.Persistent);
+            PathRequests = new NativeQueue<PathRequest>(Allocator.Persistent);
+            FlowRequests = new NativeQueue<FlowRequest>(Allocator.Persistent);
 
         }
 
@@ -50,6 +49,7 @@ namespace FlowTiles.ECS {
             if (level.NeedsRebuilding.Value) {
                 RebuildDirtySectors(ref level, ref graph, ref state);
                 level.IsInitialised.Value = true;
+                return; // Don't process paths this frame
             }
 
             // Process path and flow requests, and cache the results
@@ -92,28 +92,52 @@ namespace FlowTiles.ECS {
         }
 
         private void RebuildDirtySectors(ref PathableLevel level, ref PathableGraph graph, ref SystemState state) {
+            var workRemains = false;
+
+            // Prepare sectors for building
             RebuildRequests.Clear();
             for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
-                if (level.SectorFlags[index].NeedsRebuilding) {
-                    FlowCache.ClearSector(index);
-                    graph.ReinitialiseSector(index, level);
-                    level.SectorFlags[index] = default;
-                    RebuildRequests.Add(index);
+                var flags = level.SectorFlags[index];
+                if (flags.NeedsRebuilding) {
+
+                    // Prepare this sector (once)
+                    if (!flags.IsReinitialised) {
+                        FlowCache.ClearSector(index);
+                        graph.ReinitialiseSector(index, level);
+                        flags.IsReinitialised = true;
+                    }
+
+                    // Queue this sector (if enough space this frame)
+                    if (RebuildRequests.Length < Constants.MAX_FLOWFIELDS_PER_FRAME) {
+                        RebuildRequests.Add(index);
+                        flags.NeedsRebuilding = false;
+                    } else {
+                        workRemains = true;
+                    }
+
+                    level.SectorFlags[index] = flags;
                 }
             }
 
+            // Calculate exit points
+            // (requires checking neighbors, therefore sectors must be fully reinitialised)
             for (int request = 0; request < RebuildRequests.Length; request++) {
                 var index = RebuildRequests[request];
                 graph.BuildSectorExits(index);
             }
 
+            // Build internal sector data in parallel
             var job = new RebuildGraphJob {
                 Requests = RebuildRequests,
                 Graph = graph,
             };
             state.Dependency = job.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
 
-            level.NeedsRebuilding.Value = false;
+            // Finished?
+            if (!workRemains) {
+                level.NeedsRebuilding.Value = false;
+            }
+
         }
 
         private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
@@ -132,15 +156,16 @@ namespace FlowTiles.ECS {
                 PathsJob.Tasks.Dispose();
             }
 
-            var numRequests = PathRequests.Length;
+            var numRequests = PathRequests.Count;
             if (numRequests == 0) {
                 return;
             }
 
             // Allocate the tasks
-            var tasks = new NativeList<FindPathsJob.Task>(numRequests, Allocator.TempJob);
-            for (int i = 0; i < numRequests; i++) {
-                var request = PathRequests[i];
+            var numTasks = math.min(numRequests, Constants.MAX_PATHFINDS_PER_FRAME);
+            var tasks = new NativeList<FindPathsJob.Task>(numTasks, Allocator.TempJob);
+            for (int i = 0; i < numTasks; i++) {
+                var request = PathRequests.Dequeue();
 
                 // Discard duplicate requests
                 if (PathCache.TryGetPath(request.cacheKey, out var existing) && existing.HasBeenQueued) {
@@ -165,7 +190,6 @@ namespace FlowTiles.ECS {
                 });
 
             }
-            PathRequests.Clear();
 
             // Schedule the tasks
             PathsJob = new FindPathsJob(graph, tasks.AsArray());
@@ -189,15 +213,16 @@ namespace FlowTiles.ECS {
                 FlowsJob.Tasks.Dispose();
             }
 
-            var numRequests = FlowRequests.Length;
+            var numRequests = FlowRequests.Count;
             if (numRequests == 0) {
                 return;
             }
 
             // Allocate the tasks
-            var tasks = new NativeList<FindFlowsJob.Task>(numRequests, Allocator.TempJob);
+            var numTasks = math.min(numRequests, Constants.MAX_FLOWFIELDS_PER_FRAME);
+            var tasks = new NativeList<FindFlowsJob.Task>(numTasks, Allocator.TempJob);
             for (int i = 0; i < numRequests; i++) {
-                var request = FlowRequests[i];
+                var request = FlowRequests.Dequeue();
 
                 // Discard duplicate requests
                 if (FlowCache.TryGetField(request.cacheKey, out var existing) && existing.HasBeenQueued) {
@@ -232,7 +257,6 @@ namespace FlowTiles.ECS {
                     HasBeenQueued = true,
                 });
             }
-            FlowRequests.Clear();
 
             // Schedule the tasks
             FlowsJob = new FindFlowsJob(tasks.AsArray());

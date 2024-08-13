@@ -45,6 +45,7 @@ namespace FlowTiles.Examples {
         private Entity Singleton;
 
         private List<SpawnAgentCommand> AgentSpawns = new List<SpawnAgentCommand>();
+        private List<MovingWall> MovingWalls = new List<MovingWall>();
 
         public DemoLevel (PathableLevel level, int resolution) {
             Level = level;
@@ -67,6 +68,7 @@ namespace FlowTiles.Examples {
                 Size = LevelSize,
                 Walls = Level.Obstacles,
                 Terrain = Level.Terrain,
+                Stamps = Level.Stamps,
                 Flows = FlowData,
                 VisualiseColors = false,
                 Colors = ColorData,
@@ -90,6 +92,7 @@ namespace FlowTiles.Examples {
                 Size = LevelSize,
                 Walls = Level.Obstacles,
                 Terrain = Level.Terrain,
+                Stamps = Level.Stamps,
                 Flows = FlowData,
                 VisualiseColors = showColors,
                 Colors = ColorData,
@@ -123,6 +126,10 @@ namespace FlowTiles.Examples {
                     }
                     AgentSpawns.Clear();
                 }
+            }
+
+            foreach (var wall in MovingWalls) {
+                wall.Update();
             }
 
             Visualisation.DrawSectors(Graph);
@@ -165,6 +172,10 @@ namespace FlowTiles.Examples {
                 Type = type,
                 TravelType = travelType,
             });
+        }
+
+        public void AddMovingWall(int2 corner, int length, int direction) {
+            MovingWalls.Add(new MovingWall(corner, length, direction, MovingWalls.Count, Level));
         }
 
         public void FlipWallAt(int2 cell) {

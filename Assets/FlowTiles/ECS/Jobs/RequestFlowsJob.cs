@@ -1,7 +1,6 @@
 ﻿using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
 
 namespace FlowTiles.ECS {
 
@@ -9,7 +8,7 @@ namespace FlowTiles.ECS {
     public partial struct RequestFlowsJob : IJobEntity {
 
         public FlowCache FlowCache;
-        public NativeList<FlowRequest> FlowRequests;
+        public NativeQueue<FlowRequest> FlowRequests;
 
         public EntityCommandBuffer ECB;
 
@@ -19,7 +18,7 @@ namespace FlowTiles.ECS {
             if (!FlowCache.ContainsField(key)) {
 
                 // Request a flow be generated
-                FlowRequests.Add(new FlowRequest {
+                FlowRequests.Enqueue(new FlowRequest {
                     goalCell = data.ValueRO.Cell,
                     goalDirection = data.ValueRO.Direction,
                     travelType = data.ValueRO.TravelType,

@@ -9,7 +9,7 @@ namespace FlowTiles.ECS {
     public partial struct RequestPathsJob : IJobEntity {
 
         public PathCache PathCache;
-        public NativeList<PathRequest> PathRequests;
+        public NativeQueue<PathRequest> PathRequests;
 
         public EntityCommandBuffer ECB;
 
@@ -19,7 +19,7 @@ namespace FlowTiles.ECS {
             if (!PathCache.ContainsPath(key)) {
 
                 // Request a path be generated
-                PathRequests.Add(new PathRequest {
+                PathRequests.Enqueue(new PathRequest {
                     originCell = data.ValueRO.Start,
                     destCell = data.ValueRO.Dest,
                     travelType = data.ValueRO.TravelType,

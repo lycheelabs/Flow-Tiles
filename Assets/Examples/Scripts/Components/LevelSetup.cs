@@ -8,6 +8,7 @@ namespace FlowTiles.Examples {
         public int2 Size;
         public NativeField<bool> Walls;
         public NativeField<byte> Terrain;
+        public NativeField<byte> Stamps;
         public NativeField<float2> Flows;
 
         public bool VisualiseColors;

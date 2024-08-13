@@ -79,13 +79,11 @@ namespace FlowTiles {
 
         public void SetObstacle (int x, int y, bool obstacle = true) {
             Obstacles[x, y] = obstacle;
-            NeedsRebuilding.Value = true;
             UpdateRebuildFlags(new int2(x, y), 1);
         }
 
         public void SetTerrain(int x, int y, byte type) {
             Terrain[x, y] = type;
-            NeedsRebuilding.Value = true;
             UpdateRebuildFlags(new int2(x, y), 1);
         }
 
@@ -102,6 +100,8 @@ namespace FlowTiles {
                     }
                 }
             }
+            var corner = new int2(cornerX, cornerX);
+            UpdateRebuildFlags(corner, stamp.Size);
         }
 
         public void ClearStamp(int cornerX, int cornerY, CostStamp stamp) {
@@ -112,11 +112,13 @@ namespace FlowTiles {
                     if (x >= 0 && x < Size.x && y >= 0 && y < Size.y) {
                         var stampValue = stamp[offsetX, offsetY];
                         if (stampValue > 0) {
-                            Stamps[x, y] = stampValue;
+                            Stamps[x, y] = 0;
                         }
                     }
                 }
             }
+            var corner = new int2(cornerX, cornerX);
+            UpdateRebuildFlags(corner, stamp.Size);
         }
 
         private void UpdateRebuildFlags(int2 corner, int2 size) {
@@ -135,6 +137,7 @@ namespace FlowTiles {
                 for (int y = minSector.y; y <= maxSector.y; y++) {
                     if (y < 0 || y >= sizeSectors.y) continue;
                     SectorFlags[x, y] = rebuild;
+                    NeedsRebuilding.Value = true;
                 }
             }
         }

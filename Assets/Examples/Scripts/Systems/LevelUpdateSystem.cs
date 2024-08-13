@@ -22,6 +22,7 @@ namespace FlowTiles.Examples {
                 LevelSize = setup.Size,
                 LevelWalls = setup.Walls,
                 LevelTerrain = setup.Terrain,
+                LevelStamps = setup.Stamps,
                 LevelColors = setup.Colors,
                 VisualiseColors = setup.VisualiseColors,
             }.ScheduleParallel();
@@ -39,12 +40,13 @@ namespace FlowTiles.Examples {
             public bool VisualiseColors;
             [ReadOnly] public NativeField<bool> LevelWalls;
             [ReadOnly] public NativeField<byte> LevelTerrain;
+            [ReadOnly] public NativeField<byte> LevelStamps;
             [ReadOnly] public NativeField<float4> LevelColors;
 
             [BurstCompile]
             private void Execute(Aspect quad, [ChunkIndexInQuery] int sortKey) {
                 var cell = quad.Cell;
-                var wall = LevelWalls[cell.x, cell.y];
+                var wall = LevelWalls[cell.x, cell.y] || LevelStamps[cell.x, cell.y] >= 255;
                 var terrain = LevelTerrain[cell.x, cell.y];
 
                 float4 color = 1;
