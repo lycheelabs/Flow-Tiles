@@ -27,14 +27,15 @@ namespace FlowTiles {
 
         public NativeField<bool> Obstacles;
         public NativeField<byte> Terrain;
-        public NativeField<byte> Costs;
+        public NativeField<byte> Stamps;
         
         public readonly int NumTravelTypes;
         public readonly int NumTerrainTypes;
         public NativeArray<TerrainCosts> TerrainCosts;
 
-        public NativeField<SectorFlags> SectorFlags;
+        public NativeReference<bool> IsInitialised;
         public NativeReference<bool> NeedsRebuilding;
+        public NativeField<SectorFlags> SectorFlags;
 
         public PathableLevel(int width, int height, int resolution, int numTravelTypes = 1, int numTerrainTypes = 1) {
             Size = new int2(width, height);
@@ -43,7 +44,7 @@ namespace FlowTiles {
 
             Obstacles = new NativeField<bool>(Size, Allocator.Persistent);
             Terrain = new NativeField<byte>(Size, Allocator.Persistent);
-            Costs = new NativeField<byte>(Size, Allocator.Persistent);
+            Stamps = new NativeField<byte>(Size, Allocator.Persistent);
             
             NumTravelTypes = numTravelTypes;
             NumTerrainTypes = numTerrainTypes;
@@ -53,8 +54,9 @@ namespace FlowTiles {
             }
 
             var initialise = new SectorFlags { NeedsRebuilding = true };
-            SectorFlags = new NativeField<SectorFlags>(Layout.SizeSectors, Allocator.Persistent, initialise);
+            IsInitialised = new NativeReference<bool>(false, Allocator.Persistent);
             NeedsRebuilding = new NativeReference<bool>(true, Allocator.Persistent);
+            SectorFlags = new NativeField<SectorFlags>(Layout.SizeSectors, Allocator.Persistent, initialise);
         }
 
         public void SetTerrainCost(int travelType, int terrainType, byte newCost) {
@@ -78,37 +80,62 @@ namespace FlowTiles {
         public void SetObstacle (int x, int y, bool obstacle = true) {
             Obstacles[x, y] = obstacle;
             NeedsRebuilding.Value = true;
-            UpdateRebuildFlags(x, y);
+            UpdateRebuildFlags(new int2(x, y), 1);
         }
 
         public void SetTerrain(int x, int y, byte type) {
             Terrain[x, y] = type;
             NeedsRebuilding.Value = true;
-            UpdateRebuildFlags(x, y);
+            UpdateRebuildFlags(new int2(x, y), 1);
         }
 
-        private void UpdateRebuildFlags(int x, int y) {
-            var size = Layout.SizeSectors;
+        public void PlaceStamp (int cornerX, int cornerY, CostStamp stamp) {
+            for (int offsetX = 0; offsetX < stamp.Size.x; offsetX++) {
+                for (int offsetY = 0; offsetY < stamp.Size.y; offsetY++) {
+                    var x = cornerX + offsetX;
+                    var y = cornerY + offsetY;
+                    if (x >= 0 && x < Size.x && y >= 0 && y < Size.y) {
+                        var stampValue = stamp[offsetX, offsetY];
+                        if (stampValue > 0) {
+                            Stamps[x, y] = stampValue;
+                        }
+                    }
+                }
+            }
+        }
+
+        public void ClearStamp(int cornerX, int cornerY, CostStamp stamp) {
+            for (int offsetX = 0; offsetX < stamp.Size.x; offsetX++) {
+                for (int offsetY = 0; offsetY < stamp.Size.y; offsetY++) {
+                    var x = cornerX + offsetX;
+                    var y = cornerY + offsetY;
+                    if (x >= 0 && x < Size.x && y >= 0 && y < Size.y) {
+                        var stampValue = stamp[offsetX, offsetY];
+                        if (stampValue > 0) {
+                            Stamps[x, y] = stampValue;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void UpdateRebuildFlags(int2 corner, int2 size) {
+            if (!IsInitialised.Value) return; // Skip until first build of all sectors
+
+            var sizeSectors = Layout.SizeSectors;
             var resolution = Layout.Resolution;
-            var sectorX = x / resolution;
-            var sectorY = y / resolution;
-            var cellX = x % resolution;
-            var cellY = y % resolution;
+            var min = corner - 1;
+            var max = corner + size;
+            var minSector = min / resolution;
+            var maxSector = max / resolution;
 
             var rebuild = new SectorFlags { NeedsRebuilding = true };
-            SectorFlags[sectorX, sectorY] = rebuild;
-
-            if (sectorX > 0 && cellX == 0) {
-                SectorFlags[sectorX - 1, sectorY] = rebuild;
-            }
-            if (sectorY > 0 && cellY == 0) {
-                SectorFlags[sectorX, sectorY - 1] = rebuild;
-            }
-            if (sectorX < size.x - 1 && cellX == resolution - 1) {
-                SectorFlags[sectorX + 1, sectorY] = rebuild;
-            }
-            if (sectorY < size.y - 1 && cellY == resolution - 1) {
-                SectorFlags[sectorX, sectorY + 1] = rebuild;
+            for (int x = minSector.x; x <= maxSector.x; x++) {
+                if (x < 0 || x >= sizeSectors.x) continue;
+                for (int y = minSector.y; y <= maxSector.y; y++) {
+                    if (y < 0 || y >= sizeSectors.y) continue;
+                    SectorFlags[x, y] = rebuild;
+                }
             }
         }
 
@@ -123,8 +150,8 @@ namespace FlowTiles {
             terrainType = math.clamp(terrainType, 0, NumTerrainTypes - 1);
 
             var terrainCost = TerrainCosts[travelType].Mapping[terrainType];
-            var extraCost = Costs[x, y];
-            return (byte)math.min(terrainCost + extraCost, WALL_COST - 1);
+            var extraCost = Stamps[x, y];
+            return (byte)math.min(terrainCost + extraCost, WALL_COST);
         }
 
     }

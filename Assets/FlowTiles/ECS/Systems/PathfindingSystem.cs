@@ -49,6 +49,7 @@ namespace FlowTiles.ECS {
             // Rebuild all dirty graph sectors
             if (level.NeedsRebuilding.Value) {
                 RebuildDirtySectors(ref level, ref graph, ref state);
+                level.IsInitialised.Value = true;
             }
 
             // Process path and flow requests, and cache the results

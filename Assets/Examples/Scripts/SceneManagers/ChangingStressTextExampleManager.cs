@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace FlowTiles.Examples {
 
-    public class StressTestExampleManager : MonoBehaviour {
+    public class ChangingStressTestExampleManager : MonoBehaviour {
 
         public int LevelSize = 100;
         public int Resolution = 10;
@@ -13,7 +13,6 @@ namespace FlowTiles.Examples {
         void Start() {
 
             var map = new PathableLevel(LevelSize, LevelSize, Resolution);
-            //LevelGeneration.InitialiseRandomObstacles(map, true);
             LevelGeneration.InitialiseRandomWalls(map, LevelSize / 5);
 
             Level = new DemoLevel(map, Resolution);
