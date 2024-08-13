@@ -158,8 +158,9 @@ namespace FlowTiles.ECS {
                 }
 
                 // Check path version
+                int minVersionCheck = math.max(progress.NodeIndex, 0);
                 int maxVersionCheck = math.min(progress.NodeIndex + versionCheckDistance, path.Nodes.Length);
-                for (int i = progress.NodeIndex; i < maxVersionCheck; i++) {
+                for (int i = minVersionCheck; i < maxVersionCheck; i++) {
                     var checkNode = path.Nodes[i];
                     var checkSector = Graph.CellToSector(checkNode.Position.Cell);
                     if (checkSector.Version != checkNode.Version) {

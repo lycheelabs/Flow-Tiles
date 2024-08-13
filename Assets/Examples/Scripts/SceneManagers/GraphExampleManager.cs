@@ -13,12 +13,10 @@ namespace FlowTiles.Examples {
         private int2 startCell;
 
         void Start() {
-
             var map = new PathableLevel(LevelSize, LevelSize, Resolution, 1, 2);
             LevelGeneration.InitialiseRandomObstacles(map, false);
 
             Level = new DemoLevel(map, Resolution);
-
         }
 
         void Update() {

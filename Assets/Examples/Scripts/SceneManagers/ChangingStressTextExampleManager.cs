@@ -18,29 +18,18 @@ namespace FlowTiles.Examples {
 
             var direction = 1;
             for (int i = Resolution / 2; i < LevelSize; i += Resolution) {
-                AddMovingWalls(i, direction);
+                Level.AddMovingWall(i, LevelSize / 2, direction);
                 direction *= -1;
             }
 
             for (int x = 0; x < LevelSize; x++) {
                 for (int y = 0; y < LevelSize; y++) {
-                    if (!map.Obstacles[x, y]) {
+                    if (map.Stamps[x, y] == 0) {
                         Level.SpawnAgentAt(new int2(x, y), AgentType.STRESS_TEST);
                     }
                 }
             }
 
-        }
-
-        private void AddMovingWalls (int2 corner, int direction) {
-            var wallLength = LevelSize / 3;
-            var mid = Level.LevelSize.x / 2;
-            Level.AddMovingWall(corner, wallLength, direction);
-            /*if (corner.x < mid) {
-                Level.AddMovingWall(corner + new int2(mid, 0), wallLength, direction);
-            } else {
-                Level.AddMovingWall(corner - new int2(mid, 0), wallLength, direction);
-            }*/
         }
 
         void Update() {

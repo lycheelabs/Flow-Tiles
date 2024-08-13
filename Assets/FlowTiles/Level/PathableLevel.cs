@@ -100,7 +100,7 @@ namespace FlowTiles {
                     }
                 }
             }
-            var corner = new int2(cornerX, cornerX);
+            var corner = new int2(cornerX, cornerY);
             UpdateRebuildFlags(corner, stamp.Size);
         }
 
@@ -117,7 +117,7 @@ namespace FlowTiles {
                     }
                 }
             }
-            var corner = new int2(cornerX, cornerX);
+            var corner = new int2(cornerX, cornerY);
             UpdateRebuildFlags(corner, stamp.Size);
         }
 

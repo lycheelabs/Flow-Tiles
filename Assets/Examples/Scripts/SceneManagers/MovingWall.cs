@@ -43,7 +43,8 @@ namespace FlowTiles.Examples {
         private void Move() {
             Clear();
 
-            Corner.x += (Length / 2) * Direction;
+            var shift = (Length / 4) * Direction;
+            Corner.x += shift;
             if (Corner.x >= Level.Size.x) {
                 Corner.x -= Level.Size.x;
             }
