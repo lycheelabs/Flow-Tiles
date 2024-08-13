@@ -8,6 +8,17 @@
 // - How to Make Custom Native Collections (https://jacksondunstan.com/articles/4734)
 // - source code of NativeQueue and NativeList
 
+/*
+MIT License
+Copyright 2018 Jackson Dunstan
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files
+(the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, 
+publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, 
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+*/
+
 using System;
 using System.Threading;
 using Unity.Burst;
@@ -41,7 +52,7 @@ namespace FlowTiles.Utils {
                 throw new ArgumentException(
                     string.Format("{0} used in NativeStack<{0}> must be blittable", typeof(T)));*/
 #endif
-            m_AllocatorLabel = label;
+m_AllocatorLabel = label;
 
             // Allocate native memory for a single integer
             m_Counter = (int*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<int>(), 4, label);
