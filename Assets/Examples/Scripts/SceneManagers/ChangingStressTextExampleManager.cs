@@ -7,6 +7,7 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 10;
+        public float Frequency = 1f;
 
         private DemoLevel Level;
 
@@ -18,7 +19,7 @@ namespace FlowTiles.Examples {
 
             var direction = 1;
             for (int i = Resolution / 2; i < LevelSize; i += Resolution) {
-                Level.AddMovingWall(i, LevelSize / 2, direction);
+                Level.AddMovingWall(i, LevelSize / 2, direction, Frequency);
                 direction *= -1;
             }
 
@@ -34,16 +35,6 @@ namespace FlowTiles.Examples {
 
         void Update() {
             Level.Update(); 
-
-            var position = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            var mouseCell = new int2((int)(position.x + 0.5f), (int)(position.y + 0.5f));
-            if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
-
-                if (Input.GetMouseButtonDown(1)) {
-                    Level.FlipWallAt(mouseCell);
-                }
-            }
-
         }
 
     }

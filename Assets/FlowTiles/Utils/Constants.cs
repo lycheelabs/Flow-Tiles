@@ -20,7 +20,7 @@ namespace FlowTiles {
         // This constant limits the number of paths that will be cached.
         // Older paths will be disposed when the limit is reached.
         // If this isn't set large enough, no agents will get paths as they fight over slots.
-        public const int MAX_CACHED_PATHS = 5000;
+        public const int MAX_CACHED_PATHS = 10000;
 
     }
 

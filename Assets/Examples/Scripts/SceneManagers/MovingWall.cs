@@ -8,11 +8,12 @@ namespace FlowTiles.Examples {
         private int2 Corner;
         private int Direction;
         private int Length;
+        private float Frequency;
         private int DelayTicks;
         private PathableLevel Level;
         private int lastMovedTick;
 
-        public MovingWall (int2 corner, int length, int direction, int delayTicks, PathableLevel level) {
+        public MovingWall (int2 corner, int length, int direction, int delayTicks, PathableLevel level, float fequency) {
             var values = new byte[length, 2];
             for (int i = 0; i < length; i++) {
                 values[i, 0] = 255;
@@ -23,6 +24,7 @@ namespace FlowTiles.Examples {
             Corner = corner;
             Length = length;
             Direction = direction;
+            Frequency = fequency;
             DelayTicks = delayTicks;
             Level = level;
 
@@ -30,7 +32,7 @@ namespace FlowTiles.Examples {
         }
 
         public void Update () {
-            int tick = (int)(Time.time * 1);
+            int tick = (int)(Time.time * Frequency);
             if (tick != lastMovedTick) {
                 int offset = (tick - DelayTicks);
                 if (offset > 0 && offset % 5 == 0) {

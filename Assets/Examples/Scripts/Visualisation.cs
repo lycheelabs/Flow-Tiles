@@ -16,6 +16,19 @@ namespace FlowTiles.Examples {
             }
         }
 
+        public static void DrawSectorPortals (PathableGraph graph, int travelType) {
+            var numSectors = graph.Layout.NumSectorsInLevel;
+            for (int index = 0; index < numSectors; index++) {
+                if (!graph.SectorIsInitialised(index)) continue;
+
+                var sector = graph.IndexToSectorMap(index, travelType);
+                var nodes = sector.Portals.ExitPortals;
+                for (int i = 0; i < nodes.Length; i++) {
+                    DrawRect(nodes[i].Bounds, Color.red);
+                }                
+            }
+        }
+
         public static void DrawSectorConnections(PathableGraph graph, int travelType) {
             var numSectors = graph.Layout.NumSectorsInLevel;
             for (int index = 0; index < numSectors; index++) {

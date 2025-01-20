@@ -14,6 +14,7 @@ namespace FlowTiles.Examples {
 
     public enum VisualiseMode {
         NONE,
+        PORTALS,
         CONNECTIONS, 
         COLORS, 
         ISLANDS
@@ -80,7 +81,7 @@ namespace FlowTiles.Examples {
 
             // Position the camera
             var halfViewedSize = ((float2)LevelSize - 1) / 2f;
-            Camera.main.orthographicSize = LevelSize.y / 2f * 1.05f + 1;
+            Camera.main.orthographicSize = LevelSize.y / 2f * 1.06f;
             Camera.main.transform.position = new Vector3(halfViewedSize.x, halfViewedSize.y, -20);
 
         }
@@ -133,6 +134,9 @@ namespace FlowTiles.Examples {
             }
 
             Visualisation.DrawSectors(Graph);
+            if (VisualiseMode == VisualiseMode.PORTALS) {
+                Visualisation.DrawSectorPortals(Graph, VisualisedTravelType);
+            }
             if (VisualiseMode == VisualiseMode.CONNECTIONS) {
                 Visualisation.DrawSectorConnections(Graph, VisualisedTravelType);
             }
@@ -174,8 +178,8 @@ namespace FlowTiles.Examples {
             });
         }
 
-        public void AddMovingWall(int2 corner, int length, int direction) {
-            MovingWalls.Add(new MovingWall(corner, length, direction, MovingWalls.Count, Level));
+        public void AddMovingWall(int2 corner, int length, int direction, float frequency) {
+            MovingWalls.Add(new MovingWall(corner, length, direction, MovingWalls.Count, Level, frequency));
         }
 
         public void FlipWallAt(int2 cell) {

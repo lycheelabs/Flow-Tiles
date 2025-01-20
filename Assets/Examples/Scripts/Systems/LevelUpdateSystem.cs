@@ -56,7 +56,7 @@ namespace FlowTiles.Examples {
                 if (VisualiseColors) {
                     color = LevelColors[cell.x, cell.y];
                     if (wall) {
-                        color *= 0.9f;
+                        color *= 0.16f;
                     }
                 }
                 else if (wall) {
