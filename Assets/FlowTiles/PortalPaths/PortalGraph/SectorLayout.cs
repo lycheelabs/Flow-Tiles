@@ -54,14 +54,14 @@ namespace FlowTiles.PortalPaths {
 
         public int2 GetMinCorner(int index) {
             var x = index % SizeSectors.x;
-            var y = index / SizeSectors.y;
+            var y = index / SizeSectors.x;
             var min = new int2(x * Resolution, y * Resolution);
             return min;
         }
 
         public CellRect GetSectorBounds(int index) {
             var x = index % SizeSectors.x;
-            var y = index / SizeSectors.y;
+            var y = index / SizeSectors.x;
             var min = new int2(x * Resolution, y * Resolution);
             var max = new int2(
                 Mathf.Min(min.x + Resolution - 1, SizeCells.x - 1),

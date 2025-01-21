@@ -59,6 +59,16 @@ namespace FlowTiles {
             SectorFlags = new NativeField<SectorFlags>(Layout.SizeSectors, Allocator.Persistent, initialise);
         }
 
+        public void Dispose() {
+            Obstacles.Dispose();
+            Terrain.Dispose();
+            Stamps.Dispose();
+            TerrainCosts.Dispose();
+            IsInitialised.Dispose();
+            NeedsRebuilding.Dispose();
+            SectorFlags.Dispose();
+        }
+
         public void SetTerrainCost(int travelType, int terrainType, byte newCost) {
             if (newCost <= 0 || newCost > WALL_COST) {
                 throw new ArgumentException("Terrain costs must be in range 1-255");

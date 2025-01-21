@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Mathematics;
 using FlowTiles.Utils;
+using UnityEngine;
 
 namespace FlowTiles.PortalPaths {
 
@@ -21,6 +22,10 @@ namespace FlowTiles.PortalPaths {
             Layout = new SectorLayout(sizeCells, resolution);
             Sectors = new NativeArray<Sector>(Layout.NumSectorsInLevel, Allocator.Persistent);
             NumTravelTypes = numTravelTypes;
+        }
+
+        public void Dispose() {
+            Sectors.Dispose();
         }
 
         public bool SectorIsInitialised (int index) {
