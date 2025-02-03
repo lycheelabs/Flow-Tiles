@@ -2,7 +2,6 @@
 using Unity.Collections;
 using Unity.Mathematics;
 using FlowTiles.Utils;
-using UnityEngine;
 
 namespace FlowTiles.PortalPaths {
 
@@ -26,6 +25,9 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void Dispose() {
+            for (int i = 0; i < Sectors.Length; i++) {
+                Sectors[i].Dispose();
+            }
             Sectors.Dispose();
         }
 

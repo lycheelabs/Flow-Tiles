@@ -1,3 +1,4 @@
+using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
@@ -27,6 +28,10 @@ namespace FlowTiles.PortalPaths {
             Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
             Color = -1;
             Island = -1;
+        }
+
+        public void Dispose() {
+            Edges.Dispose();
         }
 
         public bool IsSamePortal (Portal other) {

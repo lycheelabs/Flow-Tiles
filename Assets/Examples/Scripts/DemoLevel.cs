@@ -87,6 +87,13 @@ namespace FlowTiles.Examples {
 
         }
 
+        public void Dispose () {
+            Level.Dispose();
+            ColorData.Dispose();
+            FlowData.Dispose();
+            Graph.Dispose();
+        }
+
         public void Update() {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var showColors = VisualiseMode == VisualiseMode.COLORS || VisualiseMode == VisualiseMode.ISLANDS;

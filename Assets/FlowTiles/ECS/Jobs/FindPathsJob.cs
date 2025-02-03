@@ -1,4 +1,5 @@
 ﻿using FlowTiles.PortalPaths;
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -18,6 +19,10 @@ namespace FlowTiles.ECS {
 
             public bool Success;
             public UnsafeList<PortalPathNode> Path;
+
+            public void Dispose() {
+                Path.Dispose();
+            }
         }
 
         [ReadOnly] public PathableGraph Graph;

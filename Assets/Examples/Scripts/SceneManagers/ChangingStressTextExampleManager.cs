@@ -11,7 +11,7 @@ namespace FlowTiles.Examples {
 
         private DemoLevel Level;
 
-        void Start() {
+        void Awake() {
 
             var map = new PathableLevel(LevelSize, LevelSize, Resolution);
 
@@ -35,6 +35,10 @@ namespace FlowTiles.Examples {
 
         void Update() {
             Level.Update(); 
+        }
+
+        void OnDestroy() {
+            Level.Dispose();
         }
 
     }

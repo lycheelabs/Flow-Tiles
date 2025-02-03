@@ -12,7 +12,7 @@ namespace FlowTiles.Examples {
         private DemoLevel Level;
         private int2 startCell;
 
-        void Start() {
+        void Awake() {
             var map = new PathableLevel(LevelSize, LevelSize, Resolution, 1, 2);
             LevelGeneration.InitialiseRandomObstacles(map, false);
 
@@ -37,6 +37,10 @@ namespace FlowTiles.Examples {
                 Level.VisualiseTestPath(startCell, mouseCell, true);
             }
 
+        }
+
+        void OnDestroy() {
+            Level.Dispose();
         }
 
     }

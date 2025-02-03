@@ -23,15 +23,28 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void Clear() {
+            DisposePortals();
+
             RootPortals.Clear();
             ExitPortals.Clear();
             ExitPortalLookup.Clear();
         }
 
         public void Dispose() {
+            DisposePortals();
+
             RootPortals.Dispose();
             ExitPortals.Dispose();
             ExitPortalLookup.Dispose();
+        }
+
+        private void DisposePortals() {
+            for (int i = 0; i < RootPortals.Length; i++) {
+                RootPortals[i].Dispose();
+            }
+            for (int i = 0; i < ExitPortals.Length; i++) {
+                ExitPortals[i].Dispose();
+            }
         }
 
         public bool Contains(int2 pos) {

@@ -15,6 +15,9 @@ namespace FlowTiles {
             if (terrainType < 0 || terrainType >= Mapping.Length) return 0;
             return 1;
         }
+        public void Dispose() {
+            Mapping.Dispose();
+        }
     }
 
     public struct PathableLevel {
@@ -60,10 +63,15 @@ namespace FlowTiles {
         }
 
         public void Dispose() {
+            for (int i = 0; i < TerrainCosts.Length; i++) {
+                TerrainCosts[i].Dispose();
+            }
+
             Obstacles.Dispose();
             Terrain.Dispose();
             Stamps.Dispose();
             TerrainCosts.Dispose();
+
             IsInitialised.Dispose();
             NeedsRebuilding.Dispose();
             SectorFlags.Dispose();

@@ -12,7 +12,7 @@ namespace FlowTiles.Examples {
 
         private DemoLevel Level;
 
-        void Start() {
+        void Awake() {
 
             // Initialise the map with terrain and travel types
             var map = new PathableLevel(LevelSize, LevelSize, Resolution, 2, 2);
@@ -45,6 +45,10 @@ namespace FlowTiles.Examples {
 
             }
 
+        }
+
+        void OnDestroy() {
+            Level.Dispose();
         }
 
     }

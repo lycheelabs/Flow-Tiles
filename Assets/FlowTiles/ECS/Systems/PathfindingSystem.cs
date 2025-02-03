@@ -36,6 +36,30 @@ namespace FlowTiles.ECS {
 
         }
 
+        public void OnDestroy(ref SystemState state) {
+            PathCache.Dispose();
+            FlowCache.Dispose();
+
+            RebuildRequests.Dispose();
+            PathRequests.Dispose(); 
+            FlowRequests.Dispose();
+
+            if (TempPathTasks.IsCreated) {
+                for (int i = 0; i < TempPathTasks.Length; i++) {
+                    TempPathTasks[i].Dispose();
+                }
+                TempPathTasks.Dispose();
+            }
+
+            if (TempFlowTasks.IsCreated) {
+                for (int i = 0; i < TempFlowTasks.Length; i++) {
+                    TempFlowTasks[i].Dispose();
+                }
+                TempFlowTasks.Dispose();
+            }
+
+        }
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
 
@@ -268,13 +292,6 @@ namespace FlowTiles.ECS {
             var flowJob = new FindFlowsJob(tasks.AsArray());
             state.Dependency = flowJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
 
-        }
-
-        public void OnDestroy (ref SystemState state) {
-            PathCache.Dispose();
-            FlowCache.Dispose();
-            PathRequests.Dispose();
-            FlowRequests.Dispose();
         }
 
     }
