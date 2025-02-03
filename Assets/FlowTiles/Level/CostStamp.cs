@@ -29,6 +29,10 @@ namespace FlowTiles {
             get => Values[x + y * Size.x];
         }
 
+        public void Dispose () {
+            Values.Dispose();
+        }
+
     }
 
 }

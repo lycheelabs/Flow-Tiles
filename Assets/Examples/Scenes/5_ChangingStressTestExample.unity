@@ -359,7 +359,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LevelSize: 100
   Resolution: 20
-  Frequency: 5
+  Frequency: 2
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

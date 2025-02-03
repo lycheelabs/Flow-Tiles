@@ -92,6 +92,10 @@ namespace FlowTiles.Examples {
             ColorData.Dispose();
             FlowData.Dispose();
             Graph.Dispose();
+
+            foreach (var wall in MovingWalls) {
+                wall.Dispose();
+            }
         }
 
         public void Update() {

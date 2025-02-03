@@ -42,6 +42,10 @@ namespace FlowTiles.Examples {
             }
         }
 
+        public void Dispose () {
+            Stamp.Dispose();
+        }
+
         private void Move() {
             Clear();
 
