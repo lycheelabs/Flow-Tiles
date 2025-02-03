@@ -26,6 +26,10 @@ namespace FlowTiles.PortalPaths {
             // Find start and end clusters
             var startMap = Graph.CellToSectorMap(start, travelType);
             var destMap = Graph.CellToSectorMap(dest, travelType);
+            if (startMap.IsFullyBlocked || destMap.IsFullyBlocked) {
+                return false;
+            }
+
             var startPortal = startMap.GetRootPortal(start);
             var destCluster = destMap.GetRootPortal(dest);
             if (Graph.CellToSectorMap(start, travelType).TryGetExitPortal(start, out var exit)) {
