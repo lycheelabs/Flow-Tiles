@@ -60,11 +60,8 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void ReinitialiseSector(int index, PathableLevel level) {
-            int version = 0;
-            if (Sectors[index].IsCreated) {
-                version = Sectors[index].Version + 1;
-                Sectors[index].Dispose();
-            }
+            int version = Sectors[index].Version + 1;
+            Sectors[index].Dispose();
 
             Sectors[index] = new Sector(index, version, Layout.GetSectorBounds(index), level, NumTravelTypes);
             for (int travelType = 0; travelType < NumTravelTypes; travelType++) {
