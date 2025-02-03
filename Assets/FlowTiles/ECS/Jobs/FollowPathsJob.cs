@@ -26,6 +26,7 @@ namespace FlowTiles.ECS {
                 [ChunkIndexInQuery] int sortKey) {
 
             result.Direction = 0;
+            result.NextDirection = 0;
             progress.HasFlow = false;
 
             if (!goal.ValueRO.HasGoal) {
@@ -203,14 +204,24 @@ namespace FlowTiles.ECS {
                 // Find the flow direction
                 progress.HasFlow = true;
                 progress.FlowKey = flowKey;
-                var cornerCell = Graph.Layout.GetMinCorner(currentMap.Index);
-                var pos = position.ValueRO.Position - cornerCell;
-                var direction = flow.FlowField.GetFlow(pos.x, pos.y);
-                result.Direction = direction;
 
+                var cornerCell = Graph.Layout.GetMinCorner(currentMap.Index);
+                var pos = (float2)position.ValueRO.Position;
+                result.Direction = GetDirection(ref flow, cornerCell, pos);
+
+                var nextPos = pos + result.Direction;
+                result.NextDirection = GetDirection(ref flow, cornerCell, nextPos);
             }
 
         }
+
+        private static float2 GetDirection(ref CachedFlowField flow, int2 flowCorner, float2 worldPosition) {
+            var localPosition = worldPosition - (float2)flowCorner;
+            var x = (int)math.round(localPosition.x);
+            var y = (int)math.round(localPosition.y);
+            return flow.FlowField.GetFlow(x, y);
+        }
+
     }
 
 }

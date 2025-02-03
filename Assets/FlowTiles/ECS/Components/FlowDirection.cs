@@ -7,6 +7,7 @@ namespace FlowTiles.ECS {
     public struct FlowDirection : IComponentData {
 
         public float2 Direction;
+        public float2 NextDirection;
 
     }
 
