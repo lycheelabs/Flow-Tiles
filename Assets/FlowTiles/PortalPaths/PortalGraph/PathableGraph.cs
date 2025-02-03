@@ -13,6 +13,8 @@ namespace FlowTiles.PortalPaths {
         private NativeArray<Sector> Sectors; // Top level container must be native
         public int NumTravelTypes;
 
+        public NativeReference<int> GraphVersion;
+
         /// <summary>
         /// Construct a graph from the map
         /// </summary>
@@ -22,6 +24,7 @@ namespace FlowTiles.PortalPaths {
             Layout = new SectorLayout(sizeCells, resolution);
             Sectors = new NativeArray<Sector>(Layout.NumSectorsInLevel, Allocator.Persistent);
             NumTravelTypes = numTravelTypes;
+            GraphVersion = new NativeReference<int>(Allocator.Persistent);
         }
 
         public void Dispose() {
@@ -29,6 +32,7 @@ namespace FlowTiles.PortalPaths {
                 Sectors[i].Dispose();
             }
             Sectors.Dispose();
+            GraphVersion.Dispose();
         }
 
         public bool SectorIsInitialised (int index) {
@@ -62,10 +66,10 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void ReinitialiseSector(int index, PathableLevel level) {
-            int version = Sectors[index].Version + 1;
+            int sectorVersion = Sectors[index].Version + 1;
             Sectors[index].Dispose();
 
-            Sectors[index] = new Sector(index, version, Layout.GetSectorBounds(index), level, NumTravelTypes);
+            Sectors[index] = new Sector(index, sectorVersion, Layout.GetSectorBounds(index), level, NumTravelTypes);
             for (int travelType = 0; travelType < NumTravelTypes; travelType++) {
                 Sectors[index].Maps[travelType].Initialise(level);
             }

@@ -97,8 +97,19 @@ namespace FlowTiles.ECS {
 
                 // Check path exists
                 var pathFound = PathCache.TryGetPath(progress.PathKey, out var path);
-                if (!pathFound || path.NoPathExists) {
+                if (!pathFound) {
                     progress.HasPath = false;
+                    return;
+                }
+                if (path.NoPathExists) {
+                    progress.HasPath = false;
+
+                    // Invalidate failed paths on graph change
+                    if (Graph.GraphVersion.Value > path.GraphVersionAtSearch) {
+                        ECB.AddComponent(sortKey, entity, new InvalidPathData {
+                            Key = progress.PathKey,
+                        });
+                    }
                     return;
                 }
 

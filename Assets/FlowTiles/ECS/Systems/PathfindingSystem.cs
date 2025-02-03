@@ -147,6 +147,12 @@ namespace FlowTiles.ECS {
                 }
             }
 
+            // Once all sectors are built, increase the graph version
+            if (!workRemains) {
+                level.NeedsRebuilding.Value = false;
+                graph.GraphVersion.Value++;
+            }
+
             // Calculate exit points
             // (requires checking neighbors, therefore sectors must be fully reinitialised)
             for (int request = 0; request < RebuildRequests.Length; request++) {
@@ -161,11 +167,6 @@ namespace FlowTiles.ECS {
             };
             state.Dependency = job.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
 
-            // Finished?
-            if (!workRemains) {
-                level.NeedsRebuilding.Value = false;
-            }
-
         }
 
         private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
@@ -178,6 +179,7 @@ namespace FlowTiles.ECS {
                         IsPending = false,
                         HasBeenQueued = false,
                         NoPathExists = !task.Success,
+                        GraphVersionAtSearch = graph.GraphVersion.Value,
                         Nodes = task.Path
                     });
                 }

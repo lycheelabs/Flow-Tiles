@@ -40,7 +40,7 @@ namespace FlowTiles.Examples {
         }
 
         void OnDestroy() {
-            Level.Dispose();
+            Level?.Dispose();
         }
 
     }
