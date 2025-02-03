@@ -54,7 +54,7 @@ namespace FlowTiles.Examples {
             Resolution = resolution;
 
             // Create the graph
-            Graph = new PathableGraph(Level.Bounds.SizeCells, Resolution, level.NumTravelTypes);
+            Graph = new PathableGraph(LevelSize.x, LevelSize.y, Resolution, level.NumTravelTypes);
 
             // Allocate visualisation data
             ColorData = new NativeField<float4>(LevelSize, Allocator.Persistent, initialiseTo: 1);
@@ -75,6 +75,7 @@ namespace FlowTiles.Examples {
                 Colors = ColorData,
             });
             em.SetComponentData(Singleton, new GlobalPathfindingData {
+                IsInitialised = true,
                 Level = level,
                 Graph = Graph,
             });

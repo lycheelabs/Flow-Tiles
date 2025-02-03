@@ -17,7 +17,8 @@ namespace FlowTiles.PortalPaths {
         /// <summary>
         /// Construct a graph from the map
         /// </summary>
-        public PathableGraph(int2 sizeCells, int resolution, int numTravelTypes) {
+        public PathableGraph(int width, int height, int resolution, int numTravelTypes) {
+            var sizeCells = new int2(width, height);
             Bounds = new CellRect(0, sizeCells - 1);
             Layout = new SectorLayout(sizeCells, resolution);
             Sectors = new NativeArray<Sector>(Layout.NumSectorsInLevel, Allocator.Persistent);

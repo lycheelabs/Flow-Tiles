@@ -28,7 +28,7 @@ namespace FlowTiles.PortalPaths {
             ExitPortalLookup.Clear();
         }
 
-        internal void Dispose() {
+        public void Dispose() {
             RootPortals.Dispose();
             ExitPortals.Dispose();
             ExitPortalLookup.Dispose();

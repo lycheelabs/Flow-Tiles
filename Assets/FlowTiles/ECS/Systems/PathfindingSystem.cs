@@ -19,8 +19,8 @@ namespace FlowTiles.ECS {
         private NativeQueue<PathRequest> PathRequests;
         private NativeQueue<FlowRequest> FlowRequests;
 
-        private FindPathsJob PathsJob;
-        private FindFlowsJob FlowsJob;
+        private NativeList<FindPathsJob.Task> TempPathTasks;
+        private NativeList<FindFlowsJob.Task> TempFlowTasks;
 
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<GlobalPathfindingData>();
@@ -42,6 +42,10 @@ namespace FlowTiles.ECS {
             var ecbEarly = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
             var ecbLate = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var globalData = SystemAPI.GetSingleton<GlobalPathfindingData>();
+            if (!globalData.IsInitialised) {
+                return;
+            }
+            
             var level = globalData.Level;
             var graph = globalData.Graph;
             
@@ -143,9 +147,9 @@ namespace FlowTiles.ECS {
         private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
 
             // Cache the paths
-            if (PathsJob.Tasks.IsCreated) {
-                for (int i = 0; i < PathsJob.Tasks.Length; i++) {
-                    var task = PathsJob.Tasks[i];
+            if (TempPathTasks.IsCreated) {
+                for (int i = 0; i < TempPathTasks.Length; i++) {
+                    var task = TempPathTasks[i];
                     PathCache.StorePath(task.CacheKey, new CachedPortalPath {
                         IsPending = false,
                         HasBeenQueued = false,
@@ -153,7 +157,7 @@ namespace FlowTiles.ECS {
                         Nodes = task.Path
                     });
                 }
-                PathsJob.Tasks.Dispose();
+                TempPathTasks.Dispose();
             }
 
             var numRequests = PathRequests.Count;
@@ -192,17 +196,18 @@ namespace FlowTiles.ECS {
             }
 
             // Schedule the tasks
-            PathsJob = new FindPathsJob(graph, tasks.AsArray());
-            state.Dependency = PathsJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
+            TempPathTasks = tasks;
+            var pathJob = new FindPathsJob(graph, tasks.AsArray());
+            state.Dependency = pathJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
 
         }
 
         private void ProcessFlowRequests(PathableGraph graph, ref SystemState state) {
 
             // Cache the flows
-            if (FlowsJob.Tasks.IsCreated) {
-                for (int i = 0; i < FlowsJob.Tasks.Length; i++) {
-                    var task = FlowsJob.Tasks[i];
+            if (TempFlowTasks.IsCreated) {
+                for (int i = 0; i < TempFlowTasks.Length; i++) {
+                    var task = TempFlowTasks[i];
                     var result = task.ResultAsFlowField();
                     FlowCache.StoreField (result.SectorIndex, task.CacheKey, new CachedFlowField {
                         IsPending = false,
@@ -210,7 +215,7 @@ namespace FlowTiles.ECS {
                         FlowField = result,
                     });
                 }
-                FlowsJob.Tasks.Dispose();
+                TempFlowTasks.Dispose();
             }
 
             var numRequests = FlowRequests.Count;
@@ -259,8 +264,9 @@ namespace FlowTiles.ECS {
             }
 
             // Schedule the tasks
-            FlowsJob = new FindFlowsJob(tasks.AsArray());
-            state.Dependency = FlowsJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
+            TempFlowTasks = tasks;
+            var flowJob = new FindFlowsJob(tasks.AsArray());
+            state.Dependency = flowJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
 
         }
 
