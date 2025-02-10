@@ -1,7 +1,7 @@
 ﻿using Unity.Entities;
 using Unity.Mathematics;
 
-namespace FlowTiles.Examples {
+namespace FlowTiles.ECS {
 
     public struct FlowData : IComponentData {
 

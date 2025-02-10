@@ -1,4 +1,5 @@
-﻿using Unity.Entities;
+﻿using FlowTiles.ECS;
+using Unity.Entities;
 using UnityEngine;
 
 namespace FlowTiles.Examples {

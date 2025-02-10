@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Mathematics;
 using FlowTiles.Utils;
+using System.Diagnostics;
 
 namespace FlowTiles.PortalPaths {
 
@@ -35,20 +36,22 @@ namespace FlowTiles.PortalPaths {
             GraphVersion.Dispose();
         }
 
-        public bool SectorIsInitialised (int index) {
+        public bool SectorIsInitialised(int index) {
             return Sectors[index].IsCreated;
         }
 
+        public int CellToIndex(int2 cell) {
+            var sectorX = cell.x / Layout.Resolution;
+            var sectorY = cell.y / Layout.Resolution;
+            return sectorX + sectorY * Layout.SizeSectors.x;
+        }
+
         public Sector IndexToSector(int index) {
-            var sector = Sectors[index];
-            return sector;
+            return Sectors[index];
         }
 
         public Sector CellToSector(int2 pos) {
-            var sectorX = pos.x / Layout.Resolution;
-            var sectorY = pos.y / Layout.Resolution;
-            var sector = Sectors[sectorX + sectorY * Layout.SizeSectors.x];
-            return sector;
+            return Sectors[CellToIndex(pos)];
         }
 
         public SectorMap IndexToSectorMap (int index, int travelType) {

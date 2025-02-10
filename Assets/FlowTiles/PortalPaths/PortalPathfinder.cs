@@ -23,6 +23,12 @@ namespace FlowTiles.PortalPaths {
 
         public bool TryFindPath(int2 start, int2 dest, int travelType, ref UnsafeList<PortalPathNode> result) {
 
+            var startSector = Graph.CellToIndex(start);
+            var destSector = Graph.CellToIndex(dest);
+            if (!Graph.SectorIsInitialised(startSector) || !Graph.SectorIsInitialised(destSector)) {
+                return false;
+            }
+
             // Find start and end clusters
             var startMap = Graph.CellToSectorMap(start, travelType);
             var destMap = Graph.CellToSectorMap(dest, travelType);

@@ -9,6 +9,8 @@ namespace FlowTiles.ECS {
         public float2 Direction;
         public float2 NextDirection;
 
+        public float2 CombinedDirection => math.normalizesafe(Direction + NextDirection);
+
     }
 
 }
