@@ -45,14 +45,18 @@ namespace FlowTiles.PortalPaths {
         private void FloodFillAll(CostMap costs) {
             var cellsInSector = Bounds.SizeCells.x * Bounds.SizeCells.y;
 
+            short open = 0;
+            short wall = -1;
+            short firstColor = 1;
+
             // Divide into open areas and walls
             for (int x = 0; x < Cells.Size.x; x++) {
                 for (var y = 0; y < Cells.Size.y; y++) {
-                    Cells[x, y] = 0;
+                    Cells[x, y] = open;
 
                     var cost = costs.Cells[x, y];
                     var blocked = cost == PathableLevel.WALL_COST;
-                    if (blocked) Cells[x, y] = -1;
+                    if (blocked) Cells[x, y] = wall;
                 }
             }
 
@@ -60,25 +64,35 @@ namespace FlowTiles.PortalPaths {
             NumColors = 0;
             for (int x = 0; x < Cells.Size.x; x++) {
                 for (var y = 0; y < Cells.Size.y; y++) {
-                    if (Cells[x, y] == 0) {
+                    if (Cells[x, y] == open) {
                         NumColors++;
                         FloodFill(costs, new int2(x, y), costs.Cells[x, y], NumColors, cellsInSector);
                     }
                 }
             }
 
-            // Expand fills into walls
+            // Expand fills into the walls (using wall neighbor colors)
             for (int x = 0; x < Cells.Size.x; x++) {
                 for (var y = 0; y < Cells.Size.y; y++) {
-                    if (Cells[x, y] == -1) {
+                    if (Cells[x, y] == wall) {
                         var c1 = TryGetColor(x - 1, y);
                         var c2 = TryGetColor(x + 1, y);
                         var c3 = TryGetColor(x, y - 1);
                         var c4 = TryGetColor(x, y + 1);
-                        var bestNeighbor = math.max(math.max(c1, c2), math.max(c3, c4));
-                        if (bestNeighbor > 0) {
-                            FloodFill(costs, new int2(x, y), PathableLevel.WALL_COST, (short)bestNeighbor, cellsInSector);
+                        var color = (short)math.max(math.max(c1, c2), math.max(c3, c4));
+                        if (color >= firstColor) {
+                            FloodFill(costs, new int2(x, y), PathableLevel.WALL_COST, color, cellsInSector);
                         };
+                    }
+                }
+            }
+
+            // Ensure all cells are valid
+            NumColors = (short)math.max(NumColors, 1);
+            for (int x = 0; x < Cells.Size.x; x++) {
+                for (var y = 0; y < Cells.Size.y; y++) {
+                    if (Cells[x, y] < firstColor) {
+                        Cells[x, y] = firstColor;
                     }
                 }
             }
