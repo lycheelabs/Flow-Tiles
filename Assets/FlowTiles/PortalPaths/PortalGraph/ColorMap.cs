@@ -55,7 +55,7 @@ namespace FlowTiles.PortalPaths {
                     Cells[x, y] = open;
 
                     var cost = costs.Cells[x, y];
-                    var blocked = cost == PathableLevel.WALL_COST;
+                    var blocked = cost == PathableLevel.MAX_COST;
                     if (blocked) Cells[x, y] = wall;
                 }
             }
@@ -81,7 +81,7 @@ namespace FlowTiles.PortalPaths {
                         var c4 = TryGetColor(x, y + 1);
                         var color = (short)math.max(math.max(c1, c2), math.max(c3, c4));
                         if (color >= firstColor) {
-                            FloodFill(costs, new int2(x, y), PathableLevel.WALL_COST, color, cellsInSector);
+                            FloodFill(costs, new int2(x, y), PathableLevel.MAX_COST, color, cellsInSector);
                         };
                     }
                 }
@@ -161,7 +161,7 @@ namespace FlowTiles.PortalPaths {
                     if (Cells[x, y] == color) return islands.Cells[x, y];
                 }
             }
-            return -1;
+            return 1;
         }
     }
 

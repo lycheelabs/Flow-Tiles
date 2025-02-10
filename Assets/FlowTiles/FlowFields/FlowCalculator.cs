@@ -108,11 +108,11 @@ namespace FlowTiles.FlowFields {
                     if (flow1.Equals(0)) continue;
 
                     var cell2 = cell1 + flow1;
-                    if (IsIn(cell2) && Costs.Cells[cell2.x, cell2.y] < PathableLevel.WALL_COST) {
+                    if (IsIn(cell2) && Costs.Cells[cell2.x, cell2.y] < PathableLevel.MAX_COST) {
                         var flow2 = BaseFlow[cell2.x, cell2.y];
 
                         var cell3 = cell1 + flow2;
-                        if (IsIn(cell3) && Costs.Cells[cell3.x, cell3.y] < PathableLevel.WALL_COST) {
+                        if (IsIn(cell3) && Costs.Cells[cell3.x, cell3.y] < PathableLevel.MAX_COST) {
 
                             var combinedFlow = math.normalize(flow1 + flow2);
                             flow[x, y] = combinedFlow;

@@ -130,7 +130,7 @@ namespace FlowTiles.PortalPaths {
                     portalCost1 = costs1.GetCostAt(cell1);
                     portalCost2 = costs2.GetCostAt(cell2);
 
-                    var bothSidesOpen = portalCost1 < PathableLevel.WALL_COST && portalCost2 < PathableLevel.WALL_COST;
+                    var bothSidesOpen = portalCost1 < PathableLevel.MAX_COST && portalCost2 < PathableLevel.MAX_COST;
                     if (bothSidesOpen) {
                         if (lineSize == 0 || (portalCost1 == oldCost1 && portalCost2 == oldCost2)) {
                             lineSize++;

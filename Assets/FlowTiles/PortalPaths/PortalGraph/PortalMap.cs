@@ -169,6 +169,7 @@ namespace FlowTiles.PortalPaths {
                 var colorPortal = new Portal(cell, Index, 0);
                 colorPortal.Color = color;
 
+                // Assign island based on exit portal with this color
                 for (int p = 0; p < ExitPortals.Length; p++) {
                     var portal = ExitPortals[p];
                     if (portal.Color == color) {
@@ -181,9 +182,9 @@ namespace FlowTiles.PortalPaths {
                     }
                 }
 
-                // Fallback assign island
-                if (colorPortal.Island == -1) {
-                    colorPortal.Color = sector.Colors.FindIslandOfColor(color, sector.Islands);
+                // Fallback: assign island by checking all cells
+                if (colorPortal.Island < 1) {
+                    colorPortal.Island = sector.Colors.FindIslandOfColor(color, sector.Islands);
                 }
 
                 RootPortals.Add(colorPortal);

@@ -71,7 +71,7 @@ namespace FlowTiles.PortalPaths {
 
                     // Check if the cell is passable
                     var cost = costs[next.x, next.y];
-                    if (cost == PathableLevel.WALL_COST) {
+                    if (cost == PathableLevel.MAX_COST) {
                         continue;
                     }
 

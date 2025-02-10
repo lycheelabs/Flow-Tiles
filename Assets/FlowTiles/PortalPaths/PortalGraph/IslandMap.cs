@@ -55,7 +55,7 @@ namespace FlowTiles.PortalPaths {
                     Cells[x, y] = open;
 
                     var cost = costs.Cells[x, y];
-                    var blocked = cost == PathableLevel.WALL_COST;
+                    var blocked = cost == PathableLevel.MAX_COST;
                     if (blocked) Cells[x, y] = wall;
                 }
             }

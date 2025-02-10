@@ -22,15 +22,15 @@ namespace FlowTiles {
 
     public struct PathableLevel {
 
-        public const byte WALL_COST = 255;
+        public const byte MAX_COST = 255;
 
         public readonly int2 Size;
         public readonly SectorLayout Layout;
         public readonly CellRect Bounds;
 
-        public NativeField<bool> Obstacles;
+        public NativeField<bool> Blocked;
         public NativeField<byte> Terrain;
-        public NativeField<byte> Stamps;
+        public NativeField<byte> Obstacles;
         
         public readonly int NumTravelTypes;
         public readonly int NumTerrainTypes;
@@ -45,9 +45,9 @@ namespace FlowTiles {
             Layout = new SectorLayout(Size, resolution);
             Bounds = new CellRect(0, Size - 1);
 
-            Obstacles = new NativeField<bool>(Size, Allocator.Persistent);
+            Blocked = new NativeField<bool>(Size, Allocator.Persistent);
             Terrain = new NativeField<byte>(Size, Allocator.Persistent);
-            Stamps = new NativeField<byte>(Size, Allocator.Persistent);
+            Obstacles = new NativeField<byte>(Size, Allocator.Persistent);
             
             NumTravelTypes = numTravelTypes;
             NumTerrainTypes = numTerrainTypes;
@@ -67,9 +67,9 @@ namespace FlowTiles {
                 TerrainCosts[i].Dispose();
             }
 
-            Obstacles.Dispose();
+            Blocked.Dispose();
             Terrain.Dispose();
-            Stamps.Dispose();
+            Obstacles.Dispose();
             TerrainCosts.Dispose();
 
             IsInitialised.Dispose();
@@ -78,7 +78,7 @@ namespace FlowTiles {
         }
 
         public void SetTerrainCost(int travelType, int terrainType, byte newCost) {
-            if (newCost <= 0 || newCost > WALL_COST) {
+            if (newCost <= 0 || newCost > MAX_COST) {
                 throw new ArgumentException("Terrain costs must be in range 1-255");
             }
             if (travelType < 0 || travelType >= NumTravelTypes) {
@@ -95,16 +95,36 @@ namespace FlowTiles {
             TerrainCosts[travelType] = costSet;
         }
 
-        public void SetObstacle (int x, int y, bool obstacle = true) {
-            Obstacles[x, y] = obstacle;
+        /// <summary>
+        /// Blocks fully prevent pathfinding through this cell.
+        /// </summary>
+        public void SetBlocked (int x, int y, bool blocked = true) {
+            Blocked[x, y] = blocked;
             UpdateRebuildFlags(new int2(x, y), 1);
         }
 
+        /// <summary>
+        /// Terrain provides the base travel cost of this cell. 
+        /// This cost can be different for different travel types.
+        /// </summary>
         public void SetTerrain(int x, int y, byte type) {
             Terrain[x, y] = type;
             UpdateRebuildFlags(new int2(x, y), 1);
         }
 
+        /// <summary>
+        /// Obstacles slow down pathfinding (additional to the base terrain cost).
+        /// </summary>
+        public void SetStamp(int x, int y, byte cost) {
+            if (x >= 0 && x < Size.x && y >= 0 && y < Size.y) {
+                Obstacles[x, y] = cost;
+            }
+            UpdateRebuildFlags(new int2(x, y), 1);
+        }
+
+        /// <summary>
+        /// Stamps can efficiently set the obstacle costs of many cells at once.
+        /// </summary>
         public void PlaceStamp (int cornerX, int cornerY, CostStamp stamp) {
             for (int offsetX = 0; offsetX < stamp.Size.x; offsetX++) {
                 for (int offsetY = 0; offsetY < stamp.Size.y; offsetY++) {
@@ -113,7 +133,7 @@ namespace FlowTiles {
                     if (x >= 0 && x < Size.x && y >= 0 && y < Size.y) {
                         var stampValue = stamp[offsetX, offsetY];
                         if (stampValue > 0) {
-                            Stamps[x, y] = stampValue;
+                            Obstacles[x, y] = stampValue;
                         }
                     }
                 }
@@ -122,6 +142,9 @@ namespace FlowTiles {
             UpdateRebuildFlags(corner, stamp.Size);
         }
 
+        /// <summary>
+        /// Clears the obstacle costs of all cell within this stamp.
+        /// </summary>
         public void ClearStamp(int cornerX, int cornerY, CostStamp stamp) {
             for (int offsetX = 0; offsetX < stamp.Size.x; offsetX++) {
                 for (int offsetY = 0; offsetY < stamp.Size.y; offsetY++) {
@@ -130,7 +153,7 @@ namespace FlowTiles {
                     if (x >= 0 && x < Size.x && y >= 0 && y < Size.y) {
                         var stampValue = stamp[offsetX, offsetY];
                         if (stampValue > 0) {
-                            Stamps[x, y] = 0;
+                            Obstacles[x, y] = 0;
                         }
                     }
                 }
@@ -161,18 +184,17 @@ namespace FlowTiles {
         }
 
         public byte GetCostAt (int x, int y, int travelType) {
-            var obstacle = Obstacles[x, y];
-            if (obstacle) {
-                return WALL_COST;
+            if (Blocked[x, y]) {
+                return MAX_COST;
             }
 
             int terrainType = Terrain[x, y];
             travelType = math.clamp(travelType, 0, NumTravelTypes - 1);
             terrainType = math.clamp(terrainType, 0, NumTerrainTypes - 1);
-
             var terrainCost = TerrainCosts[travelType].Mapping[terrainType];
-            var extraCost = Stamps[x, y];
-            return (byte)math.min(terrainCost + extraCost, WALL_COST);
+
+            var extraCost = Obstacles[x, y];
+            return (byte)math.min(terrainCost + extraCost, MAX_COST);
         }
 
     }
