@@ -37,18 +37,20 @@ namespace FlowTiles.PortalPaths {
                 return false;
             }
 
+            var startCell = new SectorCell(startSector, start);
+            var destCell = new SectorCell(destSector, dest);
             var startRoot = startMap.GetRootPortal(start);
             var destRoot = destMap.GetRootPortal(dest);
-            var destNode = PortalPathNode.NewDestNode(destRoot, dest, destMap.Version);
+            var destNode = PortalPathNode.NewDestNode(destCell, destMap.Version);
 
             // Check whether start and dest portals match
-            if (startRoot.Matches(destRoot)) {
+            if (start.Equals(dest)) {
                 result.Add(destNode);
                 return true;
             }
 
             // Search for the path through the portal graph
-            var path = FindPath(startRoot, startField, destRoot, destField, travelType);
+            var path = FindPath(startCell, startRoot, startField, destCell, destRoot, destField, travelType);
             if (!path.IsCreated || path.Length == 0) {
                 return false;
             }
@@ -63,7 +65,6 @@ namespace FlowTiles.PortalPaths {
                         Position = edge.start,
                         GoalBounds = portal.Bounds,
                         Direction = edge.Span,
-                        Color = portal.Color,
                         Version = map.Version,
                     });
                 }
@@ -73,7 +74,7 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        private NativeList<PortalEdge> FindPath(Portal startRoot, FlowField startField, Portal destRoot, FlowField destField, int travelType) {
+        private NativeList<PortalEdge> FindPath(SectorCell start, Portal startRoot, FlowField startField, SectorCell dest, Portal destRoot, FlowField destField, int travelType) {
             Visited.Clear();
             Parents.Clear();
             GScore.Clear();
@@ -82,21 +83,33 @@ namespace FlowTiles.PortalPaths {
             GScore[startRoot.Center.Cell] = 0;
 
             // Queue start edges
+            Visited.Add(start.Cell);
             for (int i = 0; i < startRoot.Edges.Length; i++) {
                 var edge = startRoot.Edges[i];
                 var localCell = edge.end.Cell - startField.Corner;
                 var distance = startField.Distances[localCell.x, localCell.y];
                 AddEdge(edge, destRoot, distance);
             }
+            if (startRoot.IsInSameIsland(destRoot)) {
+                // Add edge to destination using flow distance
+                var localCell = start.Cell - destField.Corner;
+                var distance = destField.Distances[localCell.x, localCell.y];
+                var edge = new PortalEdge {
+                    start = start,
+                    end = destRoot.Center,
+                    weight = distance,
+                    isExit = true,
+                };
+                AddEdge(edge, destRoot, distance);
+            }
 
-            var destCell = destRoot.Center.Cell;
-
+            var destCell = dest.Cell;
             while (!Queue.IsEmpty) {
 
                 // Check if we have reached the destination
                 var cell = Queue.Dequeue().Position;
                 if (cell.Equals(destCell)) {
-                    return RebuildPath(destRoot);
+                    return RebuildPath(start, dest);
                 }
 
                 // Find the portal that matches this cell
@@ -115,7 +128,7 @@ namespace FlowTiles.PortalPaths {
                     var distance = destField.Distances[localCell.x, localCell.y];
                     var edge = new PortalEdge { 
                         start = current.Center, 
-                        end = destRoot.Center, 
+                        end = dest, 
                         weight = distance,
                         isExit = true,
                     };
@@ -160,16 +173,32 @@ namespace FlowTiles.PortalPaths {
             Queue.Enqueue(new PathfinderNode(nextCell, gCost + EuclidianDistance(nextCell, destCell)));
         }
 
-        private NativeList<PortalEdge> RebuildPath(Portal dest) {
-            var res = new NativeList<PortalEdge>(Allocator.Temp);
-            int2 current = dest.Center.Cell;
-
+        private NativeList<PortalEdge> RebuildPath(SectorCell start, SectorCell dest) {
+            int2 current = dest.Cell;
+            var path = new NativeList<PortalEdge>(Allocator.Temp);
+            
+            var infLoop = 0;
             while (Parents.TryGetValue(current, out var e)) {
-                res.Add(e);
-                current = e.start.Cell;
+                path.Add(e);
+                var parent = e.start.Cell;
+
+                // Stop when returned to start
+                if (parent.Equals(start.Cell) || parent.Equals(current)) {
+                    break;
+                }
+
+                // Fallback - infinite loop checks
+                infLoop++;
+                if (infLoop > 9999) {
+                    UnityEngine.Debug.Log("INFINITE LOOP");
+                    break;
+                }
+
+                // Iterate back to parent
+                current = parent;
             }
 
-            return res;
+            return path;
         }
 
         private float EuclidianDistance(Portal node1, Portal node2) {

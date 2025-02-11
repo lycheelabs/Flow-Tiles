@@ -34,14 +34,6 @@ namespace FlowTiles.PortalPaths {
             Edges.Dispose();
         }
 
-        public bool IsSamePortal (Portal other) {
-            return other.Center.Equals(Center);
-        }
-
-        public bool Matches(Portal destCluster) {
-            return IsInSameIsland(destCluster) && Center.Cell.Equals(destCluster.Center.Cell);
-        }
-
         public bool IsInSameIsland(Portal other) {
             return other.Center.SectorIndex == Center.SectorIndex && other.Island == Island;
         }

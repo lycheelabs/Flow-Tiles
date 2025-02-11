@@ -213,6 +213,8 @@ namespace FlowTiles.Examples {
         }
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
+            if (!Graph.SectorIsInitialised(Graph.CellToIndex(start))) return;
+            if (!Graph.SectorIsInitialised(Graph.CellToIndex(dest))) return;
 
             var startFlow = CalculateFlow(Graph.CellToSectorMap(start, 0), new CellRect(start), 0);
             var destFlow = CalculateFlow(Graph.CellToSectorMap(dest, 0), new CellRect(dest), 0);
