@@ -22,6 +22,7 @@ namespace FlowTiles.ECS {
                 PathRequests.Enqueue(new PathRequest {
                     originCell = data.ValueRO.Start,
                     destCell = data.ValueRO.Dest,
+                    levelSize = data.ValueRO.LevelSize,
                     travelType = data.ValueRO.TravelType,
                 });
 

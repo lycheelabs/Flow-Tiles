@@ -9,6 +9,11 @@ namespace FlowTiles {
         public int2 MinCell;
         public int2 MaxCell;
 
+        public CellRect(int2 cell) {
+            MinCell = cell;
+            MaxCell = cell;
+        }
+
         public CellRect (int2 min, int2 max) {
             MinCell = min; 
             MaxCell = max;

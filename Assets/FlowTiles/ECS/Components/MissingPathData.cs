@@ -6,9 +6,10 @@ namespace FlowTiles.ECS {
 
         public int2 Start;
         public int2 Dest;
+        public int2 LevelSize;
         public int TravelType;
 
-        public int4 Key => PathCache.ToKey(Start, Dest, TravelType);
+        public int4 Key => PathCache.ToKey(Start, Dest, LevelSize, TravelType);
 
     }
 }

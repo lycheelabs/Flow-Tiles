@@ -59,6 +59,7 @@ namespace FlowTiles.FlowFields {
                     var goal = new int2(x, y);
 
                     BaseFlow[goal.x, goal.y] = ExitDirection;
+                    Visited.Add(goal);
                     Queue.Enqueue(new PathfinderNode(goal, 0));
                 }
             }

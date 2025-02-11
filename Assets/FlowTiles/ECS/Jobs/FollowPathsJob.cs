@@ -44,20 +44,19 @@ namespace FlowTiles.ECS {
 
             var travelType = goal.ValueRO.TravelType;
             var currentMap = Graph.CellToSectorMap(current, travelType);
-            var destMap = Graph.CellToSectorMap(dest, travelType);
-
             var currentIsland = currentMap.GetCellIsland(current);
 
             // Attach to a path
             if (!progress.HasPath) {
 
                 // Generate or retrieve a path
-                var pathKey = PathCache.ToKey(current, dest);
+                var pathKey = PathCache.ToKey(current, dest, Graph.Bounds.SizeCells, travelType);
                 var pathCacheHit = PathCache.ContainsPath(pathKey);
                 if (!pathCacheHit) {
                     ECB.AddComponent(sortKey, entity, new MissingPathData {
                         Start = current,
                         Dest = dest,
+                        LevelSize = Graph.Bounds.SizeCells,
                         TravelType = travelType,
                     });
                     return;
@@ -72,8 +71,7 @@ namespace FlowTiles.ECS {
             if (progress.HasPath) {
 
                 // Check destination hasn't changed
-                var pathDest = new int2(progress.PathKey.z, progress.PathKey.w);
-                if (!dest.Equals(pathDest)) {//|| travelType != progress.PathKey.w) {
+                if (!PathCache.DestMatchesKey(progress.PathKey, dest, Graph.Bounds.SizeCells)) {
                     progress.HasPath = false;
                     return;
                 }

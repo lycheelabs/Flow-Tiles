@@ -86,7 +86,7 @@ namespace FlowTiles.PortalPaths {
                 var edge = startRoot.Edges[i];
                 var localCell = edge.end.Cell - startField.Corner;
                 var distance = startField.Distances[localCell.x, localCell.y];
-                AddEdge(edge, startRoot, destRoot, distance);
+                AddEdge(edge, destRoot, distance);
             }
 
             var destCell = destRoot.Center.Cell;
@@ -134,7 +134,7 @@ namespace FlowTiles.PortalPaths {
         }
 
         private void ConsiderEdge(PortalEdge edge, Portal current, Portal dest) {
-            var currentCell = edge.start.Cell;
+            var currentCell = current.Center.Cell;
             var nextCell = edge.end.Cell;
 
             if (Visited.Contains(nextCell)) {
@@ -148,10 +148,10 @@ namespace FlowTiles.PortalPaths {
             }
 
             // Otherwise store the new value and add the destination into the queue
-            AddEdge(edge, current, dest, newGCost);
+            AddEdge(edge, dest, newGCost);
         }
 
-        private void AddEdge (PortalEdge edge, Portal current, Portal dest, float gCost) {
+        private void AddEdge (PortalEdge edge, Portal dest, float gCost) {
             var nextCell = edge.end.Cell;
             var destCell = dest.Center.Cell;
 

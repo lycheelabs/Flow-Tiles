@@ -3,11 +3,14 @@ using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Unity.VisualScripting;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
@@ -211,9 +214,12 @@ namespace FlowTiles.Examples {
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
 
-            /*var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
+            var startFlow = CalculateFlow(Graph.CellToSectorMap(start, 0), new CellRect(start), 0);
+            var destFlow = CalculateFlow(Graph.CellToSectorMap(dest, 0), new CellRect(dest), 0);
+            var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
             var path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Temp);
-            var success = pathfinder.TryFindPath(start, dest, 0, ref path);
+
+            var success = pathfinder.TryFindPath(start, startFlow, dest, destFlow, 0, ref path);
 
             if (success) {
                 // Visualise the path
@@ -236,23 +242,35 @@ namespace FlowTiles.Examples {
                 if (showFlow) {
                     for (int i = 0; i < path.Length; i++) {
                         var node = path[i];
-                        var map = Graph.IndexToSectorMap(node.Position.SectorIndex, 0);
-                        var flow = new UnsafeField<float2>(map.Bounds.SizeCells, Allocator.Temp);
-                        var task = new FindFlowsJob.Task {
-                            CacheKey = 0,
-                            Sector = map,
-                            GoalBounds = node.GoalBounds,
-                            ExitDirection = node.Direction,
-                            Color = 0,
-                            Flow = flow,
-                        };
-                        var calculator = new FlowCalculator(task, Allocator.Temp);
-                        calculator.Calculate(ref flow);
-                        task.Flow = flow;
-                        CopyFlowVisualisationData(task.ResultAsFlowField());
+                        var sector = Graph.IndexToSectorMap(node.Position.SectorIndex, 0);
+                        var flow = CalculateFlow(sector, node.GoalBounds, node.Direction);
+                        CopyFlowVisualisationData(flow);
+                        flow.Dispose();
                     }
                 }
-            }*/
+            }
+
+            startFlow.Dispose();
+            destFlow.Dispose();
+            path.Dispose();
+        }
+
+        private FlowField CalculateFlow (SectorMap sector, CellRect goalBounds, int2 direction) {
+            var map = Graph.IndexToSectorMap(sector.Index, 0);
+            var flow = new UnsafeField<float2>(map.Bounds.SizeCells, Allocator.Temp);
+            var dist = new UnsafeField<int>(map.Bounds.SizeCells, Allocator.Temp);
+            var task = new FindFlowsJob.Task {
+                CacheKey = 0,
+                Sector = map,
+                GoalBounds = goalBounds,
+                ExitDirection = direction,
+                Color = 0,
+                Flow = flow,
+                Distances = dist,
+            };
+            var calculator = new FlowCalculator(task, Allocator.Temp);
+            calculator.Calculate(ref flow, ref dist);
+            return task.ResultAsFlowField();
         }
 
         public void VisualiseAgentFlows(int travelType = 0) {
