@@ -67,9 +67,9 @@ namespace FlowTiles.Examples {
             em.AddComponent<GlobalPathfindingData>(Singleton);
             em.SetComponentData(Singleton, new LevelSetup {
                 Size = LevelSize,
-                Walls = Level.Obstacles,
+                Walls = Level.Blocked,
                 Terrain = Level.Terrain,
-                Stamps = Level.Stamps,
+                Obstacles = Level.Obstacles,
                 Flows = FlowData,
                 VisualiseColors = false,
                 Colors = ColorData,
@@ -103,9 +103,9 @@ namespace FlowTiles.Examples {
             var showColors = VisualiseMode == VisualiseMode.COLORS || VisualiseMode == VisualiseMode.ISLANDS;
             em.SetComponentData(Singleton, new LevelSetup {
                 Size = LevelSize,
-                Walls = Level.Obstacles,
+                Walls = Level.Blocked,
                 Terrain = Level.Terrain,
-                Stamps = Level.Stamps,
+                Obstacles = Level.Obstacles,
                 Flows = FlowData,
                 VisualiseColors = showColors,
                 Colors = ColorData,
@@ -195,8 +195,8 @@ namespace FlowTiles.Examples {
         }
 
         public void FlipWallAt(int2 cell) {
-            var wall = Level.Obstacles[cell.x, cell.y];
-            Level.SetObstacle(cell.x, cell.y, !wall);
+            var wall = Level.Blocked[cell.x, cell.y];
+            Level.SetBlocked(cell.x, cell.y, !wall);
         }
 
         public void FlipTerrainAt(int2 cell) {

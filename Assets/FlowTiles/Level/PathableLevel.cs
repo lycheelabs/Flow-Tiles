@@ -30,15 +30,16 @@ namespace FlowTiles {
 
         public NativeField<bool> Blocked;
         public NativeField<byte> Terrain;
+        public NativeField<byte> TerrainAdjustments;
         public NativeField<byte> Obstacles;
-        
+
         public readonly int NumTravelTypes;
         public readonly int NumTerrainTypes;
         public NativeArray<TerrainCosts> TerrainCosts;
 
         public NativeReference<bool> IsInitialised;
         public NativeReference<bool> NeedsRebuilding;
-        public NativeField<SectorFlags> SectorFlags;
+        public NativeField<SectorFlags> RebuildFlags;
 
         public PathableLevel(int width, int height, int resolution, int numTravelTypes = 1, int numTerrainTypes = 1) {
             Size = new int2(width, height);
@@ -47,6 +48,7 @@ namespace FlowTiles {
 
             Blocked = new NativeField<bool>(Size, Allocator.Persistent);
             Terrain = new NativeField<byte>(Size, Allocator.Persistent);
+            TerrainAdjustments = new NativeField<byte>(Size, Allocator.Persistent);
             Obstacles = new NativeField<byte>(Size, Allocator.Persistent);
             
             NumTravelTypes = numTravelTypes;
@@ -59,7 +61,7 @@ namespace FlowTiles {
             var initialise = new SectorFlags { NeedsRebuilding = true };
             IsInitialised = new NativeReference<bool>(false, Allocator.Persistent);
             NeedsRebuilding = new NativeReference<bool>(true, Allocator.Persistent);
-            SectorFlags = new NativeField<SectorFlags>(Layout.SizeSectors, Allocator.Persistent, initialise);
+            RebuildFlags = new NativeField<SectorFlags>(Layout.SizeSectors, Allocator.Persistent, initialise);
         }
 
         public void Dispose() {
@@ -74,7 +76,7 @@ namespace FlowTiles {
 
             IsInitialised.Dispose();
             NeedsRebuilding.Dispose();
-            SectorFlags.Dispose();
+            RebuildFlags.Dispose();
         }
 
         public void SetTerrainCost(int travelType, int terrainType, byte newCost) {
@@ -100,7 +102,7 @@ namespace FlowTiles {
         /// </summary>
         public void SetBlocked (int x, int y, bool blocked = true) {
             Blocked[x, y] = blocked;
-            UpdateRebuildFlags(new int2(x, y), 1);
+            UpdateRebuildFlags(new int2(x, y));
         }
 
         /// <summary>
@@ -109,17 +111,23 @@ namespace FlowTiles {
         /// </summary>
         public void SetTerrain(int x, int y, byte type) {
             Terrain[x, y] = type;
-            UpdateRebuildFlags(new int2(x, y), 1);
+            UpdateRebuildFlags(new int2(x, y));
+        }
+
+        /// <summary>
+        /// Adds additional terrain cost to this cell (for all travel types)
+        /// </summary>
+        public void SetTerrainAdjustment(int x, int y, byte type) {
+            TerrainAdjustments[x, y] = type;
+            UpdateRebuildFlags(new int2(x, y));
         }
 
         /// <summary>
         /// Obstacles slow down pathfinding (additional to the base terrain cost).
         /// </summary>
-        public void SetStamp(int x, int y, byte cost) {
-            if (x >= 0 && x < Size.x && y >= 0 && y < Size.y) {
-                Obstacles[x, y] = cost;
-            }
-            UpdateRebuildFlags(new int2(x, y), 1);
+        public void SetObstacle(int x, int y, byte cost) {
+            Obstacles[x, y] = cost;
+            UpdateRebuildFlags(new int2(x, y));
         }
 
         /// <summary>
@@ -162,6 +170,15 @@ namespace FlowTiles {
             UpdateRebuildFlags(corner, stamp.Size);
         }
 
+        private void UpdateRebuildFlags(int2 cell) {
+            if (!IsInitialised.Value) return; // Skip until first build of all sectors
+
+            var resolution = Layout.Resolution;
+            var sector = cell / resolution;
+            RebuildFlags[sector.x, sector.y] = SectorFlags.Rebuild;
+            NeedsRebuilding.Value = true;
+        }
+
         private void UpdateRebuildFlags(int2 corner, int2 size) {
             if (!IsInitialised.Value) return; // Skip until first build of all sectors
 
@@ -172,12 +189,11 @@ namespace FlowTiles {
             var minSector = min / resolution;
             var maxSector = max / resolution;
 
-            var rebuild = new SectorFlags { NeedsRebuilding = true };
             for (int x = minSector.x; x <= maxSector.x; x++) {
                 if (x < 0 || x >= sizeSectors.x) continue;
                 for (int y = minSector.y; y <= maxSector.y; y++) {
                     if (y < 0 || y >= sizeSectors.y) continue;
-                    SectorFlags[x, y] = rebuild;
+                    RebuildFlags[x, y] = SectorFlags.Rebuild;
                     NeedsRebuilding.Value = true;
                 }
             }
@@ -193,7 +209,7 @@ namespace FlowTiles {
             terrainType = math.clamp(terrainType, 0, NumTerrainTypes - 1);
             var terrainCost = TerrainCosts[travelType].Mapping[terrainType];
 
-            var extraCost = Obstacles[x, y];
+            var extraCost = TerrainAdjustments[x,y] + Obstacles[x, y];
             return (byte)math.min(terrainCost + extraCost, MAX_COST);
         }
 

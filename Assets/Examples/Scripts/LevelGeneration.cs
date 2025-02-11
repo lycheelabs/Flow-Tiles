@@ -9,7 +9,7 @@ namespace FlowTiles.Examples {
                 for (int x = 1; x < level.Size.x - 1; x++) {
                     for (int y = 1; y < level.Size.y - 1; y++) {
                         if (UnityEngine.Random.value < 0.2f) {
-                            level.SetObstacle(x, y, true);
+                            level.SetBlocked(x, y, true);
                         }
                     }
                 }
@@ -17,7 +17,7 @@ namespace FlowTiles.Examples {
                 for (int x = 0; x < level.Size.x; x++) {
                     for (int y = 0; y < level.Size.y; y++) {
                         if (UnityEngine.Random.value < 0.2f) {
-                            level.SetObstacle(x, y, true);
+                            level.SetBlocked(x, y, true);
                         }
                     }
                 }
@@ -32,7 +32,7 @@ namespace FlowTiles.Examples {
                 var maxX = level.Size.x - 2 - length;
                 var xStart = UnityEngine.Random.Range(minX, maxX);
                 for (int x = 0; x < length; x++) {
-                    level.SetObstacle(x + xStart, y, true);
+                    level.SetBlocked(x + xStart, y, true);
                 }
             }
             // Add vertical walls
@@ -41,7 +41,7 @@ namespace FlowTiles.Examples {
                 var maxY = level.Size.y - 2 - length;
                 var yStart = UnityEngine.Random.Range(minY, maxY);
                 for (int y = 0; y < length; y++) {
-                    level.SetObstacle(x, y + yStart, true);
+                    level.SetBlocked(x, y + yStart, true);
                 }
             }
         }

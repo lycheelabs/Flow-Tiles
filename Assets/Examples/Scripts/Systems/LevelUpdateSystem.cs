@@ -23,7 +23,7 @@ namespace FlowTiles.Examples {
                 LevelSize = setup.Size,
                 LevelWalls = setup.Walls,
                 LevelTerrain = setup.Terrain,
-                LevelStamps = setup.Stamps,
+                LevelStamps = setup.Obstacles,
                 LevelColors = setup.Colors,
                 VisualiseColors = setup.VisualiseColors,
             }.ScheduleParallel();

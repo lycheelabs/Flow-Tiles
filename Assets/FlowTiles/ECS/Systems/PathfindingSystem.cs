@@ -125,7 +125,7 @@ namespace FlowTiles.ECS {
             // Prepare sectors for building
             RebuildRequests.Clear();
             for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
-                var flags = level.SectorFlags[index];
+                var flags = level.RebuildFlags[index];
                 if (flags.NeedsRebuilding) {
 
                     // Prepare this sector (once)
@@ -143,7 +143,7 @@ namespace FlowTiles.ECS {
                         workRemains = true;
                     }
 
-                    level.SectorFlags[index] = flags;
+                    level.RebuildFlags[index] = flags;
                 }
             }
 

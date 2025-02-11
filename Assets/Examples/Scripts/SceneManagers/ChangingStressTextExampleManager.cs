@@ -25,7 +25,7 @@ namespace FlowTiles.Examples {
 
             for (int x = 0; x < LevelSize; x++) {
                 for (int y = 0; y < LevelSize; y++) {
-                    if (map.Stamps[x, y] == 0) {
+                    if (map.Obstacles[x, y] == 0) {
                         Level.SpawnAgentAt(new int2(x, y), AgentType.STRESS_TEST);
                     }
                 }
