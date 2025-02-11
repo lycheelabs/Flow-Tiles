@@ -211,7 +211,7 @@ namespace FlowTiles.Examples {
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
 
-            var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
+            /*var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
             var path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Temp);
             var success = pathfinder.TryFindPath(start, dest, 0, ref path);
 
@@ -252,7 +252,7 @@ namespace FlowTiles.Examples {
                         CopyFlowVisualisationData(task.ResultAsFlowField());
                     }
                 }
-            }
+            }*/
         }
 
         public void VisualiseAgentFlows(int travelType = 0) {

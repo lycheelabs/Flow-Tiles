@@ -17,7 +17,6 @@ namespace FlowTiles.FlowFields {
 
         private UnsafeField<int2> BaseFlow;
         private NativeHashSet<int2> Visited;
-        private NativeHashMap<int2, int> Distance;
         private NativePriorityQueue<PathfinderNode> Queue;
         private NativeArray<int2> Directions;
 
@@ -35,7 +34,6 @@ namespace FlowTiles.FlowFields {
             var numCells = sector.Bounds.WidthCells * sector.Bounds.HeightCells;
             BaseFlow = new UnsafeField<int2>(numCells, allocator);
             Visited = new NativeHashSet<int2>(numCells, allocator);
-            Distance = new NativeHashMap<int2, int>(numCells, allocator);
             Queue = new NativePriorityQueue<PathfinderNode>(numCells * 2, allocator);
             Directions = new NativeArray<int2>(4, allocator);
 
@@ -45,10 +43,9 @@ namespace FlowTiles.FlowFields {
             Directions[3] = new int2(0, -1);
         }
 
-        public void Calculate(ref UnsafeField<float2> flow) {
+        public void Calculate(ref UnsafeField<float2> flow, ref UnsafeField<int> distance) {
 
             Visited.Clear();
-            Distance.Clear();
             Queue.Clear();
 
             // Initialise the goal cells
@@ -62,7 +59,6 @@ namespace FlowTiles.FlowFields {
                     var goal = new int2(x, y);
 
                     BaseFlow[goal.x, goal.y] = ExitDirection;
-                    Distance[goal] = 0;
                     Queue.Enqueue(new PathfinderNode(goal, 0));
                 }
             }
@@ -83,18 +79,19 @@ namespace FlowTiles.FlowFields {
                         continue;
                     }
 
-                    // Calculate the new cost and compare against best cost
+                    // Calculate the new distance and compare against best distance
                     var cost = Costs.Cells[next.x, next.y];
-                    int newCost = Distance[current] + cost;
-                    if (Distance.TryGetValue(next, out int prev_gCost) && newCost >= prev_gCost) {
+                    int newDistance = distance[current.x, current.y] + cost;
+                    var oldDistance = distance[next.x, next.y];
+                    if (oldDistance > 0 && newDistance >= oldDistance) {
                         continue;
                     }
 
                     //Otherwise store the new value and add the destination into the queue
                     BaseFlow[next.x, next.y] = (current - next);
-                    Distance[next] = newCost;
+                    distance[next.x, next.y] = newDistance;
 
-                    Queue.Enqueue(new PathfinderNode(next, newCost));
+                    Queue.Enqueue(new PathfinderNode(next, newDistance));
                 }
             }
 

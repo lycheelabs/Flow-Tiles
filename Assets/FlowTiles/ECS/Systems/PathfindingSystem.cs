@@ -1,4 +1,5 @@
 
+using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Collections;
@@ -6,6 +7,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEditor;
 
 namespace FlowTiles.ECS {
 
@@ -140,7 +142,7 @@ namespace FlowTiles.ECS {
 
         private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
 
-            // Cache the paths
+            // Cache the paths (from last frame)
             if (TempPathTasks.IsCreated) {
                 for (int i = 0; i < TempPathTasks.Length; i++) {
                     var task = TempPathTasks[i];
@@ -171,11 +173,34 @@ namespace FlowTiles.ECS {
                     continue;
                 }
 
+                // Check dest field exists
+                CachedFlowField destField;
+                var destFieldKey = PortalPathNode.FlowCacheKey(request.destCell, 0, request.travelType);
+                if (!FlowCache.TryGetField(destFieldKey, out destField)) {
+
+                    // Request a dest field
+                    UnityEngine.Debug.Log("REQUEST FLOW: " + destFieldKey);
+                    FlowRequests.Enqueue(new FlowRequest {
+                        goalCell = request.destCell,
+                        goalDirection = 0,
+                        travelType = request.travelType,
+                        cacheKey = destFieldKey,
+                    });
+                    PathRequests.Enqueue(request);
+                    continue;
+                }
+                if (destField.IsPending) {
+                    PathRequests.Enqueue(request);
+                    continue;
+                }
+
                 // Prepare the task
+                UnityEngine.Debug.Log("PREPARE PATH");
                 var task = new FindPathsJob.Task {
                     CacheKey = request.cacheKey,
                     Start = request.originCell,
                     Dest = request.destCell,
+                    DestField = destField.FlowField,
                     TravelType = request.travelType,
                     Path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Persistent),
                     Success = false
@@ -199,7 +224,7 @@ namespace FlowTiles.ECS {
 
         private void ProcessFlowRequests(PathableGraph graph, ref SystemState state) {
 
-            // Cache the flows
+            // Cache the flows (from last frame)
             if (TempFlowTasks.IsCreated) {
                 for (int i = 0; i < TempFlowTasks.Length; i++) {
                     var task = TempFlowTasks[i];
@@ -209,6 +234,7 @@ namespace FlowTiles.ECS {
                         HasBeenQueued = false,
                         FlowField = result,
                     });
+                    UnityEngine.Debug.Log("CACHE FLOW: " + task.CacheKey);
                 }
                 TempFlowTasks.Dispose();
             }
@@ -223,6 +249,7 @@ namespace FlowTiles.ECS {
             var tasks = new NativeList<FindFlowsJob.Task>(numTasks, Allocator.TempJob);
             for (int i = 0; i < numRequests; i++) {
                 var request = FlowRequests.Dequeue();
+                UnityEngine.Debug.Log("CALCULATE FLOW...");
 
                 // Discard duplicate requests
                 if (FlowCache.TryGetField(request.cacheKey, out var existing) && existing.HasBeenQueued) {
@@ -242,12 +269,14 @@ namespace FlowTiles.ECS {
                 }
 
                 // Prepare the task
+                var sizeCells = goalMap.Bounds.SizeCells;
                 var task = new FindFlowsJob.Task {
                     CacheKey = request.cacheKey,
                     Sector = goalMap,
                     GoalBounds = goalBounds,
                     ExitDirection = request.goalDirection,
-                    Flow = new Utils.UnsafeField<float2>(goalMap.Bounds.SizeCells, Allocator.Persistent),
+                    Flow = new Utils.UnsafeField<float2>(sizeCells, Allocator.Persistent),
+                    Distances = new Utils.UnsafeField<int>(sizeCells, Allocator.Persistent),
                     Color = 0,
                 };
                 tasks.Add(task);

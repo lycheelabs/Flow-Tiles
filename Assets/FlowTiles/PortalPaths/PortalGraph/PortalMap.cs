@@ -66,9 +66,9 @@ namespace FlowTiles.PortalPaths {
         /// <summary>
         /// Returns the closest reachable portal to this point, if one exists
         /// </summary>
-        /*public bool TryGetClosestExitPortal(int2 pos, int2 dest, int color, out Portal closest) {
+        public bool TryGetClosestExitPortal(int2 pos, int2 dest, int island, out Portal closest) {
             closest = default;
-            var exits = RootPortals[color - 1].Edges;
+            var exits = RootPortals[island - 1].Edges;
             if (exits.Length == 0) {
                 return false;
             }
@@ -92,13 +92,13 @@ namespace FlowTiles.PortalPaths {
                 }
             }
             return found;
-        }*/
+        }
 
         public void CreateExit(int targetSector, bool horizontal, int lineSize, int i, int flip) {
             var start = i - lineSize;
             var end = i - 1;
 
-            int2 start1, start2, end1, end2, dir;
+            int2 start1, start2, end1, end2;
             if (horizontal) {
                 var x1 = (flip > 0) ? Bounds.MaxCell.x : Bounds.MinCell.x;
                 var x2 = x1 + flip;
@@ -106,7 +106,6 @@ namespace FlowTiles.PortalPaths {
                 end1 = new int2(x1, end);
                 start2 = new int2(x2, start);
                 end2 = new int2(x2, end);
-                dir = new int2(flip, 0);
             }
             else {
                 var y1 = (flip > 0) ? Bounds.MaxCell.y : Bounds.MinCell.y;
@@ -115,7 +114,6 @@ namespace FlowTiles.PortalPaths {
                 end1 = new int2(end, y1);
                 start2 = new int2(start, y2);
                 end2 = new int2(end, y2);
-                dir = new int2(0, flip);
             }
 
             var mid1 = (start1 + end1) / 2;
@@ -123,7 +121,7 @@ namespace FlowTiles.PortalPaths {
 
             // Create the exit portal (if needed)
             if (!HasExitPortalAt(mid1)) {
-                var newPortal = new Portal(start1, end1, Index, dir);
+                var newPortal = new Portal(start1, end1, Index);
                 ExitPortalLookup.Add(newPortal.Position.Cell, ExitPortals.Length);
                 ExitPortals.Add(newPortal);
             }
@@ -166,7 +164,7 @@ namespace FlowTiles.PortalPaths {
             // Create the color roots
             for (int island = 1; island <= sector.Islands.NumIslands; island++) {
                 var cell = Bounds.CentreCell;
-                var root = new Portal(cell, Index, 0);
+                var root = new Portal(cell, Index);
                 root.Island = island;
 
                 // Assign island based on exit portal with this color

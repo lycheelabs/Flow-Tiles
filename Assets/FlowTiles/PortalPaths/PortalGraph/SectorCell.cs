@@ -3,6 +3,7 @@
 namespace FlowTiles.PortalPaths {
 
     public struct SectorCell {
+
         public int SectorIndex;
         public int2 Cell;
 

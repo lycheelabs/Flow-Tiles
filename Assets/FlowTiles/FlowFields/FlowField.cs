@@ -1,5 +1,4 @@
 ﻿using FlowTiles.Utils;
-using System;
 using Unity.Mathematics;
 
 namespace FlowTiles.FlowFields {
@@ -8,12 +7,17 @@ namespace FlowTiles.FlowFields {
 
         public int SectorIndex;
         public short Color;
+
         public int2 Size;
+        public int2 Corner;
         public UnsafeField<float2> Directions;
+        public UnsafeField<int> Distances;
+
         public int Version;
 
         public void Dispose() {
             Directions.Dispose();
+            Distances.Dispose();
         }
 
         public float2 GetFlow (int x, int y) {

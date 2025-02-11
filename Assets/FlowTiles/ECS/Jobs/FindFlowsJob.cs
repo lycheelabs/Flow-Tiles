@@ -21,14 +21,17 @@ namespace FlowTiles.ECS {
 
             public int Color;
             public UnsafeField<float2> Flow;
+            public UnsafeField<int> Distances;
 
             public FlowField ResultAsFlowField() {
                 return new FlowField {
                     SectorIndex = Sector.Index,
                     Version = Sector.Version,
                     Directions = Flow,
+                    Distances = Distances,
                     Color = (short)Color,
                     Size = Sector.Bounds.SizeCells,
+                    Corner = Sector.Bounds.MinCell,
                 };
             }
 
@@ -46,9 +49,10 @@ namespace FlowTiles.ECS {
         public void Execute(int index) {
             var task = Tasks[index];
             var calculator = new FlowCalculator(task, Allocator.Temp);
+            
             var flow = task.Flow;
-
-            calculator.Calculate(ref flow);
+            var distance = task.Distances;
+            calculator.Calculate(ref flow, ref distance);
             task.Flow = flow;
             task.Color = calculator.Color;
         }
