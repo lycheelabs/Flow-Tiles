@@ -3,7 +3,7 @@ using FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
-using Unity.VisualScripting;
+using UnityEngine;
 
 namespace FlowTiles.PortalPaths {
 
@@ -23,7 +23,7 @@ namespace FlowTiles.PortalPaths {
             Queue = new NativePriorityQueue<PathfinderNode>(capacity, allocator);
         }
 
-        public bool TryFindPath(int2 start, int2 dest, FlowField destField, int travelType, ref UnsafeList<PortalPathNode> result) {
+        public bool TryFindPath(int2 start, FlowField startField, int2 dest, FlowField destField, int travelType, ref UnsafeList<PortalPathNode> result) {
 
             var startSector = Graph.CellToIndex(start);
             var destSector = Graph.CellToIndex(dest);
@@ -38,21 +38,21 @@ namespace FlowTiles.PortalPaths {
                 return false;
             }
 
-            var startPortal = startMap.GetRootPortal(start);
-            var destCluster = destMap.GetRootPortal(dest);
+            var startRoot = startMap.GetRootPortal(start);
+            var destRoot = destMap.GetRootPortal(dest);
             if (Graph.CellToSectorMap(start, travelType).TryGetExitPortal(start, out var exit)) {
-                startPortal = exit;
+                startRoot = exit;
             }
 
             // Check whether start and dest clusters match
-            var destNode = PortalPathNode.NewDestNode(destCluster, dest, destMap.Version);
-            if (startPortal.IsInSameIsland(destCluster)) {
+            var destNode = PortalPathNode.NewDestNode(destRoot, dest, destMap.Version);
+            if (startRoot.IsInSameIsland(destRoot)) {
                 result.Add(destNode);
                 return true;
             }
 
             // Search for the path through the portal graph
-            var path = FindPath(startPortal, destCluster, destField, travelType);
+            var path = FindPath(startRoot, startField, destRoot, destField, travelType);
             if (!path.IsCreated || path.Length == 0) {
                 return false;
             }
@@ -77,18 +77,25 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        private NativeList<PortalEdge> FindPath(Portal start, Portal destCluster, FlowField destField, int travelType) {
+        private NativeList<PortalEdge> FindPath(Portal start, FlowField startField, Portal destCluster, FlowField destField, int travelType) {
             Visited.Clear();
             Parents.Clear();
             GScore.Clear();
             Queue.Clear();
 
             GScore[start.Position.Cell] = 0;
-            Queue.Enqueue(new PathfinderNode(start.Position.Cell, EuclidianDistance(start, destCluster)));
+
+            // Queue start edges
+            for (int i = 0; i < start.Edges.Length; i++) {
+                var edge = start.Edges[i];
+                var localCell = edge.end.Cell - startField.Corner;
+                var distance = startField.Distances[localCell.x, localCell.y];
+                AddEdge(edge, destCluster, distance);
+            }
+
             var destCell = destCluster.Position.Cell;
             var checkedStart = false;
 
-            UnityEngine.Debug.Log("TARGET = " + destCluster.Position.Cell);
             while (!Queue.IsEmpty) {
 
                 // Check if we have reached the destination
@@ -112,7 +119,6 @@ namespace FlowTiles.PortalPaths {
 
                 // Follow the edges...
                 Visited.Add(current.Position.Cell);
-                UnityEngine.Debug.Log("CHECK: " + current.Position.Cell);
 
                 if (current.IsInSameIsland(destCluster)) {
 
@@ -143,7 +149,6 @@ namespace FlowTiles.PortalPaths {
         private void ConsiderEdge(PortalEdge edge, Portal dest) {
             var currentCell = edge.start.Cell;
             var nextCell = edge.end.Cell;
-            var destCell = dest.Position.Cell;
 
             if (Visited.Contains(nextCell)) {
                 return;
@@ -156,10 +161,16 @@ namespace FlowTiles.PortalPaths {
             }
 
             // Otherwise store the new value and add the destination into the queue
+            AddEdge(edge, dest, newGCost);
+        }
+
+        private void AddEdge (PortalEdge edge, Portal dest, float gCost) {
+            var nextCell = edge.end.Cell;
+            var destCell = dest.Position.Cell;
+
             Parents[nextCell] = edge;
-            GScore[nextCell] = newGCost;
-            Queue.Enqueue(new PathfinderNode(nextCell, newGCost + EuclidianDistance(nextCell, destCell)));
-            UnityEngine.Debug.Log("VISIT: " + nextCell);
+            GScore[nextCell] = gCost;
+            Queue.Enqueue(new PathfinderNode(nextCell, gCost + EuclidianDistance(nextCell, destCell)));
         }
 
         private NativeList<PortalEdge> RebuildPath(Portal dest) {

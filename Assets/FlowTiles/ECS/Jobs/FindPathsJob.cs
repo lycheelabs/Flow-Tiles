@@ -15,6 +15,7 @@ namespace FlowTiles.ECS {
             [ReadOnly] public int4 CacheKey;
             [ReadOnly] public int2 Start;
             [ReadOnly] public int2 Dest;
+            [ReadOnly] public FlowField StartField;
             [ReadOnly] public FlowField DestField;
             [ReadOnly] public int TravelType;
 
@@ -40,7 +41,7 @@ namespace FlowTiles.ECS {
             var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
             var path = task.Path;
 
-            task.Success = pathfinder.TryFindPath(task.Start, task.Dest, task.DestField, task.TravelType, ref path);
+            task.Success = pathfinder.TryFindPath(task.Start, task.StartField, task.Dest, task.DestField, task.TravelType, ref path);
             task.Path = path;
             Tasks[index] = task;
         }
