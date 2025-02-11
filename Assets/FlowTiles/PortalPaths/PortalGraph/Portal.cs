@@ -7,7 +7,7 @@ namespace FlowTiles.PortalPaths {
 
     public struct Portal {
 
-        public readonly SectorCell Position;
+        public readonly SectorCell Center;
         public readonly CellRect Bounds;
 
         public int Color;
@@ -15,7 +15,7 @@ namespace FlowTiles.PortalPaths {
         public UnsafeList<PortalEdge> Edges;
 
         public Portal(int2 cell, int sector) {
-            Position = new SectorCell(sector, cell);
+            Center = new SectorCell(sector, cell);
             Bounds = new CellRect(cell, cell);
             Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
             Color = -1;
@@ -23,7 +23,7 @@ namespace FlowTiles.PortalPaths {
         }
 
         public Portal(int2 corner1, int2 corner2, int sector) {
-            Position = new SectorCell(sector, (corner1 + corner2) / 2);
+            Center = new SectorCell(sector, (corner1 + corner2) / 2);
             Bounds = new CellRect(corner1, corner2);
             Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
             Color = -1;
@@ -35,15 +35,15 @@ namespace FlowTiles.PortalPaths {
         }
 
         public bool IsSamePortal (Portal other) {
-            return other.Position.Equals(Position);
+            return other.Center.Equals(Center);
         }
 
         public bool Matches(Portal destCluster) {
-            return IsInSameIsland(destCluster) && Position.Cell.Equals(destCluster.Position.Cell);
+            return IsInSameIsland(destCluster) && Center.Cell.Equals(destCluster.Center.Cell);
         }
 
         public bool IsInSameIsland(Portal other) {
-            return other.Position.SectorIndex == Position.SectorIndex && other.Island == Island;
+            return other.Center.SectorIndex == Center.SectorIndex && other.Island == Island;
         }
 
     }

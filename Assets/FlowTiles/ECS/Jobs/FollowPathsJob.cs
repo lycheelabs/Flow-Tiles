@@ -44,42 +44,21 @@ namespace FlowTiles.ECS {
 
             var travelType = goal.ValueRO.TravelType;
             var currentMap = Graph.CellToSectorMap(current, travelType);
-            var currentColor = currentMap.GetCellColor(current);
-            var currentIsland = currentMap.GetCellIsland(current);
-
             var destMap = Graph.CellToSectorMap(dest, travelType);
-            var destColor = destMap.GetCellColor(dest);
-            var destIsland = destMap.GetCellIsland(dest);
-            var destKey = Graph.Layout.IndexOfCell(dest);
+
+            var currentIsland = currentMap.GetCellIsland(current);
 
             // Attach to a path
             if (!progress.HasPath) {
 
-                // Find closest start portal
-                var start = current;
-                var startCluster = currentMap.GetRootPortal(current);
-                var startKeyCell = startCluster.Position.Cell;
-                    
-                if (currentMap.Index != destMap.Index || currentIsland != destIsland) {
-                    //var root = currentMap.GetRootPortal(startKeyCell);
-                    //start = root.Position.Cell;
-                    //startKeyCell = start;
-                    /*if (currentMap.Portals.TryGetClosestExitPortal(current, dest, startCluster.Island, out var closest)) {
-                        start = closest.Position.Cell;
-                        startKeyCell = start;
-                    }*/
-                }
-
                 // Generate or retrieve a path
-                var startKey = Graph.Layout.IndexOfCell(startKeyCell);
-                var pathKey = new int4(startKey, currentColor, destKey, travelType);
+                var pathKey = PathCache.ToKey(current, dest);
                 var pathCacheHit = PathCache.ContainsPath(pathKey);
                 if (!pathCacheHit) {
                     ECB.AddComponent(sortKey, entity, new MissingPathData {
-                        Start = start,
+                        Start = current,
                         Dest = dest,
                         TravelType = travelType,
-                        Key = pathKey,
                     });
                     return;
                 }
@@ -93,7 +72,8 @@ namespace FlowTiles.ECS {
             if (progress.HasPath) {
 
                 // Check destination hasn't changed
-                if (destKey != progress.PathKey.z || travelType != progress.PathKey.w) {
+                var pathDest = new int2(progress.PathKey.z, progress.PathKey.w);
+                if (!dest.Equals(pathDest)) {//|| travelType != progress.PathKey.w) {
                     progress.HasPath = false;
                     return;
                 }
@@ -189,7 +169,7 @@ namespace FlowTiles.ECS {
 
                 // Generate or retrieve a flow
                 var pathNode = path.Nodes[progress.NodeIndex];
-                var flowKey = pathNode.CacheKey(travelType);
+                var flowKey = pathNode.FlowCacheKey(travelType);
                 var flowCacheHit = FlowCache.TryGetField(flowKey, out var flow);
                 var cell = pathNode.Position.Cell;
                 if (!flowCacheHit) {
@@ -198,7 +178,6 @@ namespace FlowTiles.ECS {
                         Cell = cell,
                         Direction = pathNode.Direction,
                         TravelType = travelType,
-                        Key = flowKey,
                     });
                     return;
                 }

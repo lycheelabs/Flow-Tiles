@@ -23,7 +23,6 @@ namespace FlowTiles.ECS {
                     originCell = data.ValueRO.Start,
                     destCell = data.ValueRO.Dest,
                     travelType = data.ValueRO.TravelType,
-                    cacheKey = key,
                 });
 
                 // Store temp data in the cache

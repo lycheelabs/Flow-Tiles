@@ -7,7 +7,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEditor;
 
 namespace FlowTiles.ECS {
 
@@ -169,15 +168,15 @@ namespace FlowTiles.ECS {
                 var request = PathRequests.Dequeue();
 
                 // Discard duplicate requests
-                if (PathCache.TryGetPath(request.cacheKey, out var existing) && existing.HasBeenQueued) {
+                if (PathCache.TryGetPath(request.CacheKey, out var existing) && existing.HasBeenQueued) {
                     continue;
                 }
 
                 // Check dest field exists
                 CachedFlowField startField;
                 CachedFlowField destField;
-                var startFieldKey = PortalPathNode.FlowCacheKey(request.originCell, 0, request.travelType);
-                var destFieldKey = PortalPathNode.FlowCacheKey(request.destCell, 0, request.travelType);
+                var startFieldKey = FlowCache.ToKey(request.originCell, 0, request.travelType);
+                var destFieldKey = FlowCache.ToKey(request.destCell, 0, request.travelType);
                 var failed = false;
 
                 if (!FlowCache.TryGetField(startFieldKey, out startField)) {
@@ -187,7 +186,6 @@ namespace FlowTiles.ECS {
                     FlowRequests.Enqueue(new FlowRequest {
                         goalCell = request.originCell,
                         travelType = request.travelType,
-                        cacheKey = startFieldKey,
                     });
                 } else {
                     failed |= startField.IsPending;
@@ -200,7 +198,6 @@ namespace FlowTiles.ECS {
                     FlowRequests.Enqueue(new FlowRequest {
                         goalCell = request.destCell,
                         travelType = request.travelType,
-                        cacheKey = destFieldKey,
                     });
                 } else {
                     failed |= destField.IsPending;
@@ -213,7 +210,7 @@ namespace FlowTiles.ECS {
 
                 // Prepare the task
                 var task = new FindPathsJob.Task {
-                    CacheKey = request.cacheKey,
+                    CacheKey = request.CacheKey,
                     Start = request.originCell,
                     Dest = request.destCell,
                     StartField = startField.FlowField,
@@ -225,7 +222,7 @@ namespace FlowTiles.ECS {
                 tasks.Add(task);
 
                 // Update the cache
-                PathCache.StorePath(request.cacheKey, new CachedPortalPath {
+                PathCache.StorePath(request.CacheKey, new CachedPortalPath {
                     IsPending = true,
                     HasBeenQueued = true,
                 });
@@ -267,7 +264,7 @@ namespace FlowTiles.ECS {
                 var request = FlowRequests.Dequeue();
 
                 // Discard duplicate requests
-                if (FlowCache.TryGetField(request.cacheKey, out var existing) && existing.HasBeenQueued) {
+                if (FlowCache.TryGetField(request.CacheKey, out var existing) && existing.HasBeenQueued) {
                     continue;
                 }
 
@@ -286,7 +283,7 @@ namespace FlowTiles.ECS {
                 // Prepare the task
                 var sizeCells = goalMap.Bounds.SizeCells;
                 var task = new FindFlowsJob.Task {
-                    CacheKey = request.cacheKey,
+                    CacheKey = request.CacheKey,
                     Sector = goalMap,
                     GoalBounds = goalBounds,
                     ExitDirection = request.goalDirection,
@@ -296,7 +293,7 @@ namespace FlowTiles.ECS {
                 };
                 tasks.Add(task);
 
-                FlowCache.StoreField (goalMap.Index, request.cacheKey, new CachedFlowField {
+                FlowCache.StoreField (goalMap.Index, request.CacheKey, new CachedFlowField {
                     IsPending = true,
                     HasBeenQueued = true,
                 });

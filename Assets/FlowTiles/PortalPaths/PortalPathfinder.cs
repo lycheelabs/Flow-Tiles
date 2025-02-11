@@ -3,7 +3,6 @@ using FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace FlowTiles.PortalPaths {
 
@@ -31,7 +30,7 @@ namespace FlowTiles.PortalPaths {
                 return false;
             }
 
-            // Find start and end clusters
+            // Find start and end root portals
             var startMap = Graph.CellToSectorMap(start, travelType);
             var destMap = Graph.CellToSectorMap(dest, travelType);
             if (startMap.IsFullyBlocked || destMap.IsFullyBlocked) {
@@ -40,13 +39,10 @@ namespace FlowTiles.PortalPaths {
 
             var startRoot = startMap.GetRootPortal(start);
             var destRoot = destMap.GetRootPortal(dest);
-            if (Graph.CellToSectorMap(start, travelType).TryGetExitPortal(start, out var exit)) {
-                startRoot = exit;
-            }
-
-            // Check whether start and dest clusters match
             var destNode = PortalPathNode.NewDestNode(destRoot, dest, destMap.Version);
-            if (startRoot.IsInSameIsland(destRoot)) {
+
+            // Check whether start and dest portals match
+            if (startRoot.Matches(destRoot)) {
                 result.Add(destNode);
                 return true;
             }
@@ -77,68 +73,59 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        private NativeList<PortalEdge> FindPath(Portal start, FlowField startField, Portal destCluster, FlowField destField, int travelType) {
+        private NativeList<PortalEdge> FindPath(Portal startRoot, FlowField startField, Portal destRoot, FlowField destField, int travelType) {
             Visited.Clear();
             Parents.Clear();
             GScore.Clear();
             Queue.Clear();
 
-            GScore[start.Position.Cell] = 0;
+            GScore[startRoot.Center.Cell] = 0;
 
             // Queue start edges
-            for (int i = 0; i < start.Edges.Length; i++) {
-                var edge = start.Edges[i];
+            for (int i = 0; i < startRoot.Edges.Length; i++) {
+                var edge = startRoot.Edges[i];
                 var localCell = edge.end.Cell - startField.Corner;
                 var distance = startField.Distances[localCell.x, localCell.y];
-                AddEdge(edge, destCluster, distance);
+                AddEdge(edge, startRoot, destRoot, distance);
             }
 
-            var destCell = destCluster.Position.Cell;
-            var checkedStart = false;
+            var destCell = destRoot.Center.Cell;
 
             while (!Queue.IsEmpty) {
 
                 // Check if we have reached the destination
                 var cell = Queue.Dequeue().Position;
                 if (cell.Equals(destCell)) {
-                    UnityEngine.Debug.Log("DEST");
-                    return RebuildPath(destCluster);
+                    return RebuildPath(destRoot);
                 }
 
                 // Find the portal that matches this cell
-                Portal current;
-                if (!checkedStart) {
-                    current = start;
-                    checkedStart = true;
-                } else {
-                    var found = Graph.CellToSectorMap(cell, travelType).TryGetExitPortal(cell, out current);
-                    if (!found) {
-                        continue;
-                    }
-                }
+                var found = Graph.CellToSectorMap(cell, travelType).TryGetExitPortal(cell, out var current);
+                if (!found) {
+                    continue;
+                }                
 
                 // Follow the edges...
-                Visited.Add(current.Position.Cell);
+                Visited.Add(current.Center.Cell);
 
-                if (current.IsInSameIsland(destCluster)) {
+                if (current.IsInSameIsland(destRoot)) {
 
                     // Add edge to destination using flow distance
-                    UnityEngine.Debug.Log("DEST CLUSTER");
                     var localCell = cell - destField.Corner;
                     var distance = destField.Distances[localCell.x, localCell.y];
                     var edge = new PortalEdge { 
-                        start = current.Position, 
-                        end = destCluster.Position, 
+                        start = current.Center, 
+                        end = destRoot.Center, 
                         weight = distance,
                         isExit = true,
                     };
-                    ConsiderEdge(edge, destCluster);
+                    ConsiderEdge(edge, current, destRoot);
                 }
                 else {
 
                     // Visit all neighbours through edges going out of node
                     foreach (PortalEdge edge in current.Edges) {
-                        ConsiderEdge(edge, destCluster);
+                        ConsiderEdge(edge, current, destRoot);
                     }
                 }
             }
@@ -146,7 +133,7 @@ namespace FlowTiles.PortalPaths {
             return default;
         }
 
-        private void ConsiderEdge(PortalEdge edge, Portal dest) {
+        private void ConsiderEdge(PortalEdge edge, Portal current, Portal dest) {
             var currentCell = edge.start.Cell;
             var nextCell = edge.end.Cell;
 
@@ -161,12 +148,12 @@ namespace FlowTiles.PortalPaths {
             }
 
             // Otherwise store the new value and add the destination into the queue
-            AddEdge(edge, dest, newGCost);
+            AddEdge(edge, current, dest, newGCost);
         }
 
-        private void AddEdge (PortalEdge edge, Portal dest, float gCost) {
+        private void AddEdge (PortalEdge edge, Portal current, Portal dest, float gCost) {
             var nextCell = edge.end.Cell;
-            var destCell = dest.Position.Cell;
+            var destCell = dest.Center.Cell;
 
             Parents[nextCell] = edge;
             GScore[nextCell] = gCost;
@@ -175,7 +162,7 @@ namespace FlowTiles.PortalPaths {
 
         private NativeList<PortalEdge> RebuildPath(Portal dest) {
             var res = new NativeList<PortalEdge>(Allocator.Temp);
-            int2 current = dest.Position.Cell;
+            int2 current = dest.Center.Cell;
 
             while (Parents.TryGetValue(current, out var e)) {
                 res.Add(e);
@@ -186,7 +173,7 @@ namespace FlowTiles.PortalPaths {
         }
 
         private float EuclidianDistance(Portal node1, Portal node2) {
-            return math.distance(node1.Position.Cell, node2.Position.Cell);
+            return math.distance(node1.Center.Cell, node2.Center.Cell);
         }
 
         private float EuclidianDistance(int2 node1, int2 node2) {

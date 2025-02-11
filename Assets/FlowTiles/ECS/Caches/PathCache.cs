@@ -6,6 +6,10 @@ namespace FlowTiles.ECS {
 
     public struct PathCache {
 
+        public static int4 ToKey (int2 start, int2 dest, int travelType = 0) {
+            return new int4 (start, dest);
+        }
+
         private int Capacity;
         private NativeHashMap<int4, CachedPortalPath> Cache;
         private NativeQueue<int4> Queue;

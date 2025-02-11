@@ -122,7 +122,7 @@ namespace FlowTiles.PortalPaths {
             // Create the exit portal (if needed)
             if (!HasExitPortalAt(mid1)) {
                 var newPortal = new Portal(start1, end1, Index);
-                ExitPortalLookup.Add(newPortal.Position.Cell, ExitPortals.Length);
+                ExitPortalLookup.Add(newPortal.Center.Cell, ExitPortals.Length);
                 ExitPortals.Add(newPortal);
             }
 
@@ -152,7 +152,7 @@ namespace FlowTiles.PortalPaths {
         private void ColorExitPortals(SectorMap sector) {
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
-                var tile = portal.Position.Cell - Bounds.MinCell;
+                var tile = portal.Center.Cell - Bounds.MinCell;
                 portal.Color = sector.Colors.Cells[tile.x, tile.y];
                 portal.Island = sector.Islands.Cells[tile.x, tile.y];
                 ExitPortals[i] = portal;
@@ -170,13 +170,13 @@ namespace FlowTiles.PortalPaths {
                 // Assign island based on exit portal with this color
                 for (int p = 0; p < ExitPortals.Length; p++) {
                     var portal = ExitPortals[p];
-                    var position = portal.Position.Cell - sector.Bounds.MinCell;
+                    var position = portal.Center.Cell - sector.Bounds.MinCell;
                     var exitCost = sector.Costs.Cells[position.x, position.y];
 
                     if (portal.Island == island) {
                         root.Edges.Add(new PortalEdge {
-                            start = root.Position,
-                            end = portal.Position,
+                            start = root.Center,
+                            end = portal.Center,
                             weight = exitCost * 10,
                         });
                     }
@@ -212,18 +212,18 @@ namespace FlowTiles.PortalPaths {
 
             var corner = sector.Bounds.MinCell;
             var pathCost = pathfinder.FindTravelCost(
-                sector.Cells, n1.Position.Cell - corner, n2.Position.Cell - corner);
+                sector.Cells, n1.Center.Cell - corner, n2.Center.Cell - corner);
 
             if (pathCost > 0) {
                 e1 = new PortalEdge() {
-                    start = n1.Position,
-                    end = n2.Position,
+                    start = n1.Center,
+                    end = n2.Center,
                     weight = pathCost,
                 };
 
                 e2 = new PortalEdge() {
-                    start = n2.Position,
-                    end = n1.Position,
+                    start = n2.Center,
+                    end = n1.Center,
                     weight = pathCost,
                 };
 

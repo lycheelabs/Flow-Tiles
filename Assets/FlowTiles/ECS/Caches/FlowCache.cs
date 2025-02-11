@@ -6,6 +6,11 @@ namespace FlowTiles.ECS {
 
     public struct FlowCache {
 
+        public static int4 ToKey(int2 start, int2 direction, int travelType) {
+            var directionIndex = direction.x + direction.y * 3;
+            return new int4(start, directionIndex, travelType);
+        }
+
         private NativeHashMap<int4, CachedFlowField> Cache;
         private NativeHashMap<int, UnsafeList<int4>> Lookup;
 
