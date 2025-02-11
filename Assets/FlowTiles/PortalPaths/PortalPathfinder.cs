@@ -88,7 +88,7 @@ namespace FlowTiles.PortalPaths {
                 var edge = startRoot.Edges[i];
                 var localCell = edge.end.Cell - startField.Corner;
                 var distance = startField.Distances[localCell.x, localCell.y];
-                AddEdge(edge, destRoot, distance);
+                AddEdge(edge, destRoot, distance, true);
             }
             if (startRoot.IsInSameIsland(destRoot)) {
                 // Add edge to destination using flow distance
@@ -107,7 +107,8 @@ namespace FlowTiles.PortalPaths {
             while (!Queue.IsEmpty) {
 
                 // Check if we have reached the destination
-                var cell = Queue.Dequeue().Position;
+                var node = Queue.Dequeue();
+                var cell = node.Position;
                 if (cell.Equals(destCell)) {
                     return RebuildPath(start, dest);
                 }
@@ -121,7 +122,7 @@ namespace FlowTiles.PortalPaths {
                 // Follow the edges...
                 Visited.Add(current.Center.Cell);
 
-                if (current.IsInSameIsland(destRoot)) {
+                if (current.IsInSameIsland(destRoot) && !node.IsStartNode) {
 
                     // Add edge to destination using flow distance
                     var localCell = cell - destField.Corner;
@@ -164,13 +165,15 @@ namespace FlowTiles.PortalPaths {
             AddEdge(edge, dest, newGCost);
         }
 
-        private void AddEdge (PortalEdge edge, Portal dest, float gCost) {
+        private void AddEdge (PortalEdge edge, Portal dest, float gCost, bool isStartNode = false) {
             var nextCell = edge.end.Cell;
             var destCell = dest.Center.Cell;
 
             Parents[nextCell] = edge;
             GScore[nextCell] = gCost;
-            Queue.Enqueue(new PathfinderNode(nextCell, gCost + EuclidianDistance(nextCell, destCell)));
+
+            var combinedCost = gCost + EuclidianDistance(nextCell, destCell);
+            Queue.Enqueue(new PathfinderNode(nextCell, combinedCost, isStartNode));
         }
 
         private NativeList<PortalEdge> RebuildPath(SectorCell start, SectorCell dest) {
