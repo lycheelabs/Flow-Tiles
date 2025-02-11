@@ -61,10 +61,13 @@ namespace FlowTiles.ECS {
                 var startKeyCell = startCluster.Position.Cell;
                     
                 if (currentMap.Index != destMap.Index || currentIsland != destIsland) {
-                    if (currentMap.Portals.TryGetClosestExitPortal(current, dest, startCluster.Color, out var closest)) {
+                    var root = currentMap.GetRootPortal(startKeyCell);
+                    start = root.Position.Cell;
+                    startKeyCell = start;
+                    /*if (currentMap.Portals.TryGetClosestExitPortal(current, dest, startCluster.Color, out var closest)) {
                         start = closest.Position.Cell;
                         startKeyCell = start;
-                    }
+                    }*/
                 }
 
                 // Generate or retrieve a path

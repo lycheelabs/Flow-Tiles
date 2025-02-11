@@ -17,7 +17,7 @@ namespace FlowTiles.PortalPaths {
             Index = index;
             Bounds = bounds;
 
-            RootPortals = new UnsafeList<Portal>(Constants.EXPECTED_MAX_COLORS, Allocator.Persistent);
+            RootPortals = new UnsafeList<Portal>(Constants.EXPECTED_MAX_ISLANDS, Allocator.Persistent);
             ExitPortals = new UnsafeList<Portal>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
             ExitPortalLookup = new UnsafeHashMap<int2, int>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
         }
@@ -66,7 +66,7 @@ namespace FlowTiles.PortalPaths {
         /// <summary>
         /// Returns the closest reachable portal to this point, if one exists
         /// </summary>
-        public bool TryGetClosestExitPortal(int2 pos, int2 dest, int color, out Portal closest) {
+        /*public bool TryGetClosestExitPortal(int2 pos, int2 dest, int color, out Portal closest) {
             closest = default;
             var exits = RootPortals[color - 1].Edges;
             if (exits.Length == 0) {
@@ -92,7 +92,7 @@ namespace FlowTiles.PortalPaths {
                 }
             }
             return found;
-        }
+        }*/
 
         public void CreateExit(int targetSector, bool horizontal, int lineSize, int i, int flip) {
             var start = i - lineSize;
@@ -164,30 +164,27 @@ namespace FlowTiles.PortalPaths {
         private void BuildRootConnections (SectorMap sector) {
 
             // Create the color roots
-            for (int color = 1; color <= sector.Colors.NumColors; color++) {
+            for (int island = 1; island <= sector.Islands.NumIslands; island++) {
                 var cell = Bounds.CentreCell;
-                var colorPortal = new Portal(cell, Index, 0);
-                colorPortal.Color = color;
+                var root = new Portal(cell, Index, 0);
+                root.Island = island;
 
                 // Assign island based on exit portal with this color
                 for (int p = 0; p < ExitPortals.Length; p++) {
                     var portal = ExitPortals[p];
-                    if (portal.Color == color) {
-                        colorPortal.Island = portal.Island;
-                        colorPortal.Edges.Add(new PortalEdge {
-                            start = colorPortal.Position,
+                    var position = portal.Position.Cell - sector.Bounds.MinCell;
+                    var exitCost = sector.Costs.Cells[position.x, position.y];
+
+                    if (portal.Island == island) {
+                        root.Edges.Add(new PortalEdge {
+                            start = root.Position,
                             end = portal.Position,
-                            weight = 0,
+                            weight = exitCost * 10,
                         });
                     }
                 }
 
-                // Fallback: assign island by checking all cells
-                if (colorPortal.Island < 1) {
-                    colorPortal.Island = sector.Colors.FindIslandOfColor(color, sector.Islands);
-                }
-
-                RootPortals.Add(colorPortal);
+                RootPortals.Add(root);
             }
 
         }

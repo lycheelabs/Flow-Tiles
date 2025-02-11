@@ -62,64 +62,33 @@ namespace FlowTiles.ECS {
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
-
-            var ecbEarly = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecbLate = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var globalData = SystemAPI.GetSingleton<GlobalPathfindingData>();
-            if (!globalData.IsInitialised) {
+            var data = SystemAPI.GetSingleton<GlobalPathfindingData>();
+            if (!data.IsInitialised) {
                 return;
             }
-            
-            var level = globalData.Level;
-            var graph = globalData.Graph;
-            
-            // Rebuild all dirty graph sectors
-            if (level.NeedsRebuilding.Value) {
-                RebuildDirtySectors(ref level, ref graph, ref state);
-                level.IsInitialised.Value = true;
-                return; // Don't process paths this frame
+
+            // Rebuild all dirty graph sectors (spread across multiple frames)
+            if (data.Level.NeedsRebuilding.Value) {
+                RebuildDirtySectors(data.Level, data.Graph, ref state);
+                return;
             }
 
-            // Process path and flow requests, and cache the results
-            ProcessPathRequests(graph, ref state);
-            ProcessFlowRequests(graph, ref state);
+            // First-time build is complete. Pathing can begin!
+            data.Level.IsInitialised.Value = true;
 
-            // Invalidate old paths
-            new InvalidatePathsJob {
-                PathCache = PathCache,
-                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
+            // Process queued path and flow requests, and cache the results
+            ProcessPathRequests(data.Graph, ref state);
+            ProcessFlowRequests(data.Graph, ref state);
 
-            // Accumulate path rquests
-            new RequestPathsJob {
-                PathCache = PathCache,
-                PathRequests = PathRequests,
-                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
+            // Queue new requests from agents that want paths (for next frame)
+            FindNewRequests(ref state);
 
-            // Accumulate flow rquests
-            new RequestFlowsJob {
-                FlowCache = FlowCache,
-                FlowRequests = FlowRequests,
-                ECB = ecbEarly.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
-
-            // Follow the paths
-            new FollowPathsJob {
-                Graph = graph,
-                PathCache = PathCache,
-                FlowCache = FlowCache,
-                ECB = ecbLate.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
-            }.ScheduleParallel();
-
-            // Expose flow data for visualisation
-            new DebugPathsJob {
-                FlowCache = FlowCache,
-            }.ScheduleParallel();
+            // Apply the current path direction to each agent
+            FollowPaths(data.Graph, ref state);
 
         }
 
-        private void RebuildDirtySectors(ref PathableLevel level, ref PathableGraph graph, ref SystemState state) {
+        private void RebuildDirtySectors(PathableLevel level, PathableGraph graph, ref SystemState state) {
             var workRemains = false;
 
             // Prepare sectors for building
@@ -294,6 +263,49 @@ namespace FlowTiles.ECS {
             var flowJob = new FindFlowsJob(tasks.AsArray());
             state.Dependency = flowJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
 
+        }
+
+        private SystemState FindNewRequests(ref SystemState state) {
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+
+            // Invalidate old paths
+            new InvalidatePathsJob {
+                PathCache = PathCache,
+                ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
+
+            // Accumulate path rquests
+            new RequestPathsJob {
+                PathCache = PathCache,
+                PathRequests = PathRequests,
+                ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
+
+            // Accumulate flow rquests
+            new RequestFlowsJob {
+                FlowCache = FlowCache,
+                FlowRequests = FlowRequests,
+                ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
+            return state;
+        }
+
+        private SystemState FollowPaths(PathableGraph graph, ref SystemState state) {
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+
+            // Follow the paths
+            new FollowPathsJob {
+                Graph = graph,
+                PathCache = PathCache,
+                FlowCache = FlowCache,
+                ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
+            }.ScheduleParallel();
+
+            // Expose flow data for visualisation
+            new DebugPathsJob {
+                FlowCache = FlowCache,
+            }.ScheduleParallel();
+            return state;
         }
 
     }
