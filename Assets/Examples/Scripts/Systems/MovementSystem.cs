@@ -32,7 +32,7 @@ namespace FlowTiles.Examples {
             private void Execute(ref AgentData agent, ref FlowPosition cell, ref FlowDirection direction, ref LocalTransform transform) {
                 var speed = agent.Speed;
                 var dir = direction.Direction;
-                speed = math.lerp(speed, (float2)dir, math.saturate(DeltaTime * 5));
+                speed = math.lerp(speed, dir, math.saturate(DeltaTime * 5));
                 agent.Speed = speed;
 
                 var position = transform.Position;
@@ -41,10 +41,7 @@ namespace FlowTiles.Examples {
                 position.y = math.clamp(position.y, 0, LevelSize.y - 1);
 
                 transform.Position = position;
-
-                var newX = (int)math.round(position.x);
-                var newY = (int)math.round(position.y);
-                cell.Position = new int2(newX, newY);               
+                cell.Position = new float2(position.x, position.y);               
             }
 
         }

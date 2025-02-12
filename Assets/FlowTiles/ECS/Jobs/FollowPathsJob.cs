@@ -35,7 +35,7 @@ namespace FlowTiles.ECS {
             }
 
             // Check start and dest are valid
-            var current = position.ValueRO.Position;
+            var current = position.ValueRO.PositionCell;
             var dest = goal.ValueRO.Goal;
             if (!Graph.Bounds.ContainsCell(current) || !Graph.Bounds.ContainsCell(dest)) {
                 progress.HasPath = false;
@@ -199,8 +199,9 @@ namespace FlowTiles.ECS {
                 progress.FlowKey = flowKey;
 
                 var cornerCell = Graph.Layout.GetMinCorner(currentMap.Index);
-                var pos = position.ValueRO.Position;
-                var flowDirection = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, pos);
+                var smoothPos = position.ValueRO.Position;
+                var pos = position.ValueRO.PositionCell;
+                var flowDirection = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, smoothPos);
 
                 result.Direction = flowDirection;
                 if (pos.Equals(dest)) {
@@ -283,7 +284,7 @@ namespace FlowTiles.ECS {
                     }
 
                     if (!visiblePos.Equals(pos)) {
-                        var direction = math.normalizesafe(visiblePos - pos);
+                        var direction = math.normalizesafe(visiblePos - smoothPos);
                         result.Direction = direction;
                     }
                 }

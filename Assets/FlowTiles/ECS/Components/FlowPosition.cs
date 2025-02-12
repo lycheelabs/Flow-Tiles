@@ -1,5 +1,6 @@
 ﻿using Unity.Entities;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 
 namespace FlowTiles.ECS {
 
@@ -7,7 +8,10 @@ namespace FlowTiles.ECS {
     // Important: Update this every time the agent moves!
     public struct FlowPosition : IComponentData {
 
-        public int2 Position;
+        public float2 Position;
+        public int2 PositionCell => new int2(
+            (int) math.round(Position.x), 
+            (int) math.round(Position.y));
 
     }
 
