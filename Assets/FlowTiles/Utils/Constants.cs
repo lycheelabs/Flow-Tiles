@@ -22,6 +22,9 @@ namespace FlowTiles {
         // If this isn't set large enough, no agents will get paths as they fight over slots.
         public const int MAX_CACHED_PATHS = 10000;
 
+        // This constant limits how many nodes are tested in a line-of-sight check.
+        public const int MAX_LINE_OF_SIGHT_LOOKAHEAD = 3;
+
     }
 
 }

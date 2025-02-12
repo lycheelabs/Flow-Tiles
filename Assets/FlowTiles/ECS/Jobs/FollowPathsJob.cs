@@ -210,7 +210,7 @@ namespace FlowTiles.ECS {
                 var smoothing = goal.ValueRO.SmoothingMode;
 
                 // Lookahead one tile smoothing
-                if (smoothing == PathSmoothingMode.LookaheadOneTile) {
+                if (smoothing != PathSmoothingMode.None) {
                     var nextPos = pos + result.Direction;
                     var nextFlowDirection = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, nextPos);
                     if (!nextFlowDirection.Equals(pos)) {
@@ -218,11 +218,15 @@ namespace FlowTiles.ECS {
                     }
                 }
 
-                // Line of sight smoothing smoothing
-                else if (smoothing == PathSmoothingMode.LineOfSight) {
+                // Line of sight smoothing
+                if (smoothing == PathSmoothingMode.LineOfSight) {
                     int2 visiblePos = pos;
 
-                    for (int i = pathIndex; i < path.Nodes.Length; i++) {
+                    var maxNode = math.min(
+                        pathIndex + Constants.MAX_LINE_OF_SIGHT_LOOKAHEAD, 
+                        path.Nodes.Length);
+                    
+                    for (int i = pathIndex; i < maxNode; i++) {
                         var node = path.Nodes[i];
                         var nodePos = node.Position.Cell;
                         if (pos.Equals(nodePos)) {

@@ -359,6 +359,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LevelSize: 100
   Resolution: 20
+  PathSmoothingMode: 2
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

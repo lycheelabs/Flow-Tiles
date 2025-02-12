@@ -14,11 +14,6 @@ namespace FlowTiles {
             return flow.FlowField.GetFlow(x, y);
         }
 
-        public static float2 GetBestPathLineOfSightDirection(int2 pos, int currentNode, UnsafeList<PortalPathNode> nodes, ref PathableGraph graph, int travelType) {
-            int2 dest = GetBestPathLineOfSight(pos, currentNode, nodes, ref graph, travelType);
-            return math.normalizesafe(dest - pos);
-        }
-
         public static int2 GetBestPathLineOfSight(int2 pos, int currentNode, UnsafeList<PortalPathNode> nodes, ref PathableGraph graph, int travelType) {
             int2 result = pos;
 
