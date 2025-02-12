@@ -9,10 +9,7 @@ namespace FlowTiles.PortalPaths {
 
         public CostMap Costs;
         public IslandMap Islands;
-        public ColorMap Colors;
         public PortalMap Portals;
-
-        public bool IsFullyBlocked => Colors.NumColors <= 0;
 
         public SectorMap(int index, CellRect boundaries, int travelType, int version) {
             Index = index;
@@ -21,7 +18,6 @@ namespace FlowTiles.PortalPaths {
 
             Costs = new CostMap(index, boundaries, travelType);
             Islands = new IslandMap(index, boundaries);
-            Colors = new ColorMap(index, boundaries);
             Portals = new PortalMap(index, boundaries);
         }
 
@@ -32,18 +28,12 @@ namespace FlowTiles.PortalPaths {
         public void Dispose() {
             Costs.Dispose();
             Islands.Dispose();
-            Colors.Dispose();
             Portals.Dispose();
         }
 
         public int GetCellIsland(int2 cell) {
             var localCell = cell - Bounds.MinCell;
             return Islands.Cells[localCell.x, localCell.y];
-        }
-
-        public int GetCellColor(int2 cell) {
-            var localCell = cell - Bounds.MinCell;
-            return Colors.Cells[localCell.x, localCell.y];
         }
 
         public Portal GetRootPortal(int2 cell) {

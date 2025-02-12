@@ -289,7 +289,6 @@ namespace FlowTiles.ECS {
                     ExitDirection = request.goalDirection,
                     Flow = new Utils.UnsafeField<float2>(sizeCells, Allocator.Persistent),
                     Distances = new Utils.UnsafeField<int>(sizeCells, Allocator.Persistent),
-                    Color = 0,
                 };
                 tasks.Add(task);
 

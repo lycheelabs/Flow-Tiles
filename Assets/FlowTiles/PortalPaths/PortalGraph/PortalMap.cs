@@ -153,7 +153,6 @@ namespace FlowTiles.PortalPaths {
             for (int i = 0; i < ExitPortals.Length; i++) {
                 var portal = ExitPortals[i];
                 var tile = portal.Center.Cell - Bounds.MinCell;
-                portal.Color = sector.Colors.Cells[tile.x, tile.y];
                 portal.Island = sector.Islands.Cells[tile.x, tile.y];
                 ExitPortals[i] = portal;
             }

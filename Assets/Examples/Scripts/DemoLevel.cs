@@ -3,14 +3,12 @@ using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
+using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
 using Unity.Transforms;
-using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 
 namespace FlowTiles.Examples {
@@ -19,7 +17,7 @@ namespace FlowTiles.Examples {
         NONE,
         PORTALS,
         CONNECTIONS, 
-        COLORS, 
+        COSTS, 
         ISLANDS
     }
     public class DemoLevel {
@@ -103,7 +101,7 @@ namespace FlowTiles.Examples {
 
         public void Update() {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var showColors = VisualiseMode == VisualiseMode.COLORS || VisualiseMode == VisualiseMode.ISLANDS;
+            var showColors = VisualiseMode == VisualiseMode.COSTS || VisualiseMode == VisualiseMode.ISLANDS;
             em.SetComponentData(Singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = Level.Blocked,
@@ -156,16 +154,13 @@ namespace FlowTiles.Examples {
                 Visualisation.DrawSectorConnections(Graph, VisualisedTravelType);
             }
 
-            if (VisualiseMode == VisualiseMode.COLORS) {
+            if (VisualiseMode == VisualiseMode.COSTS) {
                 for (int y = 0; y < LevelSize.x; y++) {
                     for (int x = 0; x < LevelSize.y; x++) {
                         var sector = Graph.CellToSectorMap(new int2(x, y), 0);
-                        var color = sector.Colors.Cells[x % Resolution, y % Resolution];
-                        if (color > 0) {
-                            ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
-                        } else {
-                            ColorData[x, y] = 1;
-                        }
+                        var cost = sector.Costs.Cells[x % Resolution, y % Resolution];
+                        var color = new float4(1, 0, 0, cost / 255f);
+                        ColorData[x, y] = color;
                     }
                 }
             }
@@ -216,18 +211,20 @@ namespace FlowTiles.Examples {
             if (!Graph.SectorIsInitialised(Graph.CellToIndex(start))) return;
             if (!Graph.SectorIsInitialised(Graph.CellToIndex(dest))) return;
 
+            var travelType = 0;
             var startFlow = CalculateFlow(Graph.CellToSectorMap(start, 0), new CellRect(start), 0);
             var destFlow = CalculateFlow(Graph.CellToSectorMap(dest, 0), new CellRect(dest), 0);
             var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
             var path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Temp);
 
-            var success = pathfinder.TryFindPath(start, startFlow, dest, destFlow, 0, ref path);
+            var success = pathfinder.TryFindPath(start, startFlow, dest, destFlow, travelType, ref path);
 
             if (success) {
                 // Visualise the path
                 FlowData.InitialiseTo(0);
 
                 // Draw portals
+                Visualisation.DrawRect(new CellRect(start), Color.green);
                 for (int i = 0; i < path.Length; i++) {
                     Visualisation.DrawRect(path[i].GoalBounds, Color.green);
                 }
@@ -244,9 +241,9 @@ namespace FlowTiles.Examples {
                 if (showFlow) {
                     for (int i = 0; i < path.Length; i++) {
                         var node = path[i];
-                        var sector = Graph.IndexToSectorMap(node.Position.SectorIndex, 0);
+                        var sector = Graph.IndexToSectorMap(node.Position.SectorIndex, travelType);
                         var flow = CalculateFlow(sector, node.GoalBounds, node.Direction);
-                        CopyFlowVisualisationData(flow);
+                        CopyFlowVisualisationData(flow, travelType);
                         flow.Dispose();
                     }
                 }
@@ -266,7 +263,6 @@ namespace FlowTiles.Examples {
                 Sector = map,
                 GoalBounds = goalBounds,
                 ExitDirection = direction,
-                Color = 0,
                 Flow = flow,
                 Distances = dist,
             };
@@ -284,22 +280,22 @@ namespace FlowTiles.Examples {
                 var myTravelType = em.GetComponentData<AgentData>(agent).TravelType;
                 if (myTravelType == travelType) {
                     var myFlowData = em.GetComponentData<FlowDebugData>(agent).CurrentFlowTile;
-                    CopyFlowVisualisationData(myFlowData);
+                    CopyFlowVisualisationData(myFlowData, travelType);
                 }
             }
         }
 
-        private void CopyFlowVisualisationData(FlowField flowField) {
+        private void CopyFlowVisualisationData(FlowField flowField, int travelType) {
             if (!flowField.Directions.IsCreated) return;
 
             var bounds = Graph.Layout.GetSectorBounds(flowField.SectorIndex);
             for (int x = 0; x < bounds.SizeCells.x; x++) {
                 for (int y = 0; y < bounds.SizeCells.y; y++) {
-                    var colors = Graph.CellToSectorMap(new int2(x, y), 0).Colors;
+                    var islands = Graph.IndexToSectorMap(flowField.SectorIndex, travelType).Islands;
                     var mapCell = new int2(x + bounds.MinCell.x, y + bounds.MinCell.y);
                     var flow = flowField.GetFlow(x, y);
-                    var cellColor = colors.Cells[x, y];
-                    if (FlowData[mapCell.x, mapCell.y].Equals(new float2(0)) || cellColor == flowField.Color) {
+                    var island = islands.Cells[x, y];
+                    if (island == flowField.IslandIndex) {
                         FlowData[mapCell.x, mapCell.y] = flow;
                     }
                 }

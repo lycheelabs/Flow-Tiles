@@ -32,15 +32,13 @@ namespace FlowTiles.PortalPaths {
 
             // Find start and end root portals
             var startMap = Graph.CellToSectorMap(start, travelType);
-            var destMap = Graph.CellToSectorMap(dest, travelType);
-            if (startMap.IsFullyBlocked || destMap.IsFullyBlocked) {
-                return false;
-            }
-
             var startCell = new SectorCell(startSector, start);
-            var destCell = new SectorCell(destSector, dest);
             var startRoot = startMap.GetRootPortal(start);
+
+            var destMap = Graph.CellToSectorMap(dest, travelType);
+            var destCell = new SectorCell(destSector, dest);
             var destRoot = destMap.GetRootPortal(dest);
+
             var destNode = PortalPathNode.NewDestNode(destCell, destMap.Version);
 
             // Check whether start and dest portals match
@@ -80,64 +78,63 @@ namespace FlowTiles.PortalPaths {
             GScore.Clear();
             Queue.Clear();
 
-            GScore[startRoot.Center.Cell] = 0;
-
-            // Queue start edges
+            // Queue start edges to exit portals
             Visited.Add(start.Cell);
             for (int i = 0; i < startRoot.Edges.Length; i++) {
                 var edge = startRoot.Edges[i];
                 var localCell = edge.end.Cell - startField.Corner;
                 var distance = startField.Distances[localCell.x, localCell.y];
-                AddEdge(edge, destRoot, distance, true);
+                var startEdge = new PortalEdge {
+                    start = start,
+                    end = edge.end,
+                    weight = distance,
+                };
+                AddEdge(startEdge, destRoot, distance, true);
             }
+
+            // Queue start edge directly to destination (if island matches)
             if (startRoot.IsInSameIsland(destRoot)) {
-                // Add edge to destination using flow distance
                 var localCell = start.Cell - destField.Corner;
                 var distance = destField.Distances[localCell.x, localCell.y];
-                var edge = new PortalEdge {
+                var directEdge = new PortalEdge {
                     start = start,
-                    end = destRoot.Center,
+                    end = dest,
                     weight = distance,
-                    isExit = true,
                 };
-                AddEdge(edge, destRoot, distance);
+                AddEdge(directEdge, destRoot, distance);
             }
 
-            var destCell = dest.Cell;
+            // Search for a path...
             while (!Queue.IsEmpty) {
 
-                // Check if we have reached the destination
+                // Terminate when we reach the destination
                 var node = Queue.Dequeue();
                 var cell = node.Position;
-                if (cell.Equals(destCell)) {
+                if (cell.Equals(dest.Cell)) {
                     return RebuildPath(start, dest);
                 }
 
-                // Find the portal that matches this cell
+                // Find the portal corresponding to this cell
                 var found = Graph.CellToSectorMap(cell, travelType).TryGetExitPortal(cell, out var current);
                 if (!found) {
                     continue;
-                }                
-
-                // Follow the edges...
+                }
                 Visited.Add(current.Center.Cell);
 
+                // Queue dest edge directly to destination (if island matches)
                 if (current.IsInSameIsland(destRoot) && !node.IsStartNode) {
-
-                    // Add edge to destination using flow distance
                     var localCell = cell - destField.Corner;
                     var distance = destField.Distances[localCell.x, localCell.y];
                     var edge = new PortalEdge { 
                         start = current.Center, 
                         end = dest, 
                         weight = distance,
-                        isExit = true,
                     };
                     ConsiderEdge(edge, current, destRoot);
                 }
-                else {
 
-                    // Visit all neighbours through edges going out of node
+                // Consider all neighbor edges
+                else {
                     foreach (PortalEdge edge in current.Edges) {
                         ConsiderEdge(edge, current, destRoot);
                     }
@@ -178,27 +175,27 @@ namespace FlowTiles.PortalPaths {
 
         private NativeList<PortalEdge> RebuildPath(SectorCell start, SectorCell dest) {
             int2 current = dest.Cell;
-            var path = new NativeList<PortalEdge>(Allocator.Temp);
-            
+            var path = new NativeList<PortalEdge>(Allocator.Temp);      
             var infLoop = 0;
+
             while (Parents.TryGetValue(current, out var e)) {
+                var previous = e.start.Cell;
                 path.Add(e);
-                var parent = e.start.Cell;
 
                 // Stop when returned to start
-                if (parent.Equals(start.Cell) || parent.Equals(current)) {
-                    break;
+                if (current.Equals(start.Cell)) {
+                    break; 
                 }
 
                 // Fallback - infinite loop checks
                 infLoop++;
-                if (infLoop > 9999) {
-                    UnityEngine.Debug.Log("INFINITE LOOP");
+                if (previous.Equals(current) || infLoop > 9999) {
+                    UnityEngine.Debug.LogWarning("Pathfinding infinite loop detected and broken");
                     break;
                 }
 
-                // Iterate back to parent
-                current = parent;
+                // Iterate backwards down the path
+                current = previous;
             }
 
             return path;

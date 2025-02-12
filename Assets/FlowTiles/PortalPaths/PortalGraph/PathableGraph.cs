@@ -158,7 +158,6 @@ namespace FlowTiles.PortalPaths {
             var sector = Sectors[index];
             for (int travelType = 0; travelType < NumTravelTypes; travelType++) {
                 var map = sector.Maps[travelType];
-                map.Colors.CalculateColors(map.Costs);
                 map.Islands.CalculateIslands(map.Costs);
                 map.Portals.BuildInternalConnections(map, pathfinder);
                 sector.Maps[travelType] = map;

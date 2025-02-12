@@ -10,7 +10,6 @@ namespace FlowTiles.PortalPaths {
         public readonly SectorCell Center;
         public readonly CellRect Bounds;
 
-        public int Color;
         public int Island;
         public UnsafeList<PortalEdge> Edges;
 
@@ -18,7 +17,6 @@ namespace FlowTiles.PortalPaths {
             Center = new SectorCell(sector, cell);
             Bounds = new CellRect(cell, cell);
             Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
-            Color = -1;
             Island = -1;
         }
 
@@ -26,7 +24,6 @@ namespace FlowTiles.PortalPaths {
             Center = new SectorCell(sector, (corner1 + corner2) / 2);
             Bounds = new CellRect(corner1, corner2);
             Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
-            Color = -1;
             Island = -1;
         }
 

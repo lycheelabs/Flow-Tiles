@@ -10,10 +10,8 @@ namespace FlowTiles.FlowFields {
 
         [ReadOnly] public int2 Size;
         [ReadOnly] public CostMap Costs;
-        [ReadOnly] public ColorMap Colors;
         [ReadOnly] public CellRect GoalBounds;
         [ReadOnly] public int2 ExitDirection;
-        public short Color;
 
         private UnsafeField<int2> BaseFlow;
         private NativeHashSet<int2> Visited;
@@ -26,10 +24,8 @@ namespace FlowTiles.FlowFields {
         public FlowCalculator(SectorMap sector, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
             Size = sector.Bounds.SizeCells;
             Costs = sector.Costs;
-            Colors = sector.Colors;
             GoalBounds = goalBounds;
             ExitDirection = exitDirection;
-            Color = 0;
 
             var numCells = sector.Bounds.WidthCells * sector.Bounds.HeightCells;
             BaseFlow = new UnsafeField<int2>(numCells, allocator);
@@ -63,7 +59,6 @@ namespace FlowTiles.FlowFields {
                     Queue.Enqueue(new PathfinderNode(goal, 0));
                 }
             }
-            Color = Colors.Cells[goalMin.x, goalMin.y];
 
             // Iterate over the cells once in least-cost order
             int2 current;

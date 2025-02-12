@@ -19,17 +19,20 @@ namespace FlowTiles.ECS {
             [ReadOnly] public CellRect GoalBounds;
             [ReadOnly] public int2 ExitDirection;
 
-            public int Color;
+            public int IslandIndex;
             public UnsafeField<float2> Flow;
             public UnsafeField<int> Distances;
 
             public FlowField ResultAsFlowField() {
+                var goalCell = GoalBounds.CentreCell - Sector.Bounds.MinCell;
+                var goalIsland = Sector.Islands.Cells[goalCell.x, goalCell.y];
+
                 return new FlowField {
                     SectorIndex = Sector.Index,
+                    IslandIndex = goalIsland,
                     Version = Sector.Version,
                     Directions = Flow,
                     Distances = Distances,
-                    Color = (short)Color,
                     Size = Sector.Bounds.SizeCells,
                     Corner = Sector.Bounds.MinCell,
                 };
@@ -54,7 +57,6 @@ namespace FlowTiles.ECS {
             var distance = task.Distances;
             calculator.Calculate(ref flow, ref distance);
             task.Flow = flow;
-            task.Color = calculator.Color;
         }
 
     }

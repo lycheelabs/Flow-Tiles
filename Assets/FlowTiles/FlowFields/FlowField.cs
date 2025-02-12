@@ -6,7 +6,7 @@ namespace FlowTiles.FlowFields {
     public struct FlowField {
 
         public int SectorIndex;
-        public short Color;
+        public int IslandIndex;
 
         public int2 Size;
         public int2 Corner;
