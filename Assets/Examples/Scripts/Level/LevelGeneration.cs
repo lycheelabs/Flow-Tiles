@@ -16,6 +16,9 @@ namespace FlowTiles.Examples {
             } else {
                 for (int x = 0; x < level.Size.x; x++) {
                     for (int y = 0; y < level.Size.y; y++) {
+                        if (x == 0 && y == 0) {
+                            continue;
+                        }
                         if (UnityEngine.Random.value < 0.2f) {
                             level.SetBlocked(x, y, true);
                         }

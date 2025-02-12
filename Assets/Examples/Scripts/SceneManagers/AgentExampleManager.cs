@@ -8,6 +8,7 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 10;
+        public bool AddRandomWalls;
         public PathSmoothingMode PathSmoothingMode;
         public VisualiseMode VisualiseMode;
 
@@ -16,7 +17,9 @@ namespace FlowTiles.Examples {
         void Awake() {
 
             var map = new PathableLevel(LevelSize, LevelSize, Resolution);
-            LevelGeneration.InitialiseRandomObstacles(map, false);
+            if (AddRandomWalls) {
+                LevelGeneration.InitialiseRandomObstacles(map, false);
+            }
 
             Level = new DemoLevel(map, Resolution);
             Level.SpawnAgentAt(0, AgentType.SINGLE, PathSmoothingMode);
@@ -33,7 +36,10 @@ namespace FlowTiles.Examples {
             if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
 
                 if (Input.GetMouseButtonDown(0)) {
-                    Level.SetAgentDestinations(mouseCell, PathSmoothingMode);
+                    var isBlocked = Level.GetWallAt(mouseCell);
+                    if (!isBlocked) {
+                        Level.SetAgentDestinations(mouseCell, PathSmoothingMode);
+                    }
                 }
                 if (Input.GetMouseButtonDown(1)) {
                     Level.FlipWallAt(mouseCell);

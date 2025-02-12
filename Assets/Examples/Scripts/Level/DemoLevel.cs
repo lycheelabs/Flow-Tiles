@@ -13,11 +13,11 @@ using UnityEngine;
 namespace FlowTiles.Examples {
 
     public enum VisualiseMode {
-        NONE,
-        PORTALS,
-        CONNECTIONS,
-        ISLANDS,
-        COSTS, 
+        None,
+        Portals,
+        Connections,
+        Islands,
+        Costs, 
     }
     public class DemoLevel {
 
@@ -100,7 +100,7 @@ namespace FlowTiles.Examples {
 
         public void Update() {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var showColors = VisualiseMode == VisualiseMode.COSTS || VisualiseMode == VisualiseMode.ISLANDS;
+            var showColors = VisualiseMode == VisualiseMode.Costs || VisualiseMode == VisualiseMode.Islands;
             em.SetComponentData(Singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = Level.Blocked,
@@ -149,14 +149,14 @@ namespace FlowTiles.Examples {
             }
 
             Visualisation.DrawSectors(Graph);
-            if (VisualiseMode == VisualiseMode.PORTALS) {
+            if (VisualiseMode == VisualiseMode.Portals) {
                 Visualisation.DrawSectorPortals(Graph, VisualisedTravelType);
             }
-            if (VisualiseMode == VisualiseMode.CONNECTIONS) {
+            if (VisualiseMode == VisualiseMode.Connections) {
                 Visualisation.DrawSectorConnections(Graph, VisualisedTravelType);
             }
 
-            if (VisualiseMode == VisualiseMode.COSTS) {
+            if (VisualiseMode == VisualiseMode.Costs) {
                 for (int y = 0; y < LevelSize.x; y++) {
                     for (int x = 0; x < LevelSize.y; x++) {
                         var sector = Graph.CellToSectorMap(new int2(x, y), VisualisedTravelType);
@@ -168,7 +168,7 @@ namespace FlowTiles.Examples {
                     }
                 }
             }
-            if (VisualiseMode == VisualiseMode.ISLANDS) {
+            if (VisualiseMode == VisualiseMode.Islands) {
                 for (int y = 0; y < LevelSize.x; y++) {
                     for (int x = 0; x < LevelSize.y; x++) {
                         var sector = Graph.CellToSectorMap(new int2(x, y), 0);
@@ -197,6 +197,10 @@ namespace FlowTiles.Examples {
             MovingWalls.Add(new MovingWall(corner, length, direction, MovingWalls.Count, Level, frequency));
         }
 
+        public bool GetWallAt (int2 cell) {
+            return Level.Blocked[cell.x, cell.y];
+        }
+
         public void FlipWallAt(int2 cell) {
             var wall = Level.Blocked[cell.x, cell.y];
             Level.SetBlocked(cell.x, cell.y, !wall);
@@ -212,7 +216,7 @@ namespace FlowTiles.Examples {
             Level.SetTerrain(cell.x, cell.y, (byte)type);
         }
 
-        public void VisualiseTestPath(int2 start, int2 dest, bool showFlow) {
+        public void VisualiseTestPath(int2 start, int2 dest, bool showFlow, bool showLosSmoothing = false) {
             if (!Graph.SectorIsInitialised(Graph.CellToIndex(start))) return;
             if (!Graph.SectorIsInitialised(Graph.CellToIndex(dest))) return;
 
@@ -236,9 +240,35 @@ namespace FlowTiles.Examples {
 
                 // Draw links
                 if (path.Length > 0) {
-                    Visualisation.DrawPortalLink(start, path[0].GoalBounds.CentrePoint);
+                    Visualisation.DrawPortalLink(start, path[0].GoalBounds.CentrePoint, Color.green);
                     for (int i = 0; i < path.Length - 1; i++) {
-                        Visualisation.DrawPortalLink(path[i].GoalBounds.CentrePoint, path[i + 1].GoalBounds.CentrePoint);
+                        var p1 = path[i].GoalBounds.CentrePoint;
+                        var p2 = path[i + 1].GoalBounds.CentrePoint;
+                        Visualisation.DrawPortalLink(p1, p2, Color.green);
+                    }
+
+                    if (showLosSmoothing) {
+                        // Show line of sight smoothing
+                        var p1 = start;
+                        for (int i = 0; i < path.Length; i++) {
+                            var p2 = FlowTileUtils.GetBestPathLineOfSight(p1, i, path, ref Graph, 0);
+                            if (!p2.Equals(p1)) {
+
+                                var color = Color.blue;
+                                Visualisation.DrawPortalLink(p1, p2, color);
+                                Visualisation.DrawRect(new CellRect(p1), color);
+                                Visualisation.DrawRect(new CellRect(p2), color);
+
+                                // Skip over smoothed nodes
+                                while (i < path.Length - 1 && !path[i].GoalBounds.ContainsCell(p2)) {
+                                    i++;
+                                }
+                            } 
+                            else {
+                                p2 = path[i].GoalBounds.CentreCell;
+                            }
+                            p1 = p2;
+                        }
                     }
                 }
 

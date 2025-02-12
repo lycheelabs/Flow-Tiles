@@ -56,8 +56,8 @@ namespace FlowTiles.Examples {
             }
         }
 
-        public static void DrawPortalLink(float2 from, float2 to) {
-            Debug.DrawLine(ToVector(from), ToVector(to), Color.green);
+        public static void DrawPortalLink(float2 from, float2 to, Color color) {
+            Debug.DrawLine(ToVector(from), ToVector(to), color);
         }
 
         public static void DrawRect(CellRect bounds, Color color, float border = 0.1f) {

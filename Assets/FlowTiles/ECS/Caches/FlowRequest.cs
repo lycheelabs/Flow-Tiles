@@ -8,7 +8,7 @@ namespace FlowTiles.ECS {
         public int2 goalDirection;
         public int travelType;
 
-        public int4 CacheKey => FlowCache.ToKey(goalCell, goalDirection, travelType);
+        public int4 CacheKey => CacheKeys.ToFlowKey(goalCell, goalDirection, travelType);
 
     }
 

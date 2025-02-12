@@ -6,11 +6,6 @@ namespace FlowTiles.ECS {
 
     public struct FlowCache {
 
-        public static int4 ToKey(int2 start, int2 direction, int travelType) {
-            var directionIndex = direction.x + direction.y * 3;
-            return new int4(start, directionIndex, travelType);
-        }
-
         private NativeHashMap<int4, CachedFlowField> Cache;
         private NativeHashMap<int, UnsafeList<int4>> Lookup;
 
@@ -41,9 +36,6 @@ namespace FlowTiles.ECS {
             var hasLookup = Lookup.TryGetValue(sectorIndex, out var keys);
             if (!hasLookup) {
                 keys = new UnsafeList<int4>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
-            }
-            if (keys.Length >= keys.Capacity) {
-                keys.Resize(keys.Capacity * 2);
             }
             keys.Add(key);
             Lookup[sectorIndex] = keys;

@@ -1,5 +1,3 @@
-
-using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Collections;
@@ -15,6 +13,7 @@ namespace FlowTiles.ECS {
 
         private PathCache PathCache;
         private FlowCache FlowCache;
+        private LineCache LineCache;
 
         private NativeList<int> RebuildRequests;
         private NativeQueue<PathRequest> PathRequests;
@@ -29,6 +28,7 @@ namespace FlowTiles.ECS {
             // Build the caches
             PathCache = new PathCache(Constants.MAX_CACHED_PATHS);
             FlowCache = new FlowCache(1000);
+            LineCache = new LineCache(1000);
 
             // Build the request buffers
             RebuildRequests = new NativeList<int>(50, Allocator.Persistent);
@@ -40,6 +40,7 @@ namespace FlowTiles.ECS {
         public void OnDestroy(ref SystemState state) {
             PathCache.Dispose();
             FlowCache.Dispose();
+            LineCache.Dispose();
 
             RebuildRequests.Dispose();
             PathRequests.Dispose(); 
@@ -77,7 +78,10 @@ namespace FlowTiles.ECS {
             // First-time build is complete. Pathing can begin!
             data.Level.IsInitialised.Value = true;
 
-            // Process queued path and flow requests, and cache the results
+            // Cache all data calculated in parallel last frame
+            CacheCalculationsFromLastFrame(data.Graph.GraphVersion.Value);
+
+            // Process queued path and flow requests
             ProcessPathRequests(data.Graph, ref state);
             ProcessFlowRequests(data.Graph, ref state);
 
@@ -121,6 +125,7 @@ namespace FlowTiles.ECS {
             if (!workRemains) {
                 level.NeedsRebuilding.Value = false;
                 graph.GraphVersion.Value++;
+                LineCache.ClearAllLines(); // Clear line cache every time graph changes
             }
 
             // Calculate exit points
@@ -139,9 +144,9 @@ namespace FlowTiles.ECS {
 
         }
 
-        private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
+        private void CacheCalculationsFromLastFrame (int graphVersion) {
 
-            // Cache the paths (from last frame)
+            // Cache new paths
             if (TempPathTasks.IsCreated) {
                 for (int i = 0; i < TempPathTasks.Length; i++) {
                     var task = TempPathTasks[i];
@@ -149,12 +154,30 @@ namespace FlowTiles.ECS {
                         IsPending = false,
                         HasBeenQueued = false,
                         NoPathExists = !task.Success,
-                        GraphVersionAtSearch = graph.GraphVersion.Value,
+                        GraphVersionAtSearch = graphVersion,
                         Nodes = task.Path
                     });
                 }
                 TempPathTasks.Dispose();
             }
+
+            // Cache new flows
+            if (TempFlowTasks.IsCreated) {
+                for (int i = 0; i < TempFlowTasks.Length; i++) {
+                    var task = TempFlowTasks[i];
+                    var result = task.ResultAsFlowField();
+                    FlowCache.StoreField(result.SectorIndex, task.CacheKey, new CachedFlowField {
+                        IsPending = false,
+                        HasBeenQueued = false,
+                        FlowField = result,
+                    });
+                }
+                TempFlowTasks.Dispose();
+            }
+
+        }
+
+        private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
 
             var numRequests = PathRequests.Count;
             if (numRequests == 0) {
@@ -175,8 +198,8 @@ namespace FlowTiles.ECS {
                 // Check dest field exists
                 CachedFlowField startField;
                 CachedFlowField destField;
-                var startFieldKey = FlowCache.ToKey(request.originCell, 0, request.travelType);
-                var destFieldKey = FlowCache.ToKey(request.destCell, 0, request.travelType);
+                var startFieldKey = CacheKeys.ToFlowKey(request.originCell, 0, request.travelType);
+                var destFieldKey = CacheKeys.ToFlowKey(request.destCell, 0, request.travelType);
                 var failed = false;
 
                 if (!FlowCache.TryGetField(startFieldKey, out startField)) {
@@ -238,20 +261,6 @@ namespace FlowTiles.ECS {
 
         private void ProcessFlowRequests(PathableGraph graph, ref SystemState state) {
 
-            // Cache the flows (from last frame)
-            if (TempFlowTasks.IsCreated) {
-                for (int i = 0; i < TempFlowTasks.Length; i++) {
-                    var task = TempFlowTasks[i];
-                    var result = task.ResultAsFlowField();
-                    FlowCache.StoreField (result.SectorIndex, task.CacheKey, new CachedFlowField {
-                        IsPending = false,
-                        HasBeenQueued = false,
-                        FlowField = result,
-                    });
-                }
-                TempFlowTasks.Dispose();
-            }
-
             var numRequests = FlowRequests.Count;
             if (numRequests == 0) {
                 return;
@@ -305,7 +314,8 @@ namespace FlowTiles.ECS {
 
         }
 
-        private SystemState FindNewRequests(ref SystemState state) {
+        // These jobs cannot be multi-threaded
+        private void FindNewRequests(ref SystemState state) {
             var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
 
             // Invalidate old paths
@@ -327,7 +337,12 @@ namespace FlowTiles.ECS {
                 FlowRequests = FlowRequests,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
-            return state;
+
+            // Store cache results
+            new CacheLineOfSightJob {
+                LineCache = LineCache,
+                ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
+            }.Schedule();
         }
 
         private SystemState FollowPaths(PathableGraph graph, ref SystemState state) {
@@ -338,13 +353,15 @@ namespace FlowTiles.ECS {
                 Graph = graph,
                 PathCache = PathCache,
                 FlowCache = FlowCache,
+                LineCache = LineCache,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
             }.ScheduleParallel();
 
-            // Expose flow data for visualisation
+            // Expose flow data of each agent for debug visualisation (optional)
             new DebugPathsJob {
                 FlowCache = FlowCache,
             }.ScheduleParallel();
+
             return state;
         }
 

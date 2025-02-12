@@ -11,7 +11,7 @@ namespace FlowTiles.ECS {
         public int2 levelSize;
         public int travelType;
 
-        public int4 CacheKey => PathCache.ToKey(originCell, destCell, levelSize, travelType);
+        public int4 CacheKey => CacheKeys.ToPathKey(originCell, destCell, levelSize, travelType);
 
     }
 

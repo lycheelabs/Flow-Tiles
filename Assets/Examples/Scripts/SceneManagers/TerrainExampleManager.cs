@@ -18,8 +18,8 @@ namespace FlowTiles.Examples {
 
             // Initialise the map with terrain and travel types
             var map = new PathableLevel(LevelSize, LevelSize, Resolution, 2, 2);
-            map.SetTerrainCost((int)TravelType.GROUND_ONLY, (int)TerrainType.WATER, 10);
-            map.SetTerrainCost((int)TravelType.AMPHIBIOUS, (int)TerrainType.GROUND, 2);
+            map.SetTerrainCost((int)TravelType.GroundOnly, (int)TerrainType.WATER, 10);
+            map.SetTerrainCost((int)TravelType.Amphibious, (int)TerrainType.GROUND, 2);
 
             LevelGeneration.InitialiseWaterPools(map);
 
@@ -27,8 +27,8 @@ namespace FlowTiles.Examples {
 
             var pos1 = new int2(0, (int)(LevelSize * 0.33f));
             var pos2 = new int2(0, (int)(LevelSize * 0.66f));
-            Level.SpawnAgentAt(pos1, AgentType.SINGLE, PathSmoothingMode, travelType: (int)TravelType.GROUND_ONLY);
-            Level.SpawnAgentAt(pos2, AgentType.SINGLE, PathSmoothingMode, travelType: (int)TravelType.AMPHIBIOUS);
+            Level.SpawnAgentAt(pos1, AgentType.SINGLE, PathSmoothingMode, travelType: (int)TravelType.GroundOnly);
+            Level.SpawnAgentAt(pos2, AgentType.SINGLE, PathSmoothingMode, travelType: (int)TravelType.Amphibious);
 
         }
 

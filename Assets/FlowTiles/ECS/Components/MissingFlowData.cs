@@ -10,8 +10,7 @@ namespace FlowTiles.ECS {
         public int2 Direction;
         public int TravelType;
 
-        public int4 Key => FlowCache.ToKey(Cell, Direction, TravelType);
+        public int4 Key => CacheKeys.ToFlowKey(Cell, Direction, TravelType);
 
     }
-
 }

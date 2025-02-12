@@ -22,7 +22,7 @@ namespace FlowTiles.PortalPaths {
         public int2 Direction;
         public int Version;
 
-        public int4 FlowCacheKey (int travelType) => FlowCache.ToKey(Position.Cell, Direction, travelType);
+        public int4 FlowCacheKey (int travelType) => CacheKeys.ToFlowKey(Position.Cell, Direction, travelType);
 
     }
 

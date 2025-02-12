@@ -13,6 +13,7 @@ namespace FlowTiles.ECS {
         [ReadOnly] public PathableGraph Graph;
         [ReadOnly] public PathCache PathCache;
         [ReadOnly] public FlowCache FlowCache;
+        [ReadOnly] public LineCache LineCache;
 
         public EntityCommandBuffer.ParallelWriter ECB;
 
@@ -44,18 +45,19 @@ namespace FlowTiles.ECS {
             var travelType = goal.ValueRO.TravelType;
             var currentMap = Graph.CellToSectorMap(current, travelType);
             var currentIsland = currentMap.GetCellIsland(current);
+            var levelSize = Graph.Bounds.SizeCells;
 
             // Attach to a path
             if (!progress.HasPath) {
 
                 // Generate or retrieve a path
-                var pathKey = PathCache.ToKey(current, dest, Graph.Bounds.SizeCells, travelType);
+                var pathKey = CacheKeys.ToPathKey(current, dest, levelSize, travelType);
                 var pathCacheHit = PathCache.ContainsPath(pathKey);
                 if (!pathCacheHit) {
                     ECB.AddComponent(sortKey, entity, new MissingPathData {
                         Start = current,
                         Dest = dest,
-                        LevelSize = Graph.Bounds.SizeCells,
+                        LevelSize = levelSize,
                         TravelType = travelType,
                     });
                     return;
@@ -70,7 +72,7 @@ namespace FlowTiles.ECS {
             if (progress.HasPath) {
 
                 // Check destination hasn't changed
-                if (!PathCache.DestMatchesKey(progress.PathKey, dest, Graph.Bounds.SizeCells)) {
+                if (!CacheKeys.DestMatchesPathKey(dest, levelSize, progress.PathKey)) {
                     progress.HasPath = false;
                     return;
                 }
@@ -165,7 +167,8 @@ namespace FlowTiles.ECS {
                 }
 
                 // Generate or retrieve a flow
-                var pathNode = path.Nodes[progress.NodeIndex];
+                var pathIndex = progress.NodeIndex;
+                var pathNode = path.Nodes[pathIndex];
                 var flowKey = pathNode.FlowCacheKey(travelType);
                 var flowCacheHit = FlowCache.TryGetField(flowKey, out var flow);
                 var cell = pathNode.Position.Cell;
@@ -200,6 +203,10 @@ namespace FlowTiles.ECS {
                 var flowDirection = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, pos);
 
                 result.Direction = flowDirection;
+                if (pos.Equals(dest)) {
+                    return;
+                }
+
                 var smoothing = goal.ValueRO.SmoothingMode;
 
                 // Lookahead one tile smoothing
@@ -211,22 +218,50 @@ namespace FlowTiles.ECS {
                     }
                 }
 
-                // Fast LOS smoothing
-                else if (smoothing == PathSmoothingMode.FastLineOfSight) {
-                    var direction = FlowTileUtils.GetBestPathLineOfSightDirection(
-                        pos, progress.NodeIndex, path.Nodes, ref Graph, travelType);
+                // Line of sight smoothing smoothing
+                else if (smoothing == PathSmoothingMode.LineOfSight) {
+                    int2 visiblePos = pos;
 
-                    if (!direction.Equals(0)) {
-                        result.Direction = direction;
+                    for (int i = pathIndex; i < path.Nodes.Length; i++) {
+                        var node = path.Nodes[i];
+                        var nodePos = node.Position.Cell;
+                        if (pos.Equals(nodePos)) {
+                            continue;
+                        }
+
+                        // Checked cached line of sight result
+                        var losKey = CacheKeys.ToPathKey(pos, nodePos, levelSize, travelType);
+                        if (LineCache.ContainsLine(losKey)) {
+                            var sightExists = LineCache.LineOfSightExists(losKey);
+                            if (sightExists) {
+                                // Line of sight exists, Continue looping
+                                visiblePos = nodePos;
+                                continue;
+                            }
+                            else {
+                                // Line of sight is broken
+                                break;
+                            }
+                        }
+
+                        // Calculate line of sight and prepare to cache it
+                        var newSightExists = FlowTileUtils.HasLineOfSight(
+                            pos, nodePos, ref Graph, travelType, precise: true);
+
+                        ECB.AddComponent(sortKey, entity, new LineOfSightResult {
+                            PathKey = losKey,
+                            LineExists = newSightExists,
+                        });
+                        if (newSightExists) {
+                            visiblePos = nodePos;
+                        }
+
+                        // Stop iterating until line has been cached
+                        break;
                     }
-                }
 
-                // Precise LOS smoothing
-                else if (smoothing == PathSmoothingMode.PreciseLineOfSight) {
-                    var direction = FlowTileUtils.GetBestPathLineOfSightDirection(
-                        pos, progress.NodeIndex, path.Nodes, ref Graph, travelType);
-
-                    if (!direction.Equals(0)) {
+                    if (!visiblePos.Equals(pos)) {
+                        var direction = math.normalizesafe(visiblePos - pos);
                         result.Direction = direction;
                     }
                 }

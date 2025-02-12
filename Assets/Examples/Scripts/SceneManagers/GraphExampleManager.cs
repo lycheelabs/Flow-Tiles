@@ -7,14 +7,18 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 20;
+        public bool AddRandomWalls;
         public VisualiseMode VisualiseMode;
+        public bool VisualiseLineOfSightSmoothing;
 
         private DemoLevel Level;
         private int2 startCell;
 
         void Awake() {
             var map = new PathableLevel(LevelSize, LevelSize, Resolution, 1, 2);
-            LevelGeneration.InitialiseRandomObstacles(map, false);
+            if (AddRandomWalls) {
+                LevelGeneration.InitialiseRandomObstacles(map, false);
+            }
 
             Level = new DemoLevel(map, Resolution);
         }
@@ -34,7 +38,7 @@ namespace FlowTiles.Examples {
                     Level.FlipWallAt(mouseCell);
                 }
 
-                Level.VisualiseTestPath(startCell, mouseCell, true);
+                Level.VisualiseTestPath(startCell, mouseCell, true, VisualiseLineOfSightSmoothing);
             }
 
         }

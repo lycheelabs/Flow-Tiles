@@ -6,20 +6,6 @@ namespace FlowTiles.ECS {
 
     public struct PathCache {
 
-        public static int4 ToKey (int2 start, int2 dest, int2 levelSize, int travelType) {
-            return new int4 (CellToIndex(start, levelSize), CellToIndex(dest, levelSize), travelType, 0);
-        }
-
-        private static int CellToIndex (int2 cell, int2 levelSize) {
-            return cell.x + cell.y * levelSize.x;
-        }
-
-        public static bool DestMatchesKey (int4 key, int2 dest, int2 levelSize) {
-            return CellToIndex(dest, levelSize) == key.y;
-        }
-
-        // -------------------------------------------------------------------------
-
         private int Capacity;
         private NativeHashMap<int4, CachedPortalPath> Cache;
         private NativeQueue<int4> Queue;
