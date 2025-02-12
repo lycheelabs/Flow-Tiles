@@ -1,4 +1,5 @@
 using FlowTiles.PortalPaths;
+using FlowTiles.Utils;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -18,9 +19,11 @@ namespace FlowTiles.ECS {
         private NativeList<int> RebuildRequests;
         private NativeQueue<PathRequest> PathRequests;
         private NativeQueue<FlowRequest> FlowRequests;
+        private NativeQueue<LineRequest> LineRequests;
 
         private NativeList<FindPathsJob.Task> TempPathTasks;
         private NativeList<FindFlowsJob.Task> TempFlowTasks;
+        private NativeList<FindSightlinesJob.Task> TempLineTasks;
 
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<GlobalPathfindingData>();
@@ -34,6 +37,7 @@ namespace FlowTiles.ECS {
             RebuildRequests = new NativeList<int>(50, Allocator.Persistent);
             PathRequests = new NativeQueue<PathRequest>(Allocator.Persistent);
             FlowRequests = new NativeQueue<FlowRequest>(Allocator.Persistent);
+            LineRequests = new NativeQueue<LineRequest>(Allocator.Persistent);
 
         }
 
@@ -45,6 +49,7 @@ namespace FlowTiles.ECS {
             RebuildRequests.Dispose();
             PathRequests.Dispose(); 
             FlowRequests.Dispose();
+            LineRequests.Dispose();
 
             if (TempPathTasks.IsCreated) {
                 for (int i = 0; i < TempPathTasks.Length; i++) {
@@ -60,10 +65,18 @@ namespace FlowTiles.ECS {
                 TempFlowTasks.Dispose();
             }
 
+            if (TempLineTasks.IsCreated) {
+                for (int i = 0; i < TempLineTasks.Length; i++) {
+                    TempLineTasks[i].Dispose();
+                }
+                TempLineTasks.Dispose();
+            }
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state) {
+
+            // Check pathfinding has been initialised
             var data = SystemAPI.GetSingleton<GlobalPathfindingData>();
             if (!data.IsInitialised) {
                 return;
@@ -78,17 +91,18 @@ namespace FlowTiles.ECS {
             // First-time build is complete. Pathing can begin!
             data.Level.IsInitialised.Value = true;
 
-            // Cache all data calculated in parallel last frame
+            // Cache all data calculated in parallel (from last frame)
             CacheCalculationsFromLastFrame(data.Graph.GraphVersion.Value);
 
-            // Process queued path and flow requests
+            // Calculate queued path, flow and sightline requests
             ProcessPathRequests(data.Graph, ref state);
             ProcessFlowRequests(data.Graph, ref state);
+            ProcessLineRequests(data.Graph, ref state);
 
-            // Queue new requests from agents that want paths (for next frame)
+            // Queue all new requests from agents (from last frame)
             FindNewRequests(ref state);
 
-            // Apply the current path direction to each agent
+            // Each agent attempts to follow its path, and buffers requests as needed
             FollowPaths(data.Graph, ref state);
 
         }
@@ -151,9 +165,7 @@ namespace FlowTiles.ECS {
                 for (int i = 0; i < TempPathTasks.Length; i++) {
                     var task = TempPathTasks[i];
                     PathCache.StorePath(task.CacheKey, new CachedPortalPath {
-                        IsPending = false,
-                        HasBeenQueued = false,
-                        NoPathExists = !task.Success,
+                        NoPathExists = !task.Success[0],
                         GraphVersionAtSearch = graphVersion,
                         Nodes = task.Path
                     });
@@ -167,12 +179,21 @@ namespace FlowTiles.ECS {
                     var task = TempFlowTasks[i];
                     var result = task.ResultAsFlowField();
                     FlowCache.StoreField(result.SectorIndex, task.CacheKey, new CachedFlowField {
-                        IsPending = false,
-                        HasBeenQueued = false,
                         FlowField = result,
                     });
                 }
                 TempFlowTasks.Dispose();
+            }
+
+            // Cache new lines
+            if (TempLineTasks.IsCreated) {
+                for (int i = 0; i < TempLineTasks.Length; i++) {
+                    var task = TempLineTasks[i];
+                    LineCache.SetSightline(task.CacheKey, new CachedSightline {
+                        WasFound = task.SightlineExists[0],
+                    });
+                }
+                TempLineTasks.Dispose();
             }
 
         }
@@ -240,7 +261,7 @@ namespace FlowTiles.ECS {
                     DestField = destField.FlowField,
                     TravelType = request.travelType,
                     Path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Persistent),
-                    Success = false
+                    Success = new UnsafeArray<bool>(1, Allocator.TempJob),
                 };
                 tasks.Add(task);
 
@@ -256,7 +277,6 @@ namespace FlowTiles.ECS {
             TempPathTasks = tasks;
             var pathJob = new FindPathsJob(graph, tasks.AsArray());
             state.Dependency = pathJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
-
         }
 
         private void ProcessFlowRequests(PathableGraph graph, ref SystemState state) {
@@ -314,6 +334,47 @@ namespace FlowTiles.ECS {
 
         }
 
+        private void ProcessLineRequests(PathableGraph graph, ref SystemState state) {
+
+            var numRequests = LineRequests.Count;
+            if (numRequests == 0) {
+                return;
+            }
+
+            // Allocate the tasks
+            var numTasks = math.min(numRequests, Constants.MAX_SIGHTLINES_PER_FRAME);
+            var tasks = new NativeList<FindSightlinesJob.Task>(numTasks, Allocator.TempJob);
+            for (int i = 0; i < numRequests; i++) {
+                var request = LineRequests.Dequeue();
+
+                // Discard duplicate requests
+                if (LineCache.TryGetSightline(request.CacheKey, out var existing) && existing.HasBeenQueued) {
+                    continue;
+                }
+
+                // Prepare the task
+                var task = new FindSightlinesJob.Task {
+                    CacheKey = request.CacheKey,
+                    StartCell = request.startCell,
+                    EndCell = request.endCell,
+                    TravelType = request.travelType,
+                    SightlineExists = new UnsafeArray<bool>(1, Allocator.TempJob),
+                };
+                tasks.Add(task);
+
+                LineCache.SetSightline(request.CacheKey, new CachedSightline {
+                    IsPending = true,
+                    HasBeenQueued = true,
+                });
+            }
+
+            // Schedule the tasks
+            TempLineTasks = tasks;
+            var sightlineJob = new FindSightlinesJob(tasks.AsArray(), graph);
+            state.Dependency = sightlineJob.ScheduleParallel(tasks.Length, 4, state.Dependency);
+
+        }
+
         // These jobs cannot be multi-threaded
         private void FindNewRequests(ref SystemState state) {
             var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
@@ -324,25 +385,27 @@ namespace FlowTiles.ECS {
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
 
-            // Accumulate path rquests
+            // Accumulate path requests
             new RequestPathsJob {
                 PathCache = PathCache,
                 PathRequests = PathRequests,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
 
-            // Accumulate flow rquests
+            // Accumulate flow requests
             new RequestFlowsJob {
                 FlowCache = FlowCache,
                 FlowRequests = FlowRequests,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
 
-            // Store cache results
-            new CacheLineOfSightJob {
+            // Accumulate line requests
+            new RequestSightlinesJob {
                 LineCache = LineCache,
+                LineRequests = LineRequests,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
+
         }
 
         private SystemState FollowPaths(PathableGraph graph, ref SystemState state) {

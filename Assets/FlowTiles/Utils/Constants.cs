@@ -16,6 +16,7 @@ namespace FlowTiles {
         public const int MAX_REBUILDS_PER_FRAME = 8;
         public const int MAX_PATHFINDS_PER_FRAME = 16;
         public const int MAX_FLOWFIELDS_PER_FRAME = 16;
+        public const int MAX_SIGHTLINES_PER_FRAME = 64;
 
         // This constant limits the number of paths that will be cached.
         // Older paths will be disposed when the limit is reached.

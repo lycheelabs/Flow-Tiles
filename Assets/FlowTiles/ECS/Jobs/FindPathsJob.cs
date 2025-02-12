@@ -1,5 +1,6 @@
 ﻿using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
+using FlowTiles.Utils;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -19,10 +20,11 @@ namespace FlowTiles.ECS {
             [ReadOnly] public FlowField DestField;
             [ReadOnly] public int TravelType;
 
-            public bool Success;
+            public UnsafeArray<bool> Success; // Expecting size = 1
             public UnsafeList<PortalPathNode> Path;
 
             public void Dispose() {
+                Success.Dispose();
                 Path.Dispose();
             }
         }
@@ -41,8 +43,9 @@ namespace FlowTiles.ECS {
             var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
             var path = task.Path;
 
-            task.Success = pathfinder.TryFindPath(task.Start, task.StartField, task.Dest, task.DestField, task.TravelType, ref path);
+            var success = pathfinder.TryFindPath(task.Start, task.StartField, task.Dest, task.DestField, task.TravelType, ref path);
             task.Path = path;
+            task.Success[0] = success;
             Tasks[index] = task;
         }
 

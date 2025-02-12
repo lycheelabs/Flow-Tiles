@@ -9,7 +9,7 @@ namespace FlowTiles.PortalPaths {
 
         public CellRect Bounds;
         public SectorLayout Layout;
-        private NativeArray<Sector> Sectors; // Top level container must be native
+        private NativeArray<Sector> Sectors; // Top level data structures must be native
         public int NumTravelTypes;
 
         public NativeReference<int> GraphVersion;

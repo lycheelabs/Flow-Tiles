@@ -235,9 +235,8 @@ namespace FlowTiles.ECS {
 
                         // Checked cached line of sight result
                         var losKey = CacheKeys.ToPathKey(pos, nodePos, levelSize, travelType);
-                        if (LineCache.ContainsLine(losKey)) {
-                            var sightExists = LineCache.LineOfSightExists(losKey);
-                            if (sightExists) {
+                        if (LineCache.TryGetSightline(losKey, out var sightline)) {
+                            if (sightline.WasFound) {
                                 // Line of sight exists, Continue looping
                                 visiblePos = nodePos;
                                 continue;
@@ -249,16 +248,12 @@ namespace FlowTiles.ECS {
                         }
 
                         // Calculate line of sight and prepare to cache it
-                        var newSightExists = FlowTileUtils.HasLineOfSight(
-                            pos, nodePos, ref Graph, travelType, precise: true);
-
-                        ECB.AddComponent(sortKey, entity, new LineOfSightResult {
-                            PathKey = losKey,
-                            LineExists = newSightExists,
+                        ECB.AddComponent(sortKey, entity, new MissingSightlineData {
+                            Start = pos,
+                            End = nodePos,
+                            LevelSize = levelSize,
+                            TravelType = travelType,
                         });
-                        if (newSightExists) {
-                            visiblePos = nodePos;
-                        }
 
                         // Stop iterating until line has been cached
                         break;

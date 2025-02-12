@@ -20,7 +20,7 @@ namespace FlowTiles.Examples {
             Level = new DemoLevel(map, Resolution);
 
             for (int x = 0; x < LevelSize; x++) {
-                for (int y = 0; y < LevelSize; y++) {
+                for (int y = 1; y < LevelSize; y++) {
                     if (!map.Blocked[x, y]) {
                         Level.SpawnAgentAt(new int2(x, y), AgentType.STRESS_TEST, PathSmoothingMode);
                     }

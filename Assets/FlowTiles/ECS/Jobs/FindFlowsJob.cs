@@ -1,5 +1,4 @@
-﻿using System;
-using FlowTiles.FlowFields;
+﻿using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
 using Unity.Burst;
