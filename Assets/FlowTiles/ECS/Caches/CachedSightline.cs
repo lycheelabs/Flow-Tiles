@@ -3,7 +3,9 @@
 
         public bool IsPending;
         public bool HasBeenQueued;
+
         public bool WasFound;
+        public int GraphVersionAtSearch;
 
     }
 

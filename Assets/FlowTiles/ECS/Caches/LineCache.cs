@@ -14,8 +14,11 @@ namespace FlowTiles.ECS {
         }
 
         /// <summary> Returns whether the given line has been cached </summary>
-        public bool ContainsLine(int4 key) {
-            return Cache.ContainsKey(key);
+        public bool ContainsLine(int4 key, int graphVersion) {
+            if (Cache.TryGetValue(key, out CachedSightline value)) {
+                return value.GraphVersionAtSearch == graphVersion;
+            }
+            return false;
         }
 
         /// <summary> Returns the cached sightline data </summary>

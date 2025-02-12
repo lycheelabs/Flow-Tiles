@@ -9,12 +9,13 @@ namespace FlowTiles.ECS {
 
         public LineCache LineCache;
         public NativeQueue<LineRequest> LineRequests;
+        public int GraphVersion;
         public EntityCommandBuffer ECB;
 
         [BurstCompile]
         private void Execute(RefRO<MissingSightlineData> data, Entity entity) {
             var key = data.ValueRO.Key;
-            if (!LineCache.ContainsLine(key)) {
+            if (!LineCache.ContainsLine(key, GraphVersion)) {
 
                 // Request a sightline be generated
                 LineRequests.Enqueue(new LineRequest {
@@ -26,7 +27,8 @@ namespace FlowTiles.ECS {
 
                 // Store temp data in the cache
                 LineCache.SetSightline(key, new CachedSightline {
-                    IsPending = true
+                    IsPending = true,
+                    GraphVersionAtSearch = GraphVersion,
                 });
 
             }

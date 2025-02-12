@@ -6,6 +6,7 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using Unity.VisualScripting;
 
 namespace FlowTiles.ECS {
 
@@ -82,6 +83,9 @@ namespace FlowTiles.ECS {
                 return;
             }
 
+            // Cache all data calculated in parallel (from last frame)
+            CacheCalculationsFromLastFrame(data.Graph.GraphVersion.Value);
+
             // Rebuild all dirty graph sectors (spread across multiple frames)
             if (data.Level.NeedsRebuilding.Value) {
                 RebuildDirtySectors(data.Level, data.Graph, ref state);
@@ -91,18 +95,15 @@ namespace FlowTiles.ECS {
             // First-time build is complete. Pathing can begin!
             data.Level.IsInitialised.Value = true;
 
-            // Cache all data calculated in parallel (from last frame)
-            CacheCalculationsFromLastFrame(data.Graph.GraphVersion.Value);
-
             // Calculate queued path, flow and sightline requests
             ProcessPathRequests(data.Graph, ref state);
             ProcessFlowRequests(data.Graph, ref state);
             ProcessLineRequests(data.Graph, ref state);
 
-            // Queue all new requests from agents (from last frame)
-            FindNewRequests(ref state);
+            // Check agents for any data-requesting components (added last frame)
+            FindNewRequests(data.Graph, ref state);
 
-            // Each agent attempts to follow its path, and buffers requests as needed
+            // Each agent attempts to follow its path, and adds request components as needed
             FollowPaths(data.Graph, ref state);
 
         }
@@ -139,7 +140,6 @@ namespace FlowTiles.ECS {
             if (!workRemains) {
                 level.NeedsRebuilding.Value = false;
                 graph.GraphVersion.Value++;
-                LineCache.ClearAllLines(); // Clear line cache every time graph changes
             }
 
             // Calculate exit points
@@ -169,6 +169,7 @@ namespace FlowTiles.ECS {
                         GraphVersionAtSearch = graphVersion,
                         Nodes = task.Path
                     });
+                    //task.Dispose();
                 }
                 TempPathTasks.Dispose();
             }
@@ -181,6 +182,7 @@ namespace FlowTiles.ECS {
                     FlowCache.StoreField(result.SectorIndex, task.CacheKey, new CachedFlowField {
                         FlowField = result,
                     });
+                    //task.Dispose();
                 }
                 TempFlowTasks.Dispose();
             }
@@ -191,7 +193,9 @@ namespace FlowTiles.ECS {
                     var task = TempLineTasks[i];
                     LineCache.SetSightline(task.CacheKey, new CachedSightline {
                         WasFound = task.SightlineExists[0],
+                        GraphVersionAtSearch = graphVersion,
                     });
+                    //task.Dispose();
                 }
                 TempLineTasks.Dispose();
             }
@@ -365,6 +369,7 @@ namespace FlowTiles.ECS {
                 LineCache.SetSightline(request.CacheKey, new CachedSightline {
                     IsPending = true,
                     HasBeenQueued = true,
+                    GraphVersionAtSearch = graph.GraphVersion.Value,
                 });
             }
 
@@ -376,7 +381,7 @@ namespace FlowTiles.ECS {
         }
 
         // These jobs cannot be multi-threaded
-        private void FindNewRequests(ref SystemState state) {
+        private void FindNewRequests(PathableGraph graph, ref SystemState state) {
             var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
 
             // Invalidate old paths
@@ -403,6 +408,7 @@ namespace FlowTiles.ECS {
             new RequestSightlinesJob {
                 LineCache = LineCache,
                 LineRequests = LineRequests,
+                GraphVersion = graph.GraphVersion.Value,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
             }.Schedule();
 

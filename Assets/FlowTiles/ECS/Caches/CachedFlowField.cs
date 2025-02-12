@@ -6,6 +6,7 @@ namespace FlowTiles.ECS {
 
         public bool IsPending;
         public bool HasBeenQueued;
+
         public FlowField FlowField;
 
         public void Dispose() {
