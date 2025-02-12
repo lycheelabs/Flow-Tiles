@@ -23,10 +23,15 @@ namespace FlowTiles.ECS {
             public UnsafeArray<bool> Success; // Expecting size = 1
             public UnsafeList<PortalPathNode> Path;
 
+            public void DisposeTempData() {
+                Success.Dispose();
+            }
+
             public void Dispose() {
                 Success.Dispose();
                 Path.Dispose();
             }
+
         }
 
         [ReadOnly] public PathableGraph Graph;

@@ -37,9 +37,14 @@ namespace FlowTiles.ECS {
                 };
             }
 
+            public void DisposeTempData() {
+                //
+            }
+
             public void Dispose() {
                 Flow.Dispose();
             }
+
         }
 
         public NativeArray<Task> Tasks;

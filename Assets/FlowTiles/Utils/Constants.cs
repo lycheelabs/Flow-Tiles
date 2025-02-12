@@ -14,7 +14,7 @@ namespace FlowTiles {
 
         // These constants help split work over multiple frames.
         public const int MAX_REBUILDS_PER_FRAME = 8;
-        public const int MAX_PATHFINDS_PER_FRAME = 16;
+        public const int MAX_PATHFINDS_PER_FRAME = 32;
         public const int MAX_FLOWFIELDS_PER_FRAME = 16;
         public const int MAX_SIGHTLINES_PER_FRAME = 64;
 
@@ -24,7 +24,7 @@ namespace FlowTiles {
         public const int MAX_CACHED_PATHS = 10000;
 
         // This constant limits how many nodes are tested in a line-of-sight check.
-        public const int MAX_LINE_OF_SIGHT_LOOKAHEAD = 3;
+        public const int MAX_LINE_OF_SIGHT_LOOKAHEAD = 5;
 
     }
 

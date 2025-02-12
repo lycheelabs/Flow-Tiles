@@ -169,7 +169,7 @@ namespace FlowTiles.ECS {
                         GraphVersionAtSearch = graphVersion,
                         Nodes = task.Path
                     });
-                    //task.Dispose();
+                    task.DisposeTempData();
                 }
                 TempPathTasks.Dispose();
             }
@@ -182,7 +182,7 @@ namespace FlowTiles.ECS {
                     FlowCache.StoreField(result.SectorIndex, task.CacheKey, new CachedFlowField {
                         FlowField = result,
                     });
-                    //task.Dispose();
+                    task.DisposeTempData();
                 }
                 TempFlowTasks.Dispose();
             }
@@ -195,7 +195,7 @@ namespace FlowTiles.ECS {
                         WasFound = task.SightlineExists[0],
                         GraphVersionAtSearch = graphVersion,
                     });
-                    //task.Dispose();
+                    task.DisposeTempData();
                 }
                 TempLineTasks.Dispose();
             }

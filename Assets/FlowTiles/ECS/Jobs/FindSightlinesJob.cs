@@ -19,6 +19,10 @@ namespace FlowTiles.ECS {
 
             public UnsafeArray<bool> SightlineExists; // Expecting size = 1
 
+            public void DisposeTempData() {
+                SightlineExists.Dispose();
+            }
+
             public void Dispose() {
                 SightlineExists.Dispose();
             }
