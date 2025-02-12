@@ -223,40 +223,63 @@ namespace FlowTiles.ECS {
                     int2 visiblePos = pos;
 
                     var maxNode = math.min(
-                        pathIndex + Constants.MAX_LINE_OF_SIGHT_LOOKAHEAD, 
+                        pathIndex + Constants.MAX_LINE_OF_SIGHT_LOOKAHEAD,
                         path.Nodes.Length);
-                    
-                    for (int i = pathIndex; i < maxNode; i++) {
-                        var node = path.Nodes[i];
-                        var nodePos = node.Position.Cell;
-                        if (pos.Equals(nodePos)) {
+
+                    for (int n = pathIndex; n < maxNode; n++) {
+                        var node = path.Nodes[n];
+                        var nodeGoal = node.GoalBounds;
+                        var bestDistanceSq = float.MaxValue;
+                        var anyNodeFound = false;
+
+                        // Disable if too close to goal - avoids weird bends
+                        var margin = 1;
+                        if (n == path.Nodes.Length - 1) margin = 0;
+                        if (nodeGoal.ContainsCell(pos, margin)) {
                             continue;
                         }
 
-                        // Checked cached line of sight result
-                        var losKey = CacheKeys.ToPathKey(pos, nodePos, levelSize, travelType);
-                        if (LineCache.TryGetSightline(losKey, out var sightline)) {
-                            if (sightline.WasFound) {
-                                // Line of sight exists, Continue looping
-                                visiblePos = nodePos;
-                                continue;
-                            }
-                            else {
-                                // Line of sight is broken
-                                break;
+                        // Check line of sight against each cell in the nodes's goal bounds
+                        for (int i = nodeGoal.MinCell.x; i <= nodeGoal.MaxCell.x; i++) {
+                            for (int j = nodeGoal.MinCell.y; j <= nodeGoal.MaxCell.y; j++) {
+
+                                // We only want the shortest open line 
+                                var goalCell = new int2(i, j);
+                                var distSq = math.distancesq(pos, goalCell);
+                                if (distSq > bestDistanceSq) {
+                                    continue;
+                                }
+
+                                // Checked cached line of sight result
+                                var losKey = CacheKeys.ToPathKey(pos, goalCell, levelSize, travelType);
+                                var cacheHit = LineCache.TryGetSightline(losKey, out var sightline);
+
+                                if (cacheHit) {
+                                    if (sightline.WasFound) {
+                                        visiblePos = goalCell;
+                                        bestDistanceSq = distSq;
+                                        anyNodeFound = true;
+                                    }
+                                    continue;
+                                }
+
+                                // Cache miss - Request the sightline data and stop!
+                                else {
+                                    ECB.AddComponent(sortKey, entity, new MissingSightlineData {
+                                        Start = pos,
+                                        End = goalCell,
+                                        LevelSize = levelSize,
+                                        TravelType = travelType,
+                                    });
+                                    return;
+                                }
                             }
                         }
 
-                        // Calculate line of sight and prepare to cache it
-                        ECB.AddComponent(sortKey, entity, new MissingSightlineData {
-                            Start = pos,
-                            End = nodePos,
-                            LevelSize = levelSize,
-                            TravelType = travelType,
-                        });
-
-                        // Stop iterating until line has been cached
-                        break;
+                        // Stop for now!
+                        if (!anyNodeFound) {
+                            break;
+                        }
                     }
 
                     if (!visiblePos.Equals(pos)) {
@@ -264,6 +287,7 @@ namespace FlowTiles.ECS {
                         result.Direction = direction;
                     }
                 }
+
             }
         }
 

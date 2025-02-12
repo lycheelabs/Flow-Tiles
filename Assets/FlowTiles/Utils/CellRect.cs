@@ -34,6 +34,11 @@ namespace FlowTiles {
                 && cell.x <= MaxCell.x && cell.y <= MaxCell.y;
         }
 
+        public bool ContainsCell(int2 cell, int margin) {
+            return cell.x >= MinCell.x - margin && cell.y >= MinCell.y - margin
+                && cell.x <= MaxCell.x + margin && cell.y <= MaxCell.y + margin;
+        }
+
     }
 
 }

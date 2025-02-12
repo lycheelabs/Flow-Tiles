@@ -201,10 +201,6 @@ namespace FlowTiles.PortalPaths {
             return path;
         }
 
-        private float EuclidianDistance(Portal node1, Portal node2) {
-            return math.distance(node1.Center.Cell, node2.Center.Cell);
-        }
-
         private float EuclidianDistance(int2 node1, int2 node2) {
             return math.distance(node1, node2);
         }
