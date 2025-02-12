@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
-using Unity.Entities.UniversalDelegates;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
@@ -16,15 +15,15 @@ namespace FlowTiles.Examples {
     public enum VisualiseMode {
         NONE,
         PORTALS,
-        CONNECTIONS, 
+        CONNECTIONS,
+        ISLANDS,
         COSTS, 
-        ISLANDS
     }
     public class DemoLevel {
 
         private const float ColorFading = 0.4f;
 
-        private static float4[] graphColorings = new float4[] {
+        private static float4[] IslandColors = new float4[] {
             new float4(ColorFading, 1f, ColorFading, 1),
             new float4(ColorFading, ColorFading, 1f, 1),
             new float4(1f, 1f, ColorFading, 1),
@@ -157,9 +156,11 @@ namespace FlowTiles.Examples {
             if (VisualiseMode == VisualiseMode.COSTS) {
                 for (int y = 0; y < LevelSize.x; y++) {
                     for (int x = 0; x < LevelSize.y; x++) {
-                        var sector = Graph.CellToSectorMap(new int2(x, y), 0);
-                        var cost = sector.Costs.Cells[x % Resolution, y % Resolution];
-                        var color = new float4(1, 0, 0, cost / 255f);
+                        var sector = Graph.CellToSectorMap(new int2(x, y), VisualisedTravelType);
+                        var cost = sector.Costs.Cells[x % Resolution, y % Resolution] - 1;
+                        var alpha = math.pow(math.clamp(cost / 100f, 0, 1), 0.25f);
+                        var fade = 1 - alpha * 0.8f;
+                        var color = new float4(1, fade, fade, 1);
                         ColorData[x, y] = color;
                     }
                 }
@@ -170,7 +171,7 @@ namespace FlowTiles.Examples {
                         var sector = Graph.CellToSectorMap(new int2(x, y), 0);
                         var color = sector.Islands.Cells[x % Resolution, y % Resolution];
                         if (color > 0) {
-                            ColorData[x, y] = graphColorings[(color - 1) % graphColorings.Length];
+                            ColorData[x, y] = IslandColors[(color - 1) % IslandColors.Length];
                         }
                         else {
                             ColorData[x, y] = 1;
