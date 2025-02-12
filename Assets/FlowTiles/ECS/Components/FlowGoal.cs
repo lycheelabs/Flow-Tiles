@@ -7,8 +7,10 @@ namespace FlowTiles.ECS {
     public struct FlowGoal : IComponentData {
 
         public bool HasGoal;
+        
         public int2 Goal;
         public int TravelType;
+        public PathSmoothingMode SmoothingMode;
 
     }
 

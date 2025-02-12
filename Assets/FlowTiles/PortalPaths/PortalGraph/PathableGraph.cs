@@ -52,6 +52,12 @@ namespace FlowTiles.PortalPaths {
             return Sectors[CellToIndex(pos)];
         }
 
+        public int CellToCost(int2 pos, int travelType) {
+            var sector = CellToSectorMap(pos, travelType);
+            var corner = sector.Bounds.MinCell;
+            return sector.Costs.Cells[pos.x - corner.x, pos.y - corner.y];
+        }
+
         public SectorMap IndexToSectorMap (int index, int travelType) {
             var sector = Sectors[index];
             var map = sector.Maps[travelType];

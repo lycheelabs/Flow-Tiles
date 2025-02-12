@@ -126,6 +126,9 @@ namespace FlowTiles.Examples {
                         em.SetComponentData(agent, new FlowPosition {
                             Position = spawn.Cell,
                         });
+                        em.SetComponentData(agent, new FlowGoal {
+                            SmoothingMode = spawn.LOSMode,
+                        });
                         if (spawn.Type == AgentType.SINGLE) {
                             em.AddComponent<FlowDebugData>(agent);
                         }
@@ -181,11 +184,12 @@ namespace FlowTiles.Examples {
             }
         }
 
-        public void SpawnAgentAt (int2 cell, AgentType type, int travelType = 0) {
+        public void SpawnAgentAt (int2 cell, AgentType type, PathSmoothingMode losMode, int travelType = 0) {
             AgentSpawns.Add(new SpawnAgentCommand {
                 Cell = cell,
                 Type = type,
                 TravelType = travelType,
+                LOSMode = losMode,
             });
         }
 
@@ -327,7 +331,7 @@ namespace FlowTiles.Examples {
             return query.ToComponentDataArray<T>(Allocator.Temp);
         }
 
-        public void SetAgentDestinations(int2 newDestination) {
+        public void SetAgentDestinations(int2 newDestination, PathSmoothingMode smoothingMode) {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var agents = GetEntityArray<AgentData>();
             foreach (var agent in agents) {
@@ -336,6 +340,7 @@ namespace FlowTiles.Examples {
                     HasGoal = true,
                     Goal = newDestination,
                     TravelType = data.TravelType,
+                    SmoothingMode = smoothingMode,
                 });
             }
         }

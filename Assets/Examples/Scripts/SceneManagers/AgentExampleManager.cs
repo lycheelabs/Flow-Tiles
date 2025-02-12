@@ -1,3 +1,4 @@
+using FlowTiles.ECS;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -7,6 +8,7 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 10;
+        public PathSmoothingMode PathSmoothingMode;
         public VisualiseMode VisualiseMode;
 
         private DemoLevel Level;
@@ -17,7 +19,7 @@ namespace FlowTiles.Examples {
             LevelGeneration.InitialiseRandomObstacles(map, false);
 
             Level = new DemoLevel(map, Resolution);
-            Level.SpawnAgentAt(0, AgentType.SINGLE);
+            Level.SpawnAgentAt(0, AgentType.SINGLE, PathSmoothingMode);
 
         }
 
@@ -31,14 +33,13 @@ namespace FlowTiles.Examples {
             if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
 
                 if (Input.GetMouseButtonDown(0)) {
-                    Level.SetAgentDestinations(mouseCell);
+                    Level.SetAgentDestinations(mouseCell, PathSmoothingMode);
                 }
                 if (Input.GetMouseButtonDown(1)) {
                     Level.FlipWallAt(mouseCell);
                 }
 
             }
-
         }
 
         void OnDestroy() {

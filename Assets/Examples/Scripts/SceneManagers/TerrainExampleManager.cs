@@ -1,3 +1,4 @@
+using FlowTiles.ECS;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -7,6 +8,7 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 10;
+        public PathSmoothingMode PathSmoothingMode;
         public TravelType VisualisedTravelType;
         public VisualiseMode VisualiseMode;
 
@@ -25,8 +27,8 @@ namespace FlowTiles.Examples {
 
             var pos1 = new int2(0, (int)(LevelSize * 0.33f));
             var pos2 = new int2(0, (int)(LevelSize * 0.66f));
-            Level.SpawnAgentAt(pos1, AgentType.SINGLE, travelType: (int)TravelType.GROUND_ONLY);
-            Level.SpawnAgentAt(pos2, AgentType.SINGLE, travelType: (int)TravelType.AMPHIBIOUS);
+            Level.SpawnAgentAt(pos1, AgentType.SINGLE, PathSmoothingMode, travelType: (int)TravelType.GROUND_ONLY);
+            Level.SpawnAgentAt(pos2, AgentType.SINGLE, PathSmoothingMode, travelType: (int)TravelType.AMPHIBIOUS);
 
         }
 
@@ -40,7 +42,7 @@ namespace FlowTiles.Examples {
             if (mouseCell.x >= 0 && mouseCell.y >= 0 && mouseCell.x < LevelSize && mouseCell.y < LevelSize) {
 
                 if (Input.GetMouseButtonDown(0)) {
-                    Level.SetAgentDestinations(mouseCell);
+                    Level.SetAgentDestinations(mouseCell, PathSmoothingMode);
                 }
 
             }

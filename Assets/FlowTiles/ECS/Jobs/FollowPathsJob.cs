@@ -26,7 +26,6 @@ namespace FlowTiles.ECS {
                 [ChunkIndexInQuery] int sortKey) {
 
             result.Direction = 0;
-            result.NextDirection = 0;
             progress.HasFlow = false;
 
             if (!goal.ValueRO.HasGoal) {
@@ -197,20 +196,41 @@ namespace FlowTiles.ECS {
                 progress.FlowKey = flowKey;
 
                 var cornerCell = Graph.Layout.GetMinCorner(currentMap.Index);
-                var pos = (float2)position.ValueRO.Position;
-                result.Direction = GetDirection(ref flow, cornerCell, pos);
+                var pos = position.ValueRO.Position;
+                var flowDirection = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, pos);
 
-                var nextPos = pos + result.Direction;
-                result.NextDirection = GetDirection(ref flow, cornerCell, nextPos);
+                result.Direction = flowDirection;
+                var smoothing = goal.ValueRO.SmoothingMode;
+
+                // Lookahead one tile smoothing
+                if (smoothing == PathSmoothingMode.LookaheadOneTile) {
+                    var nextPos = pos + result.Direction;
+                    var nextFlowDirection = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, nextPos);
+                    if (!nextFlowDirection.Equals(pos)) {
+                        result.Direction = math.normalizesafe(flowDirection + nextFlowDirection);
+                    }
+                }
+
+                // Fast LOS smoothing
+                else if (smoothing == PathSmoothingMode.FastLineOfSight) {
+                    var direction = FlowTileUtils.GetBestPathLineOfSightDirection(
+                        pos, progress.NodeIndex, path.Nodes, ref Graph, travelType);
+
+                    if (!direction.Equals(0)) {
+                        result.Direction = direction;
+                    }
+                }
+
+                // Precise LOS smoothing
+                else if (smoothing == PathSmoothingMode.PreciseLineOfSight) {
+                    var direction = FlowTileUtils.GetBestPathLineOfSightDirection(
+                        pos, progress.NodeIndex, path.Nodes, ref Graph, travelType);
+
+                    if (!direction.Equals(0)) {
+                        result.Direction = direction;
+                    }
+                }
             }
-
-        }
-
-        private static float2 GetDirection(ref CachedFlowField flow, int2 flowCorner, float2 worldPosition) {
-            var localPosition = worldPosition - (float2)flowCorner;
-            var x = (int)math.round(localPosition.x);
-            var y = (int)math.round(localPosition.y);
-            return flow.FlowField.GetFlow(x, y);
         }
 
     }

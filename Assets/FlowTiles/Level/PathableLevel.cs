@@ -171,12 +171,7 @@ namespace FlowTiles {
         }
 
         private void UpdateRebuildFlags(int2 cell) {
-            if (!IsInitialised.Value) return; // Skip until first build of all sectors
-
-            var resolution = Layout.Resolution;
-            var sector = cell / resolution;
-            RebuildFlags[sector.x, sector.y] = SectorFlags.Rebuild;
-            NeedsRebuilding.Value = true;
+            UpdateRebuildFlags(cell, 1);
         }
 
         private void UpdateRebuildFlags(int2 corner, int2 size) {

@@ -1,3 +1,4 @@
+using FlowTiles.ECS;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -7,6 +8,7 @@ namespace FlowTiles.Examples {
 
         public int LevelSize = 100;
         public int Resolution = 10;
+        public PathSmoothingMode PathSmoothingMode;
 
         private DemoLevel Level;
 
@@ -20,7 +22,7 @@ namespace FlowTiles.Examples {
             for (int x = 0; x < LevelSize; x++) {
                 for (int y = 0; y < LevelSize; y++) {
                     if (!map.Blocked[x, y]) {
-                        Level.SpawnAgentAt(new int2(x, y), AgentType.STRESS_TEST);
+                        Level.SpawnAgentAt(new int2(x, y), AgentType.STRESS_TEST, PathSmoothingMode);
                     }
                 }
             }
