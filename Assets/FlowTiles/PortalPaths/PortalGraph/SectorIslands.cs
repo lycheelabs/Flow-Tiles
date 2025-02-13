@@ -3,7 +3,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
-    public struct IslandMap {
+    public struct SectorIslands {
 
         public readonly int Index;
         public readonly CellRect Bounds;
@@ -11,7 +11,7 @@ namespace FlowTiles.PortalPaths {
         public UnsafeField<short> Cells;
         public short NumIslands;
 
-        public IslandMap(int index, CellRect boundaries) {
+        public SectorIslands(int index, CellRect boundaries) {
             Index = index;
             Bounds = new CellRect();
 
@@ -24,7 +24,7 @@ namespace FlowTiles.PortalPaths {
             Cells.Dispose();
         }
 
-        public void CalculateIslands(CostMap costs) {
+        public void CalculateIslands(SectorCosts costs) {
             FloodFillAll(costs);
         }
 
@@ -42,7 +42,7 @@ namespace FlowTiles.PortalPaths {
 
         // --------------------------------------------------------------
 
-        private void FloodFillAll(CostMap costs) {
+        private void FloodFillAll(SectorCosts costs) {
             var cellsInSector = Bounds.SizeCells.x * Bounds.SizeCells.y;
 
             short open = 0;
@@ -100,7 +100,7 @@ namespace FlowTiles.PortalPaths {
 
         // Flood fill using the scanline method. Based on...
         // https://simpledevcode.wordpress.com/2015/12/29/flood-fill-algorithm-using-c-net/
-        private void FloodFill(CostMap costs, int2 startPoint, short oldColorIndex, short newColorIndex, int cellsInSector) {
+        private void FloodFill(SectorCosts costs, int2 startPoint, short oldColorIndex, short newColorIndex, int cellsInSector) {
             NativeStack<int2> points = new NativeStack<int2>(cellsInSector, Allocator.Temp);
             NativeHashSet<int2> visited = new NativeHashSet<int2>(cellsInSector, Allocator.Temp);
 

@@ -7,9 +7,12 @@ namespace FlowTiles.PortalPaths {
     [BurstCompile]
     public struct PathableGraph {
 
+        // Note: Top level data structures must be NativeContainers.
+        // Nested data structures must be UnsafeContainers.
+
         public CellRect Bounds;
         public SectorLayout Layout;
-        private NativeArray<Sector> Sectors; // Top level data structures must be native
+        private NativeArray<GraphSector> Sectors;
         public int NumTravelTypes;
 
         public NativeReference<int> GraphVersion;
@@ -21,7 +24,7 @@ namespace FlowTiles.PortalPaths {
             var sizeCells = new int2(width, height);
             Bounds = new CellRect(0, sizeCells - 1);
             Layout = new SectorLayout(sizeCells, resolution);
-            Sectors = new NativeArray<Sector>(Layout.NumSectorsInLevel, Allocator.Persistent);
+            Sectors = new NativeArray<GraphSector>(Layout.NumSectorsInLevel, Allocator.Persistent);
             NumTravelTypes = numTravelTypes;
             GraphVersion = new NativeReference<int>(Allocator.Persistent);
         }
@@ -44,11 +47,11 @@ namespace FlowTiles.PortalPaths {
             return sectorX + sectorY * Layout.SizeSectors.x;
         }
 
-        public Sector IndexToSector(int index) {
+        public GraphSector IndexToSector(int index) {
             return Sectors[index];
         }
 
-        public Sector CellToSector(int2 pos) {
+        public GraphSector CellToSector(int2 pos) {
             return Sectors[CellToIndex(pos)];
         }
 
@@ -58,56 +61,55 @@ namespace FlowTiles.PortalPaths {
             return sector.Costs.Cells[pos.x - corner.x, pos.y - corner.y];
         }
 
-        public SectorMap IndexToSectorMap (int index, int travelType) {
+        public SectorData IndexToSectorMap (int index, int travelType) {
             var sector = Sectors[index];
-            var map = sector.Maps[travelType];
-            return map;
+            var data = sector.GetData(travelType);
+            return data;
         }
 
-        public SectorMap CellToSectorMap (int2 pos, int travelType) {
+        public SectorData CellToSectorMap (int2 pos, int travelType) {
             var sectorX = pos.x / Layout.Resolution;
             var sectorY = pos.y / Layout.Resolution;
             var sector = Sectors[sectorX + sectorY * Layout.SizeSectors.x];
-            var map = sector.Maps[travelType];
-            return map;
+            var data = sector.GetData(travelType);
+            return data;
         }
 
         public void ReinitialiseSector(int index, PathableLevel level) {
             int sectorVersion = Sectors[index].Version + 1;
             Sectors[index].Dispose();
 
-            Sectors[index] = new Sector(index, sectorVersion, Layout.GetSectorBounds(index), level, NumTravelTypes);
+            Sectors[index] = new GraphSector(index, sectorVersion, Layout.GetSectorBounds(index), level, NumTravelTypes);
             for (int travelType = 0; travelType < NumTravelTypes; travelType++) {
-                Sectors[index].Maps[travelType].Initialise(level);
+                Sectors[index].GetData(travelType).Initialise(level);
             }
         }
 
-        public void BuildSectorExits(int index) {
+        public void BuildPortals(int index) {
             var x = index % Layout.SizeSectors.x;
             var y = index / Layout.SizeSectors.x;
             if (x < Layout.SizeSectors.x - 1) {
-                BuildEdgeExits(index, index + 1, true, 1);
+                BuildEdgePortals(index, index + 1, true, 1);
             }
             if (x > 0) {
-                BuildEdgeExits(index, index - 1, true, -1);
+                BuildEdgePortals(index, index - 1, true, -1);
             }
             if (y < Layout.SizeSectors.y - 1) {
-                BuildEdgeExits(index, index + Layout.SizeSectors.x, false, 1);
+                BuildEdgePortals(index, index + Layout.SizeSectors.x, false, 1);
             }
             if (y > 0) {
-                BuildEdgeExits(index, index - Layout.SizeSectors.x, false, -1);
+                BuildEdgePortals(index, index - Layout.SizeSectors.x, false, -1);
             }
         }
 
-        private void BuildEdgeExits(int index1, int index2, bool horizontal, int flip) {
+        private void BuildEdgePortals(int index1, int index2, bool horizontal, int flip) {
             for (int travelType = 0; travelType < NumTravelTypes; travelType++) {
-                var costs1 = Sectors[index1].Maps[travelType].Costs;
-                var costs2 = Sectors[index2].Maps[travelType].Costs;
+                var costs1 = Sectors[index1].GetData(travelType).Costs;
+                var costs2 = Sectors[index2].GetData(travelType).Costs;
                 var bounds = costs1.Bounds;
 
-                var maps = Sectors[index1].Maps;
-                var map = maps[travelType];
-                var portals = map.Portals;
+                var data = Sectors[index1].GetData(travelType);
+                var portals = data.Portals;
                 int lineSize = 0;
                 var portalCost1 = 0;
                 var portalCost2 = 0;
@@ -142,7 +144,7 @@ namespace FlowTiles.PortalPaths {
                         }
                     }
                     if (lineSize > 0) {
-                        portals.CreateExit(index2, horizontal, lineSize, i, flip);
+                        portals.CreatePortal(index2, horizontal, lineSize, i, flip);
                         lineSize = 0;
                         if (bothSidesOpen) {
                             lineSize++;
@@ -151,11 +153,11 @@ namespace FlowTiles.PortalPaths {
                 }
 
                 if (lineSize > 0) {
-                    portals.CreateExit(index2, horizontal, lineSize, i, flip);
+                    portals.CreatePortal(index2, horizontal, lineSize, i, flip);
                 }
 
-                map.Portals = portals;
-                maps[travelType] = map;
+                data.Portals = portals;
+                Sectors[index1].UpdateData(travelType, data);
             }
         }
 
@@ -163,10 +165,10 @@ namespace FlowTiles.PortalPaths {
             SectorPathfinder pathfinder = new SectorPathfinder(Layout.NumCellsInSector, Allocator.Temp);
             var sector = Sectors[index];
             for (int travelType = 0; travelType < NumTravelTypes; travelType++) {
-                var map = sector.Maps[travelType];
-                map.Islands.CalculateIslands(map.Costs);
-                map.Portals.BuildInternalConnections(map, pathfinder);
-                sector.Maps[travelType] = map;
+                var data = sector.GetData(travelType);
+                data.Islands.CalculateIslands(data.Costs);
+                data.Portals.BuildInternalConnections(data, pathfinder);
+                sector.UpdateData(travelType, data);
             }
         }
 

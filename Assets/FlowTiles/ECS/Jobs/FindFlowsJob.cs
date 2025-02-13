@@ -14,7 +14,7 @@ namespace FlowTiles.ECS {
         public struct Task {
 
             [ReadOnly] public int4 CacheKey;
-            [ReadOnly] public SectorMap Sector;
+            [ReadOnly] public SectorData Sector;
             [ReadOnly] public CellRect GoalBounds;
             [ReadOnly] public int2 ExitDirection;
 

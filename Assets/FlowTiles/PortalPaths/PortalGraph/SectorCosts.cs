@@ -4,7 +4,7 @@ using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
 
-    public struct CostMap {
+    public struct SectorCosts {
 
         public readonly int Index;
         public readonly CellRect Bounds;
@@ -12,7 +12,7 @@ namespace FlowTiles.PortalPaths {
 
         public UnsafeField<byte> Cells;
 
-        public CostMap(int index, CellRect boundaries, int movementType) {
+        public SectorCosts(int index, CellRect boundaries, int movementType) {
             Index = index;
             Bounds = new CellRect();
             MovementType = movementType;

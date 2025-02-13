@@ -13,13 +13,6 @@ namespace FlowTiles.PortalPaths {
         public int Island;
         public UnsafeList<PortalEdge> Edges;
 
-        public Portal(int2 cell, int sector) {
-            Center = new SectorCell(sector, cell);
-            Bounds = new CellRect(cell, cell);
-            Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
-            Island = -1;
-        }
-
         public Portal(int2 corner1, int2 corner2, int sector) {
             Center = new SectorCell(sector, (corner1 + corner2) / 2);
             Bounds = new CellRect(corner1, corner2);
@@ -31,8 +24,26 @@ namespace FlowTiles.PortalPaths {
             Edges.Dispose();
         }
 
-        public bool IsInSameIsland(Portal other) {
-            return other.Center.SectorIndex == Center.SectorIndex && other.Island == Island;
+    }
+
+    public struct SectorRoot {
+
+        public readonly int SectorIndex;
+        public readonly int IslandIndex;
+        public UnsafeList<SectorCell> Portals;
+
+        public SectorRoot(int sector, int island) {
+            SectorIndex = sector;
+            IslandIndex = island;
+            Portals = new UnsafeList<SectorCell>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
+        }
+
+        public void Dispose() {
+            Portals.Dispose();
+        }
+
+        public bool ConnectsToPortal(Portal portal) {
+            return portal.Center.SectorIndex == SectorIndex && portal.Island == IslandIndex;
         }
 
     }

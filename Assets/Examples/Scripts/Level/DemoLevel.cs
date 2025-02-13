@@ -289,7 +289,7 @@ namespace FlowTiles.Examples {
             path.Dispose();
         }
 
-        private FlowField CalculateFlow (SectorMap sector, CellRect goalBounds, int2 direction) {
+        private FlowField CalculateFlow (SectorData sector, CellRect goalBounds, int2 direction) {
             var map = Graph.IndexToSectorMap(sector.Index, 0);
             var flow = new UnsafeField<float2>(map.Bounds.SizeCells, Allocator.Temp);
             var dist = new UnsafeField<int>(map.Bounds.SizeCells, Allocator.Temp);

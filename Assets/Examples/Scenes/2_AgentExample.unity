@@ -359,7 +359,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LevelSize: 20
   Resolution: 5
-  AddRandomWalls: 0
+  AddRandomWalls: 1
   PathSmoothingMode: 2
   VisualiseMode: 0
 --- !u!1660057539 &9223372036854775807

@@ -6,7 +6,6 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.VisualScripting;
 
 namespace FlowTiles.ECS {
 
@@ -146,7 +145,7 @@ namespace FlowTiles.ECS {
             // (requires checking neighbors, therefore sectors must be fully reinitialised)
             for (int request = 0; request < RebuildRequests.Length; request++) {
                 var index = RebuildRequests[request];
-                graph.BuildSectorExits(index);
+                graph.BuildPortals(index);
             }
 
             // Build internal sector data in parallel
@@ -308,7 +307,7 @@ namespace FlowTiles.ECS {
                 var goalBounds = new CellRect(goal, goal);
 
                 if (!request.goalDirection.Equals(0)) {
-                    if (goalMap.TryGetExitPortal(goal, out var portal)) {
+                    if (goalMap.TryGetPortal(goal, out var portal)) {
                         goalBounds = portal.Bounds;
                     }
                 }

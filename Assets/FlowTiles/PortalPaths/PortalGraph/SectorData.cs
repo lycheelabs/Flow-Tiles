@@ -1,24 +1,25 @@
 ﻿using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
-    public struct SectorMap {
+
+    public struct SectorData {
 
         public readonly int Index;
         public readonly CellRect Bounds;
         public readonly int Version;
 
-        public CostMap Costs;
-        public IslandMap Islands;
-        public PortalMap Portals;
+        public SectorCosts Costs;
+        public SectorIslands Islands;
+        public SectorPortals Portals;
 
-        public SectorMap(int index, CellRect boundaries, int travelType, int version) {
+        public SectorData (int index, CellRect boundaries, int travelType, int version) {
             Index = index;
             Bounds = boundaries;
             Version = version;
 
-            Costs = new CostMap(index, boundaries, travelType);
-            Islands = new IslandMap(index, boundaries);
-            Portals = new PortalMap(index, boundaries);
+            Costs = new SectorCosts(index, boundaries, travelType);
+            Islands = new SectorIslands(index, boundaries);
+            Portals = new SectorPortals(index, boundaries);
         }
 
         public void Initialise(PathableLevel level) {
@@ -36,13 +37,13 @@ namespace FlowTiles.PortalPaths {
             return Islands.Cells[localCell.x, localCell.y];
         }
 
-        public Portal GetRootPortal(int2 cell) {
+        public SectorRoot GetRoot(int2 cell) {
             var localCell = cell - Bounds.MinCell;
             var island = Islands.Cells[localCell.x, localCell.y];
-            return Portals.RootPortals[island - 1];
+            return Portals.Roots[island - 1];
         }
 
-        public bool TryGetExitPortal(int2 cell, out Portal portal) {
+        public bool TryGetPortal(int2 cell, out Portal portal) {
             if (!Portals.HasExitPortalAt(cell)) {
                 portal = default;
                 return false;
@@ -51,7 +52,7 @@ namespace FlowTiles.PortalPaths {
             return true;
         }
 
-        public Portal GetExitPortal(int2 cell) {
+        public Portal GetPortal(int2 cell) {
             return Portals.GetExitPortalAt(cell);
         }
 

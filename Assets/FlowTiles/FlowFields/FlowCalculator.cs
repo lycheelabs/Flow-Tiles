@@ -9,7 +9,7 @@ namespace FlowTiles.FlowFields {
     public struct FlowCalculator {
 
         [ReadOnly] public int2 Size;
-        [ReadOnly] public CostMap Costs;
+        [ReadOnly] public SectorCosts Costs;
         [ReadOnly] public CellRect GoalBounds;
         [ReadOnly] public int2 ExitDirection;
 
@@ -21,7 +21,7 @@ namespace FlowTiles.FlowFields {
         public FlowCalculator(FindFlowsJob.Task task, Allocator allocator) 
             : this (task.Sector, task.GoalBounds, task.ExitDirection, allocator) {}
 
-        public FlowCalculator(SectorMap sector, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
+        public FlowCalculator(SectorData sector, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
             Size = sector.Bounds.SizeCells;
             Costs = sector.Costs;
             GoalBounds = goalBounds;
