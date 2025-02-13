@@ -72,6 +72,8 @@ namespace FlowTiles {
             Blocked.Dispose();
             Terrain.Dispose();
             Obstacles.Dispose();
+            TerrainAdjustments.Dispose();
+
             TerrainCosts.Dispose();
 
             IsInitialised.Dispose();
