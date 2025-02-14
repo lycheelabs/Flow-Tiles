@@ -1,7 +1,5 @@
 ﻿using Unity.Mathematics;
 using Unity.Collections;
-using System;
-using UnityEngine.InputSystem;
 
 namespace FlowTiles.ECS {
 

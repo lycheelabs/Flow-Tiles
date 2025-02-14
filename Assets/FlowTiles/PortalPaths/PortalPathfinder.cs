@@ -45,7 +45,7 @@ namespace FlowTiles.PortalPaths {
             }
 
             // Check whether start and dest portals match
-            if (start.Equals(dest)) {
+            if (start.x == dest.x && start.y == dest.y) {
                 result.Add(PortalPathNode.NewDestNode(destCell, destMap.Version));
                 return true;
             }
@@ -96,7 +96,7 @@ namespace FlowTiles.PortalPaths {
             }
 
             // Queue start edge directly to destination (if roots match)
-            if (startRoot.Equals(destRoot)) {
+            if (startRoot.Matches(destRoot)) {
                 var localCell = start.Cell - destField.Corner;
                 var distance = destField.Distances[localCell.x, localCell.y];
                 var directEdge = new PortalEdge {
@@ -113,7 +113,7 @@ namespace FlowTiles.PortalPaths {
                 // Terminate when we reach the destination
                 var node = Queue.Dequeue();
                 var cell = node.Position;
-                if (cell.Equals(dest.Cell)) {
+                if (cell.x == dest.Cell.x && cell.y == dest.Cell.y) {
                     return RebuildPath(start, dest);
                 }
 

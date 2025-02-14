@@ -1,4 +1,5 @@
-﻿using Unity.Mathematics;
+﻿using System.Runtime.CompilerServices;
+using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
 
@@ -11,6 +12,7 @@ namespace FlowTiles.PortalPaths {
             SectorIndex = sector;
             Cell = cell;
         }
+
     }
 
 }
