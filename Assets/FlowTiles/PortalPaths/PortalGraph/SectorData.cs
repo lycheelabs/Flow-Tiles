@@ -56,6 +56,9 @@ namespace FlowTiles.PortalPaths {
             return Portals.GetExitPortalAt(cell);
         }
 
+        public void SetPortal(int2 cell, Portal portal) {
+            Portals.SetExitPortalAt(cell, portal);
+        }
     }
 
 }

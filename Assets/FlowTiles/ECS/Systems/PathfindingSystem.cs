@@ -12,6 +12,8 @@ namespace FlowTiles.ECS {
     [BurstCompile]
     public partial struct PathfindingSystem : ISystem {
 
+        private ContinentPathfinder ContinentPathfinder;
+
         private PathCache PathCache;
         private FlowCache FlowCache;
         private LineCache LineCache;
@@ -28,6 +30,10 @@ namespace FlowTiles.ECS {
         public void OnCreate(ref SystemState state) {
             state.RequireForUpdate<GlobalPathfindingData>();
 
+            ContinentPathfinder = new ContinentPathfinder {
+                QueuedNodes = new NativeQueue<Portal>(Allocator.Persistent)
+            };
+            
             // Build the caches
             PathCache = new PathCache(Constants.MAX_CACHED_PATHS);
             FlowCache = new FlowCache(1000);
@@ -42,6 +48,8 @@ namespace FlowTiles.ECS {
         }
 
         public void OnDestroy(ref SystemState state) {
+            ContinentPathfinder.Dispose();
+
             PathCache.Dispose();
             FlowCache.Dispose();
             LineCache.Dispose();
@@ -149,11 +157,17 @@ namespace FlowTiles.ECS {
             }
 
             // Build internal sector data in parallel
-            var job = new RebuildGraphJob {
+            var sectorsJob = new RebuildGraphJob {
                 Requests = RebuildRequests,
                 Graph = graph,
             };
-            state.Dependency = job.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
+            state.Dependency = sectorsJob.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
+
+            // Once all sectors are built, recalculate the graph continents
+            if (!workRemains) {
+                var continentsJob = new RecalculateContinentsJob(graph, ContinentPathfinder);
+                state.Dependency = continentsJob.Schedule(state.Dependency);
+            }
 
         }
 
@@ -163,11 +177,12 @@ namespace FlowTiles.ECS {
             if (TempPathTasks.IsCreated) {
                 for (int i = 0; i < TempPathTasks.Length; i++) {
                     var task = TempPathTasks[i];
-                    PathCache.StorePath(task.CacheKey, new CachedPortalPath {
-                        NoPathExists = !task.Success[0],
-                        GraphVersionAtSearch = graphVersion,
-                        Nodes = task.Path
-                    });
+                    if (task.Success[0]) {
+                        PathCache.StorePath(task.CacheKey, new CachedPortalPath {
+                            GraphVersionAtSearch = graphVersion,
+                            Nodes = task.Path
+                        });
+                    }
                     task.DisposeTempData();
                 }
                 TempPathTasks.Dispose();

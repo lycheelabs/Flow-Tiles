@@ -39,11 +39,14 @@ namespace FlowTiles.PortalPaths {
             var destCell = new SectorCell(destSector, dest);
             var destRoot = destMap.GetRoot(dest);
 
-            var destNode = PortalPathNode.NewDestNode(destCell, destMap.Version);
+            // Check whether no path can exist
+            if (startRoot.Continent != destRoot.Continent) {
+                return false;
+            }
 
             // Check whether start and dest portals match
             if (start.Equals(dest)) {
-                result.Add(destNode);
+                result.Add(PortalPathNode.NewDestNode(destCell, destMap.Version));
                 return true;
             }
 
@@ -67,7 +70,7 @@ namespace FlowTiles.PortalPaths {
                     });
                 }
             }
-            result.Add(destNode);
+            result.Add(PortalPathNode.NewDestNode(destCell, destMap.Version));
             return true;
 
         }

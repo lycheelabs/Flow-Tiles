@@ -8,7 +8,6 @@ namespace FlowTiles.ECS {
         public bool IsPending;
         public bool HasBeenQueued;
 
-        public bool NoPathExists;
         public int GraphVersionAtSearch;
         public UnsafeList<PortalPathNode> Nodes;
 

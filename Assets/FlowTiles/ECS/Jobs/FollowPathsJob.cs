@@ -29,23 +29,34 @@ namespace FlowTiles.ECS {
             result.Direction = 0;
             progress.HasFlow = false;
 
+            // Check dest has been set
             if (!goal.ValueRO.HasGoal) {
                 progress.HasPath = false;
                 return;
             }
 
-            // Check start and dest are valid
             var current = position.ValueRO.PositionCell;
             var dest = goal.ValueRO.Goal;
+            var levelSize = Graph.Bounds.SizeCells;
+            var travelType = goal.ValueRO.TravelType;
+            
+            // Check start and dest are valid
             if (!Graph.Bounds.ContainsCell(current) || !Graph.Bounds.ContainsCell(dest)) {
                 progress.HasPath = false;
                 return;
             }
 
-            var travelType = goal.ValueRO.TravelType;
+            // Check path exists
             var currentMap = Graph.CellToSectorMap(current, travelType);
-            var currentIsland = currentMap.GetCellIsland(current);
-            var levelSize = Graph.Bounds.SizeCells;
+            var currentContinent = currentMap.GetRoot(current).Continent;
+
+            var destMap = Graph.CellToSectorMap(dest, travelType);
+            var destContinent = destMap.GetRoot(dest).Continent;
+
+            if (currentContinent != destContinent) {
+                progress.HasPath = false;
+                return;
+            }
 
             // Attach to a path
             if (!progress.HasPath) {
@@ -83,7 +94,7 @@ namespace FlowTiles.ECS {
                     progress.HasPath = false;
                     return;
                 }
-                if (path.NoPathExists) {
+                /*if (path.NoPathExists) {
                     progress.HasPath = false;
 
                     // Invalidate failed paths on graph change
@@ -93,13 +104,15 @@ namespace FlowTiles.ECS {
                         });
                     }
                     return;
-                }
+                }*/
 
                 // Wait for path to generate...
                 if (path.IsPending) {
                     return;
                 }
 
+                var currentIsland = currentMap.GetCellIsland(current);
+                
                 // Check for sector change
                 var nodeIsValid = false;
                 int versionCheckDistance = 1;

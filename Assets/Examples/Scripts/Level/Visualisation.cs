@@ -22,7 +22,7 @@ namespace FlowTiles.Examples {
                 if (!graph.SectorIsInitialised(index)) continue;
 
                 var sector = graph.IndexToSectorMap(index, travelType);
-                var nodes = sector.Portals.Portals;
+                var nodes = sector.Portals.Exits;
                 for (int i = 0; i < nodes.Length; i++) {
                     DrawRect(nodes[i].Bounds, Color.red);
                 }                
@@ -35,7 +35,7 @@ namespace FlowTiles.Examples {
                 if (!graph.SectorIsInitialised(index)) continue;
 
                 var sector = graph.IndexToSectorMap(index, travelType);
-                var nodes = sector.Portals.Portals;
+                var nodes = sector.Portals.Exits;
                 DrawSectorConnections(nodes);
             }
         }

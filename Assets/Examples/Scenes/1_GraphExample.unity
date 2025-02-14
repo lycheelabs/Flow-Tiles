@@ -357,7 +357,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 39ca6ebc4593ca94792179d55ba468ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  LevelSize: 20
+  LevelSize: 25
   Resolution: 5
   AddRandomWalls: 1
   VisualiseMode: 0

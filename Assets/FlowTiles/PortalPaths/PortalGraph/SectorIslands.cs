@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 
 namespace FlowTiles.PortalPaths {
+
     public struct SectorIslands {
 
         public readonly int Index;

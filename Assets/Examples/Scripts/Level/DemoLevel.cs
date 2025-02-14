@@ -12,18 +12,11 @@ using UnityEngine;
 
 namespace FlowTiles.Examples {
 
-    public enum VisualiseMode {
-        None,
-        Portals,
-        Connections,
-        Islands,
-        Costs, 
-    }
     public class DemoLevel {
 
         private const float ColorFading = 0.4f;
 
-        private static float4[] IslandColors = new float4[] {
+        private static float4[] ColorList = new float4[] {
             new float4(ColorFading, 1f, ColorFading, 1),
             new float4(ColorFading, ColorFading, 1f, 1),
             new float4(1f, 1f, ColorFading, 1),
@@ -100,7 +93,10 @@ namespace FlowTiles.Examples {
 
         public void Update() {
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            var showColors = VisualiseMode == VisualiseMode.Costs || VisualiseMode == VisualiseMode.Islands;
+            var showColors = VisualiseMode == VisualiseMode.Costs 
+                || VisualiseMode == VisualiseMode.Islands
+                || VisualiseMode == VisualiseMode.Continents;
+
             em.SetComponentData(Singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = Level.Blocked,
@@ -172,12 +168,28 @@ namespace FlowTiles.Examples {
                 for (int y = 0; y < LevelSize.x; y++) {
                     for (int x = 0; x < LevelSize.y; x++) {
                         var sector = Graph.CellToSectorMap(new int2(x, y), 0);
-                        var color = sector.Islands.Cells[x % Resolution, y % Resolution];
-                        if (color > 0) {
-                            ColorData[x, y] = IslandColors[(color - 1) % IslandColors.Length];
+                        var island = sector.Islands.Cells[x % Resolution, y % Resolution];
+                        if (island > 0) {
+                            ColorData[x, y] = ColorList[(island - 1) % ColorList.Length];
                         }
                         else {
                             ColorData[x, y] = 1;
+                        }
+                    }
+                }
+            }
+            if (VisualiseMode == VisualiseMode.Continents) {
+                for (int y = 0; y < LevelSize.x; y++) {
+                    for (int x = 0; x < LevelSize.y; x++) {
+                        var sector = Graph.CellToSectorMap(new int2(x, y), 0);
+                        var island = sector.Islands.Cells[x % Resolution, y % Resolution];
+
+                        ColorData[x, y] = 1;
+                        if (island > 0) {
+                            var continent = sector.Portals.Roots[island - 1].Continent;
+                            if (continent > 0) {
+                                ColorData[x, y] = ColorList[(continent - 1) % ColorList.Length];
+                            }
                         }
                     }
                 }
@@ -217,6 +229,8 @@ namespace FlowTiles.Examples {
         }
 
         public void VisualiseTestPath(int2 start, int2 dest, bool showFlow, bool showLosSmoothing = false) {
+            FlowData.InitialiseTo(0);
+
             if (!Graph.SectorIsInitialised(Graph.CellToIndex(start))) return;
             if (!Graph.SectorIsInitialised(Graph.CellToIndex(dest))) return;
 

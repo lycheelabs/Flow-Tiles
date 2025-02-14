@@ -11,6 +11,7 @@ namespace FlowTiles.PortalPaths {
         public readonly CellRect Bounds;
 
         public int Island;
+        public int Continent;
         public UnsafeList<PortalEdge> Edges;
 
         public Portal(int2 corner1, int2 corner2, int sector) {
@@ -18,6 +19,7 @@ namespace FlowTiles.PortalPaths {
             Bounds = new CellRect(corner1, corner2);
             Edges = new UnsafeList<PortalEdge>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
             Island = -1;
+            Continent = -1;
         }
 
         public void Dispose() {
@@ -29,12 +31,15 @@ namespace FlowTiles.PortalPaths {
     public struct SectorRoot {
 
         public readonly int SectorIndex;
-        public readonly int IslandIndex;
+        public readonly int Island;
+        public int Continent;
+
         public UnsafeList<SectorCell> Portals;
 
         public SectorRoot(int sector, int island) {
             SectorIndex = sector;
-            IslandIndex = island;
+            Island = island;
+            Continent = -1;
             Portals = new UnsafeList<SectorCell>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
         }
 
@@ -43,7 +48,7 @@ namespace FlowTiles.PortalPaths {
         }
 
         public bool ConnectsToPortal(Portal portal) {
-            return portal.Center.SectorIndex == SectorIndex && portal.Island == IslandIndex;
+            return portal.Center.SectorIndex == SectorIndex && portal.Island == Island;
         }
 
     }

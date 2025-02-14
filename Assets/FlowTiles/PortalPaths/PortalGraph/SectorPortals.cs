@@ -10,40 +10,40 @@ namespace FlowTiles.PortalPaths {
         public readonly CellRect Bounds;
 
         public UnsafeList<SectorRoot> Roots;
-        public UnsafeList<Portal> Portals;
-        public UnsafeHashMap<int2, int> PortalLookup;
+        public UnsafeList<Portal> Exits;
+        private UnsafeHashMap<int2, int> ExitLookup;
 
         public SectorPortals (int index, CellRect bounds) {
             Index = index;
             Bounds = bounds;
 
             Roots = new UnsafeList<SectorRoot>(Constants.EXPECTED_MAX_ISLANDS, Allocator.Persistent);
-            Portals = new UnsafeList<Portal>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
-            PortalLookup = new UnsafeHashMap<int2, int>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
+            Exits = new UnsafeList<Portal>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
+            ExitLookup = new UnsafeHashMap<int2, int>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
         }
 
         public void Clear() {
             DisposePortals();
 
             Roots.Clear();
-            Portals.Clear();
-            PortalLookup.Clear();
+            Exits.Clear();
+            ExitLookup.Clear();
         }
 
         public void Dispose() {
             DisposePortals();
 
             Roots.Dispose();
-            Portals.Dispose();
-            PortalLookup.Dispose();
+            Exits.Dispose();
+            ExitLookup.Dispose();
         }
 
         private void DisposePortals() {
             for (int i = 0; i < Roots.Length; i++) {
                 Roots[i].Dispose();
             }
-            for (int i = 0; i < Portals.Length; i++) {
-                Portals[i].Dispose();
+            for (int i = 0; i < Exits.Length; i++) {
+                Exits[i].Dispose();
             }
         }
 
@@ -55,12 +55,17 @@ namespace FlowTiles.PortalPaths {
         }
 
         public bool HasExitPortalAt(int2 pos) {
-            return PortalLookup.ContainsKey(pos);
+            return ExitLookup.ContainsKey(pos);
         }
 
         public Portal GetExitPortalAt(int2 pos) {
-            var index = PortalLookup[pos];
-            return Portals[index];
+            var index = ExitLookup[pos];
+            return Exits[index];
+        }
+
+        public Portal SetExitPortalAt(int2 pos, Portal portal) {
+            var index = ExitLookup[pos];
+            return Exits[index] = portal;
         }
 
         public void CreatePortal(int targetSector, bool horizontal, int lineSize, int i, int flip) {
@@ -91,19 +96,19 @@ namespace FlowTiles.PortalPaths {
             // Create the exit portal (if needed)
             if (!HasExitPortalAt(mid1)) {
                 var newPortal = new Portal(start1, end1, Index);
-                PortalLookup.Add(newPortal.Center.Cell, Portals.Length);
-                Portals.Add(newPortal);
+                ExitLookup.Add(newPortal.Center.Cell, Exits.Length);
+                Exits.Add(newPortal);
             }
 
             // Connect the exit portal to the adjacent exit (which may not be created yet)
-            var portalIndex = PortalLookup[mid1];
-            var portal = Portals[portalIndex];
+            var portalIndex = ExitLookup[mid1];
+            var portal = Exits[portalIndex];
             portal.Edges.Add(new PortalEdge() {
                 start = new SectorCell(Index, mid1),
                 end = new SectorCell(targetSector, mid2),
                 weight = 1
             });
-            Portals[portalIndex] = portal;
+            Exits[portalIndex] = portal;
         }
 
         /// <summary>
@@ -119,11 +124,11 @@ namespace FlowTiles.PortalPaths {
         // --------------------------------------------------------------
 
         private void SetPortalIslands(SectorData sector) {
-            for (int i = 0; i < Portals.Length; i++) {
-                var portal = Portals[i];
+            for (int i = 0; i < Exits.Length; i++) {
+                var portal = Exits[i];
                 var tile = portal.Center.Cell - Bounds.MinCell;
                 portal.Island = sector.Islands.Cells[tile.x, tile.y];
-                Portals[i] = portal;
+                Exits[i] = portal;
             }
         }
 
@@ -134,8 +139,8 @@ namespace FlowTiles.PortalPaths {
                 var root = new SectorRoot(Index, island);
 
                 // Connect all portals in this island
-                for (int p = 0; p < Portals.Length; p++) {
-                    var portal = Portals[p];
+                for (int p = 0; p < Exits.Length; p++) {
+                    var portal = Exits[p];
                     if (portal.Island == island) {
                         root.Portals.Add(portal.Center);
                     }
@@ -153,14 +158,14 @@ namespace FlowTiles.PortalPaths {
             // We do this so that we can iterate through pairs once, 
             // by keeping the second index always higher than the first.
             // For a path to exit, both portals must have matching color.        
-            for (i = 0; i < Portals.Length; ++i) {
-                n1 = Portals[i];
-                for (j = i + 1; j < Portals.Length; ++j) {
-                    n2 = Portals[j];
+            for (i = 0; i < Exits.Length; ++i) {
+                n1 = Exits[i];
+                for (j = i + 1; j < Exits.Length; ++j) {
+                    n2 = Exits[j];
                     if (n1.Island == n2.Island) {
                         TryConnectExits(ref n1, ref n2, sector.Costs, pathfinder);
-                        Portals[i] = n1;
-                        Portals[j] = n2;
+                        Exits[i] = n1;
+                        Exits[j] = n2;
                     }
                 }
             }
