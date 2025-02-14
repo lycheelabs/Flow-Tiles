@@ -362,11 +362,13 @@ namespace FlowTiles.ECS {
             // Allocate the tasks
             var numTasks = math.min(numRequests, Constants.MAX_SIGHTLINES_PER_FRAME);
             var tasks = new NativeList<FindSightlinesJob.Task>(numTasks, Allocator.TempJob);
+            var graphVersion = graph.GraphVersion.Value;
+
             for (int i = 0; i < numRequests; i++) {
                 var request = LineRequests.Dequeue();
 
                 // Discard duplicate requests
-                if (LineCache.TryGetSightline(request.CacheKey, out var existing) && existing.HasBeenQueued) {
+                if (LineCache.TryGetSightline(request.CacheKey, graphVersion, out var existing) && existing.HasBeenQueued) {
                     continue;
                 }
 

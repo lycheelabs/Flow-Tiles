@@ -22,9 +22,12 @@ namespace FlowTiles.ECS {
         }
 
         /// <summary> Returns the cached sightline data </summary>
-        public bool TryGetSightline(int4 key, out CachedSightline existing) {
+        public bool TryGetSightline(int4 key, int graphVersion, out CachedSightline existing) {
             existing = default;
             if (Cache.TryGetValue(key, out CachedSightline value)) {
+                if (graphVersion != value.GraphVersionAtSearch) {
+                    return false;
+                }
                 existing = value;
                 return true;
             }

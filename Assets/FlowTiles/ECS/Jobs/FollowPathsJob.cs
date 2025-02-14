@@ -94,17 +94,6 @@ namespace FlowTiles.ECS {
                     progress.HasPath = false;
                     return;
                 }
-                /*if (path.NoPathExists) {
-                    progress.HasPath = false;
-
-                    // Invalidate failed paths on graph change
-                    if (Graph.GraphVersion.Value > path.GraphVersionAtSearch) {
-                        ECB.AddComponent(sortKey, entity, new InvalidPathData {
-                            Key = progress.PathKey,
-                        });
-                    }
-                    return;
-                }*/
 
                 // Wait for path to generate...
                 if (path.IsPending) {
@@ -265,8 +254,9 @@ namespace FlowTiles.ECS {
                                 }
 
                                 // Checked cached line of sight result
+                                var graphVersion = Graph.GraphVersion.Value;
                                 var losKey = CacheKeys.ToPathKey(pos, goalCell, levelSize, travelType);
-                                var cacheHit = LineCache.TryGetSightline(losKey, out var sightline);
+                                var cacheHit = LineCache.TryGetSightline(losKey, graphVersion, out var sightline);
 
                                 if (cacheHit) {
                                     if (sightline.WasFound) {
