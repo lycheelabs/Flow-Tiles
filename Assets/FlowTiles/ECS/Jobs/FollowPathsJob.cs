@@ -223,8 +223,24 @@ namespace FlowTiles.ECS {
 
                 // Line of sight smoothing
                 if (smoothing == PathSmoothingMode.LineOfSight) {
-                    int2 visiblePos = pos;
 
+                    // Read previous line of sight results from cache
+                    var version = Graph.GraphVersion.Value;
+                    var key1 = progress.NewSightlineKey;
+                    var key2 = progress.KnownSightlineKey;
+                    progress.NewSightlineKey = -1;
+                    progress.KnownSightlineKey = -1;
+
+                    if (LineCache.TryGetSightline(key1, version, out var line1) && line1.WasFound) {
+                        var cell1 = CacheKeys.ToDestCell(key1, levelSize);
+                        result.Direction = math.normalizesafe(cell1 - smoothPos);
+                    }
+                    else if (LineCache.TryGetSightline(key2, version, out var line2) && line2.WasFound) {
+                        var cell2 = CacheKeys.ToDestCell(key2, levelSize);
+                        result.Direction = math.normalizesafe(cell2 - smoothPos);
+                    }
+
+                    // Queue new line of sight calculations
                     var maxNode = math.min(
                         pathIndex + Constants.MAX_LINE_OF_SIGHT_LOOKAHEAD,
                         path.Nodes.Length);
@@ -254,13 +270,12 @@ namespace FlowTiles.ECS {
                                 }
 
                                 // Checked cached line of sight result
-                                var graphVersion = Graph.GraphVersion.Value;
                                 var losKey = CacheKeys.ToPathKey(pos, goalCell, levelSize, travelType);
-                                var cacheHit = LineCache.TryGetSightline(losKey, graphVersion, out var sightline);
+                                var cacheHit = LineCache.TryGetSightline(losKey, version, out var sightline);
 
                                 if (cacheHit) {
                                     if (sightline.WasFound) {
-                                        visiblePos = goalCell;
+                                        progress.KnownSightlineKey = losKey;
                                         bestDistanceSq = distSq;
                                         anyNodeFound = true;
                                     }
@@ -269,6 +284,7 @@ namespace FlowTiles.ECS {
 
                                 // Cache miss - Request the sightline data and stop!
                                 else {
+                                    progress.NewSightlineKey = losKey;
                                     ECB.AddComponent(sortKey, entity, new MissingSightlineData {
                                         Start = pos,
                                         End = goalCell,
@@ -284,11 +300,6 @@ namespace FlowTiles.ECS {
                         if (!anyNodeFound) {
                             break;
                         }
-                    }
-
-                    if (!visiblePos.Equals(pos)) {
-                        var direction = math.normalizesafe(visiblePos - smoothPos);
-                        result.Direction = direction;
                     }
                 }
 

@@ -14,6 +14,10 @@ namespace FlowTiles.ECS {
         public bool HasFlow;
         public int4 FlowKey;
 
+        // Follow the sightline
+        public int4 KnownSightlineKey;
+        public int4 NewSightlineKey;
+
     }
 
 }
