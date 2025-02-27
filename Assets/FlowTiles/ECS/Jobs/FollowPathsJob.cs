@@ -100,70 +100,96 @@ namespace FlowTiles.ECS {
                     return;
                 }
 
+                // Check version of the starting node
+                var firstNode = path.Nodes[0];
+                var firstSector = Graph.CellToSector(firstNode.Position.Cell);
+                if (firstNode.Version != firstSector.Version) {
+                    progress.HasPath = false;
+
+                    // Remove this path from the cache
+                    ECB.AddComponent(sortKey, entity, new InvalidPathData {
+                        Key = progress.PathKey,
+                    });
+                    return;
+                }
+
+
+                // Check for island change
                 var currentIsland = currentMap.GetCellIsland(current);
-                
-                // Check for sector change
-                var nodeIsValid = false;
-                int versionCheckDistance = 1;
+                var currentIslandFound = false;
+                var versionCheckRange = 1;
+
                 if (progress.NodeIndex >= 0 && progress.NodeIndex < path.Nodes.Length) {
                     var node = path.Nodes[progress.NodeIndex];
                     var nodeCell = node.Position.Cell;
                     var nodeMap = Graph.CellToSectorMap(nodeCell, travelType);
                     var newIsland = nodeMap.GetCellIsland(nodeCell);
-                    nodeIsValid = nodeMap.Index == currentMap.Index && newIsland == currentIsland;
+                    var currentSectorFound = nodeMap.Index == currentMap.Index;
+                    currentIslandFound = currentSectorFound && newIsland == currentIsland;
                 }
 
-                // Connect to a sector
-                if (!nodeIsValid) {
-                    versionCheckDistance = 3;
+                // On island change, search path for current island
+                if (!currentIslandFound) {
 
-                    // Default: Check next sector
+                    // Extend version checks when the island changes
+                    versionCheckRange = 3; 
+
+                    // Check the expected (next) island
                     if (progress.NodeIndex < path.Nodes.Length - 1) {
                         var newIndex = progress.NodeIndex + 1;
                         var newNode = path.Nodes[newIndex];
                         var newCell = newNode.Position.Cell;
                         var newMap = Graph.CellToSectorMap(newCell, travelType);
                         var newIsland = newMap.GetCellIsland(newCell);
-                        if (newMap.Index == currentMap.Index && newIsland == currentIsland) {
+
+                        var currentSectorFound = newMap.Index == currentMap.Index;
+                        currentIslandFound = currentSectorFound && newIsland == currentIsland;
+
+                        if (currentIslandFound) {
                             progress.NodeIndex = newIndex;
-                            nodeIsValid = true;
+                            currentSectorFound = true;
                         }
                     }
 
-                    // Fallback: Check all sectors
-                    if (!nodeIsValid) {
+                    // Fallback: Check all islands
+                    if (!currentIslandFound) {
                         for (int index = 0; index < path.Nodes.Length; index++) {
                             var newNode = path.Nodes[index];
                             var newCell = newNode.Position.Cell;
                             var newMap = Graph.CellToSectorMap(newCell, travelType);
                             var newIsland = newMap.GetCellIsland(newCell);
-                            if (newMap.Index == currentMap.Index && newIsland == currentIsland) {
+
+                            var currentSectorFound = newMap.Index == currentMap.Index;
+                            currentIslandFound = currentSectorFound && newIsland == currentIsland;
+
+                            if (currentIslandFound) {
                                 progress.NodeIndex = index;
-                                nodeIsValid = true;
                                 break;
                             }
                         }
                     }
 
-                    // Fallback: Cancel path
-                    if (!nodeIsValid) {
+                    // If the path doesn't contain my island, cancel the path
+                    if (!currentIslandFound) {
                         progress.HasPath = false;
                         return;
                     }
 
                 }
 
-                // Check path version
+                // Check version of the current and nearby node
                 int minVersionCheck = math.max(progress.NodeIndex, 0);
-                int maxVersionCheck = math.min(progress.NodeIndex + versionCheckDistance, path.Nodes.Length);
+                int maxVersionCheck = math.min(progress.NodeIndex + versionCheckRange, path.Nodes.Length);
                 for (int i = minVersionCheck; i < maxVersionCheck; i++) {
                     var checkNode = path.Nodes[i];
                     var checkSector = Graph.CellToSector(checkNode.Position.Cell);
                     if (checkSector.Version != checkNode.Version) {
+                        progress.HasPath = false;
+
+                        // Invalidate the path
                         ECB.AddComponent(sortKey, entity, new InvalidPathData {
                             Key = progress.PathKey,
                         });
-                        progress.HasPath = false;
                         return;
                     }
                 }
