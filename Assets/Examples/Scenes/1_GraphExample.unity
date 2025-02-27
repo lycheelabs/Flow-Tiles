@@ -359,8 +359,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   LevelSize: 25
   Resolution: 5
-  AddRandomWalls: 1
-  VisualiseMode: 0
+  AddRandomWalls: 0
+  VisualiseMode: 1
   VisualiseLineOfSightSmoothing: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

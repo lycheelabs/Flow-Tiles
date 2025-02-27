@@ -144,7 +144,9 @@ namespace FlowTiles.Examples {
                 wall.Update();
             }
 
-            Visualisation.DrawSectors(Graph);
+            if (VisualiseMode != VisualiseMode.None) {
+                Visualisation.DrawSectors(Graph);
+            }
             if (VisualiseMode == VisualiseMode.Portals) {
                 Visualisation.DrawSectorPortals(Graph, VisualisedTravelType);
             }

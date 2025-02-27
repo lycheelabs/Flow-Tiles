@@ -360,7 +360,7 @@ MonoBehaviour:
   LevelSize: 20
   Resolution: 5
   AddRandomWalls: 1
-  PathSmoothingMode: 2
+  PathSmoothingMode: 1
   VisualiseMode: 0
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
