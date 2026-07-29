@@ -45,8 +45,12 @@ namespace FlowTiles.Examples {
             [ReadOnly] public NativeField<float4> LevelColors;
 
             [BurstCompile]
-            private void Execute(Aspect quad, [ChunkIndexInQuery] int sortKey) {
-                var cell = quad.Cell;
+            private void Execute(
+                [ChunkIndexInQuery] int sortKey,
+                [ReadOnly] ref WallData wallData,
+                ref ColorOverride colorOverride
+            ) {
+                var cell = wallData.cell;
                 var wall = LevelWalls[cell.x, cell.y] || LevelStamps[cell.x, cell.y] >= 255;
                 var terrain = LevelTerrain[cell.x, cell.y];
 
@@ -64,22 +68,7 @@ namespace FlowTiles.Examples {
                     color = 0;
                 }
 
-                quad.Color = color;
-            }
-
-            public readonly partial struct Aspect : IAspect {
-
-                public readonly Entity Entity;
-                private readonly RefRW<WallData> _wall;
-                private readonly RefRW<ColorOverride> _color;
-
-                public int2 Cell => _wall.ValueRO.cell;
-
-                public float4 Color {
-                    get => _color.ValueRW.Value;
-                    set => _color.ValueRW.Value = value;
-                }
-
+                colorOverride.Value = color;
             }
 
         }
@@ -91,34 +80,22 @@ namespace FlowTiles.Examples {
             [ReadOnly] public NativeField<float2> LevelFlows;
 
             [BurstCompile]
-            private void Execute(Aspect flow, [ChunkIndexInQuery] int sortKey) {
-                var cell = flow.Cell;
+            private void Execute(
+                [ChunkIndexInQuery] int sortKey,
+                [ReadOnly] ref FlowData flowData,
+                ref LocalTransform transform
+            ) {
+                var cell = flowData.cell;
                 var data = LevelFlows[cell.x, cell.y];
 
-                flow.SetFlow(data);
-            }
-
-            public readonly partial struct Aspect : IAspect {
-
-                public readonly Entity Entity;
-                private readonly RefRW<FlowData> _flow;
-                private readonly RefRW<LocalTransform> _transform;
-
-                public int2 Cell => _flow.ValueRO.cell;
-
-                public void SetFlow(float2 newFlow) {
-                    if (math.length(newFlow) == 0) {
-                        _transform.ValueRW.Scale = 0;
-                    }
-                    else {
-                        var angle = math.atan2(newFlow.y, newFlow.x);
-                        _transform.ValueRW.Scale = 1;
-                        _transform.ValueRW.Rotation = quaternion.Euler(
-                            new float3(0, 0, angle)
-                        );
-                    }
+                if (math.length(data) == 0) {
+                    transform.Scale = 0;
                 }
-
+                else {
+                    var angle = math.atan2(data.y, data.x);
+                    transform.Scale = 1;
+                    transform.Rotation = quaternion.Euler(new float3(0, 0, angle));
+                }
             }
 
         }
