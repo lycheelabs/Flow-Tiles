@@ -11,7 +11,28 @@ namespace FlowTiles {
             var numSectors = graph.Layout.NumSectorsInLevel;
             for (int index = 0; index < numSectors; index++) {
                 var sector = graph.IndexToSector(index);
-                DrawRect(sector.Bounds, Color.blue, 0);
+                var min = sector.Bounds.MinCell;
+                var max = sector.Bounds.MaxCell;
+
+                if (graph.Layout.Rounding > 1) {
+                    var roundingCount = graph.Layout.Resolution / graph.Layout.Rounding;
+                    for (int r = 0; r < roundingCount; r++) {
+                        var offset = (r + 1) * graph.Layout.Rounding;
+                        DrawCellLine(
+                            new int2(min.x, min.y + offset), 
+                            new int2(max.x + 1, min.y + offset), 
+                            new Color(1, 1, 1, 0.15f));
+                    }
+                    for (int c = 0; c < roundingCount; c++) {
+                        var offset = (c + 1) * graph.Layout.Rounding;
+                        DrawCellLine(
+                            new int2(min.x + offset, min.y),
+                            new int2(min.x + offset, max.y + 1),
+                            new Color(1, 1, 1, 0.15f));
+                    }
+                }
+
+                DrawCellRect(sector.Bounds, Color.blue, 0);
             }
         }
 
@@ -23,7 +44,7 @@ namespace FlowTiles {
                 var sector = graph.IndexToSectorMap(index, travelType);
                 var nodes = sector.Portals.Exits;
                 for (int i = 0; i < nodes.Length; i++) {
-                    DrawRect(nodes[i].Bounds, Color.green);
+                    DrawCellRect(nodes[i].Bounds, Color.green);
                 }                
             }
         }
@@ -59,7 +80,13 @@ namespace FlowTiles {
             Debug.DrawLine(ToVector(from), ToVector(to), Color.green);
         }
 
-        public static void DrawRect(CellRect bounds, Color color, float border = 0.1f) {
+        public static void DrawCellLine (int2 fromCell, int2 toCell, Color color) {
+            var pos0 = ToVector(fromCell.x, fromCell.y);
+            var pos1 = ToVector(toCell.x, toCell.y);
+            Debug.DrawLine(pos0, pos1, color);
+        }
+
+        public static void DrawCellRect(CellRect bounds, Color color, float border = 0.1f) {
             var pos00 = ToVector(bounds.MinCell.x, bounds.MinCell.y) + new Vector3(border, 0, +border);
             var pos01 = ToVector(bounds.MinCell.x, bounds.MaxCell.y + 1) + new Vector3(border, 0, -border);
             var pos10 = ToVector(bounds.MaxCell.x + 1, bounds.MinCell.y) + new Vector3(-border, 0, +border);

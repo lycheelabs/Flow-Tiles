@@ -9,7 +9,11 @@ namespace FlowTiles.ECS {
 
         public FlowField FlowField;
 
+        public bool IsCreated => FlowField.IsCreated;
+
         public void Dispose() {
+            if (!IsCreated) return;
+            
             FlowField.Dispose();
         }
 

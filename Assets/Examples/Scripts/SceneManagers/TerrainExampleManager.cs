@@ -17,7 +17,7 @@ namespace FlowTiles.Examples {
         void Awake() {
 
             // Initialise the map with terrain and travel types
-            var map = new PathableLevel(LevelSize, LevelSize, Resolution, 2, 2);
+            var map = new PathableGrid(LevelSize, LevelSize, Resolution, numTerrainTypes: 2, numTravelTypes: 2);
             map.SetTerrainCost((int)TravelType.GroundOnly, (int)TerrainType.WATER, 10);
             map.SetTerrainCost((int)TravelType.Amphibious, (int)TerrainType.GROUND, 2);
 

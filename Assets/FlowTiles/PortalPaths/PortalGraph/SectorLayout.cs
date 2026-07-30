@@ -2,15 +2,18 @@
 using UnityEngine;
 
 namespace FlowTiles.PortalPaths {
+
     public struct SectorLayout {
 
         public readonly int2 SizeCells;
         public readonly int2 SizeSectors;
         public readonly int Resolution;
+        public readonly int Rounding;
 
-        public SectorLayout (int2 sizeCells, int resolution) {
+        public SectorLayout (int2 sizeCells, int resolution, int rounding) {
             SizeCells = sizeCells;
             Resolution = resolution;
+            Rounding = rounding;
 
             var sectorsW = Mathf.CeilToInt((float)sizeCells.x / resolution);
             var sectorsH = Mathf.CeilToInt((float)sizeCells.y / resolution);
@@ -19,6 +22,7 @@ namespace FlowTiles.PortalPaths {
 
         public int NumSectorsInLevel => SizeSectors.x * SizeSectors.y;
         public int NumCellsInSector => Resolution * Resolution;
+        public CellRect LevelBounds => new CellRect (0, SizeCells - 1);
 
         public int IndexOfCell (int2 cell) {
             return cell.x + SizeCells.x * cell.y;

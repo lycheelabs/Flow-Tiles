@@ -10,8 +10,8 @@ namespace FlowTiles.ECS {
 
         public float2 Position;
         public int2 PositionCell => new int2(
-            (int) math.round(Position.x), 
-            (int) math.round(Position.y));
+            (int) math.floor(Position.x), 
+            (int) math.floor(Position.y));
 
     }
 

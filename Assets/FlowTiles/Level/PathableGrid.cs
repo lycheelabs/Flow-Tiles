@@ -13,14 +13,14 @@ namespace FlowTiles {
         } 
         public byte GetCost (int terrainType) {
             if (terrainType < 0 || terrainType >= Mapping.Length) return 0;
-            return 1;
+            return Mapping[terrainType];
         }
         public void Dispose() {
             Mapping.Dispose();
         }
     }
 
-    public struct PathableLevel {
+    public struct PathableGrid {
 
         public const byte MAX_COST = 255;
 
@@ -30,7 +30,6 @@ namespace FlowTiles {
 
         public NativeField<bool> Blocked;
         public NativeField<byte> Terrain;
-        public NativeField<byte> TerrainAdjustments;
         public NativeField<byte> Obstacles;
 
         public readonly int NumTravelTypes;
@@ -40,15 +39,15 @@ namespace FlowTiles {
         public NativeReference<bool> IsInitialised;
         public NativeReference<bool> NeedsRebuilding;
         public NativeField<SectorFlags> RebuildFlags;
+        public bool IsCreated;
 
-        public PathableLevel(int width, int height, int resolution, int numTravelTypes = 1, int numTerrainTypes = 1) {
+        public PathableGrid(int width, int height, int resolution, int rounding = 3, int numTravelTypes = 1, int numTerrainTypes = 1) {
             Size = new int2(width, height);
-            Layout = new SectorLayout(Size, resolution);
+            Layout = new SectorLayout(Size, resolution, rounding);
             Bounds = new CellRect(0, Size - 1);
 
             Blocked = new NativeField<bool>(Size, Allocator.Persistent);
             Terrain = new NativeField<byte>(Size, Allocator.Persistent);
-            TerrainAdjustments = new NativeField<byte>(Size, Allocator.Persistent);
             Obstacles = new NativeField<byte>(Size, Allocator.Persistent);
             
             NumTravelTypes = numTravelTypes;
@@ -62,9 +61,12 @@ namespace FlowTiles {
             IsInitialised = new NativeReference<bool>(false, Allocator.Persistent);
             NeedsRebuilding = new NativeReference<bool>(true, Allocator.Persistent);
             RebuildFlags = new NativeField<SectorFlags>(Layout.SizeSectors, Allocator.Persistent, initialise);
+            IsCreated = true;
         }
 
         public void Dispose() {
+            if (!IsCreated) return;
+            
             for (int i = 0; i < TerrainCosts.Length; i++) {
                 TerrainCosts[i].Dispose();
             }
@@ -72,13 +74,13 @@ namespace FlowTiles {
             Blocked.Dispose();
             Terrain.Dispose();
             Obstacles.Dispose();
-            TerrainAdjustments.Dispose();
 
             TerrainCosts.Dispose();
 
             IsInitialised.Dispose();
             NeedsRebuilding.Dispose();
             RebuildFlags.Dispose();
+            IsCreated = false;
         }
 
         public void SetTerrainCost(int travelType, int terrainType, byte newCost) {
@@ -86,10 +88,10 @@ namespace FlowTiles {
                 throw new ArgumentException("Terrain costs must be in range 1-255");
             }
             if (travelType < 0 || travelType >= NumTravelTypes) {
-                throw new ArgumentException("The provided movement type is not known");
+                throw new ArgumentException("The provided movement type is not known: " + travelType);
             }
             if (terrainType < 0 || terrainType >= NumTerrainTypes) {
-                throw new ArgumentException("The provided terrain type is not known");
+                throw new ArgumentException("The provided terrain type is not known: " + terrainType);
             }
 
             var costSet = TerrainCosts[travelType];
@@ -113,14 +115,6 @@ namespace FlowTiles {
         /// </summary>
         public void SetTerrain(int x, int y, byte type) {
             Terrain[x, y] = type;
-            UpdateRebuildFlags(new int2(x, y));
-        }
-
-        /// <summary>
-        /// Adds additional terrain cost to this cell (for all travel types)
-        /// </summary>
-        public void SetTerrainAdjustment(int x, int y, byte type) {
-            TerrainAdjustments[x, y] = type;
             UpdateRebuildFlags(new int2(x, y));
         }
 
@@ -206,8 +200,8 @@ namespace FlowTiles {
             terrainType = math.clamp(terrainType, 0, NumTerrainTypes - 1);
             var terrainCost = TerrainCosts[travelType].Mapping[terrainType];
 
-            var extraCost = TerrainAdjustments[x,y] + Obstacles[x, y];
-            return (byte)math.min(terrainCost + extraCost, MAX_COST);
+            var obstacleCost = Obstacles[x, y];
+            return (byte)math.min(terrainCost + obstacleCost, MAX_COST);
         }
 
     }

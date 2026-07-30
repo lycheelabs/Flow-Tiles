@@ -4,7 +4,7 @@ namespace FlowTiles.Examples {
 
     public static class LevelGeneration {
 
-        public static void InitialiseRandomObstacles(PathableLevel level, bool clearEdges) {
+        public static void InitialiseRandomObstacles(PathableGrid level, bool clearEdges) {
             if (clearEdges) { 
                 for (int x = 1; x < level.Size.x - 1; x++) {
                     for (int y = 1; y < level.Size.y - 1; y++) {
@@ -27,7 +27,7 @@ namespace FlowTiles.Examples {
             }
         }
 
-        public static void InitialiseRandomWalls(PathableLevel level, int length) {
+        public static void InitialiseRandomWalls(PathableGrid level, int length) {
             var sep = math.max(2, length / 4);
             // Add horizontal walls
             for (int y = 1; y < level.Size.y - 1; y += sep) {
@@ -49,7 +49,7 @@ namespace FlowTiles.Examples {
             }
         }
 
-        public static void InitialiseWaterPools(PathableLevel level) {
+        public static void InitialiseWaterPools(PathableGrid level) {
             var size = level.Size;
             var sizeSectors = level.Layout.SizeSectors;
             var resolution = level.Layout.Resolution;

@@ -41,7 +41,7 @@ namespace FlowTiles.Examples {
                 position.y = math.clamp(position.y, 0, LevelSize.y - 1);
 
                 transform.Position = position;
-                cell.Position = new float2(position.x, position.y);               
+                cell.Position = new float2(position.x + 0.5f, position.y + 0.5f);               
             }
 
         }

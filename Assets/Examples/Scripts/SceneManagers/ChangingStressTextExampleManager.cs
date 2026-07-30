@@ -15,7 +15,7 @@ namespace FlowTiles.Examples {
 
         void Awake() {
 
-            var map = new PathableLevel(LevelSize, LevelSize, Resolution);
+            var map = new PathableGrid(LevelSize, LevelSize, Resolution);
 
             Level = new DemoLevel(map, Resolution);
 

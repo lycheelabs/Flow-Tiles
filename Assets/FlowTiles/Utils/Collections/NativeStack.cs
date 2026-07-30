@@ -82,9 +82,14 @@ m_AllocatorLabel = label;
         }
 
         void Deallocate() {
-            UnsafeUtility.Free(m_Counter, m_AllocatorLabel);
-            m_Array.Dispose();
-            m_Counter = null;
+            // CRITICAL FIX: Prevent double-free that can cause TLSF corruption
+            if (m_Counter != null) {
+                UnsafeUtility.Free(m_Counter, m_AllocatorLabel);
+                m_Counter = null;
+            }
+            if (m_Array.IsCreated) {
+                m_Array.Dispose();
+            }
         }
 
         public void Dispose() {
@@ -108,6 +113,10 @@ m_AllocatorLabel = label;
         }
 
         public T Pop() {
+#if ENABLE_UNITY_COLLECTIONS_CHECKS
+            // Throws if called from a parallel job
+            AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
+#endif
             T item;
 
             if (!TryPop(out item))
@@ -209,11 +218,16 @@ m_AllocatorLabel = label;
             public void Push(T entry) {
 #if ENABLE_UNITY_COLLECTIONS_CHECKS
                 AtomicSafetyHandle.CheckWriteAndThrow(m_Safety);
-                if (*m_Counter >= m_Array.Length)
-                    throw new IndexOutOfRangeException("Can't push, stack is full.");
 #endif
 
+                // CRITICAL FIX: Atomic bounds check to prevent race condition and buffer overrun
                 int index = Interlocked.Increment(ref *m_Counter) - 1;
+                if (index >= m_Array.Length) {
+                    // Rollback the increment to prevent corruption
+                    Interlocked.Decrement(ref *m_Counter);
+                    throw new IndexOutOfRangeException("Can't push, stack is full.");
+                }
+                
                 m_Array[index] = entry;
             }
         }

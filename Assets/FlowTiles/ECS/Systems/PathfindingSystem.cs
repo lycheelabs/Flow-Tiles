@@ -6,44 +6,104 @@ using Unity.Collections.LowLevel.Unsafe;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace FlowTiles.ECS {
 
     [BurstCompile]
+    [UpdateInGroup(typeof(InitializationSystemGroup), OrderLast = true)]
     public partial struct PathfindingSystem : ISystem {
 
+        public static void SetLevel (PathableGrid gridData, PathableGraph graphData) {
+            var world = World.DefaultGameObjectInjectionWorld;
+            var handle = world.Unmanaged.GetExistingUnmanagedSystem<PathfindingSystem>();
+            ref var sys = ref world.Unmanaged.GetUnsafeSystemRef<PathfindingSystem>(handle);
+
+            sys.LevelIsInitialised = true;
+            sys.Level = gridData;
+            sys.Graph = graphData;
+        }
+
+        public static void ClearLevel () {
+            ThreadSafety.EnsureECSThreadSafety();
+
+            var world = World.DefaultGameObjectInjectionWorld;
+            var handle = world.Unmanaged.GetExistingUnmanagedSystem<PathfindingSystem>();
+            ref var sys = ref world.Unmanaged.GetUnsafeSystemRef<PathfindingSystem>(handle);
+
+            sys.LastScheduledHandle.Complete();
+            sys.DisposeInFlightJobs();
+
+            // Dispose all cached flow/path data
+            sys.FlowCache.Clear();
+            sys.PathCache.Clear();
+
+            // Clear pending requests so nothing references old level state
+            if (sys.RebuildRequests.IsCreated) sys.RebuildRequests.Clear();
+            if (sys.PathRequests.IsCreated) while (sys.PathRequests.TryDequeue(out _)) { }
+            if (sys.FlowRequests.IsCreated) while (sys.FlowRequests.TryDequeue(out _)) { }
+            if (sys.LineRequests.IsCreated) while (sys.LineRequests.TryDequeue(out _)) { }
+            if (sys.PathInFlightKeys.IsCreated) sys.PathInFlightKeys.Clear();
+
+            // Clear static references. These data structures are disposed elsewhere
+            sys.LevelIsInitialised = false;
+            sys.Level = default;
+            sys.Graph = default;
+        }
+
+        // --------------------------------------------------------------
+
+        // Level
+        private bool LevelIsInitialised;
+        private PathableGrid Level;
+        private PathableGraph Graph;
+
+        // Pathfinders
         private ContinentPathfinder ContinentPathfinder;
 
+        // Caches
         private PathCache PathCache;
         private FlowCache FlowCache;
         private LineCache LineCache;
 
-        private NativeList<int> RebuildRequests;
+        // Requests
+        private NativeList<GraphSector> RebuildRequests;
         private NativeQueue<PathRequest> PathRequests;
         private NativeQueue<FlowRequest> FlowRequests;
         private NativeQueue<LineRequest> LineRequests;
 
+        // Tracks path keys that have been enqueued but not yet promoted to a FindPathsJob task.
+        // Used to dedup re-emissions from FollowPathsJob while a request is still queued.
+        // PathCache cannot be used as the placeholder (it is bounded; placeholders would
+        // either deadlock WaitForCapacity or thrash the cache).
+        private NativeHashSet<int4> PathInFlightKeys;
+
+        // Tasks
+        private bool IsRebuilding;
+        private RebuildGraphJob RebuildTask;
         private NativeList<FindPathsJob.Task> TempPathTasks;
         private NativeList<FindFlowsJob.Task> TempFlowTasks;
         private NativeList<FindSightlinesJob.Task> TempLineTasks;
 
-        public void OnCreate(ref SystemState state) {
-            state.RequireForUpdate<GlobalPathfindingData>();
+        // The combined job handle at the end of the last OnUpdate, stored so that
+        // ClearLevel (a static method with no SystemState) can complete them before
+        // disposing in-flight task data.
+        private JobHandle LastScheduledHandle;
 
-            ContinentPathfinder = new ContinentPathfinder {
-                QueuedNodes = new NativeQueue<Portal>(Allocator.Persistent)
-            };
+        public void OnCreate(ref SystemState state) {
+            ContinentPathfinder = new ContinentPathfinder(Allocator.Persistent);
             
             // Build the caches
-            PathCache = new PathCache(Constants.MAX_CACHED_PATHS);
-            FlowCache = new FlowCache(1000);
-            LineCache = new LineCache(1000);
+            PathCache = new PathCache(PathfindingConstants.MAX_CACHED_PATHS);
+            FlowCache = new FlowCache(PathfindingConstants.EXPECTED_SECTORS_IN_MAP * 10);
+            LineCache = new LineCache(PathfindingConstants.MAX_CACHED_PATHS);
 
             // Build the request buffers
-            RebuildRequests = new NativeList<int>(50, Allocator.Persistent);
+            RebuildRequests = new NativeList<GraphSector>(50, Allocator.Persistent);
             PathRequests = new NativeQueue<PathRequest>(Allocator.Persistent);
             FlowRequests = new NativeQueue<FlowRequest>(Allocator.Persistent);
             LineRequests = new NativeQueue<LineRequest>(Allocator.Persistent);
+            PathInFlightKeys = new NativeHashSet<int4>(256, Allocator.Persistent);
 
         }
 
@@ -54,28 +114,34 @@ namespace FlowTiles.ECS {
             FlowCache.Dispose();
             LineCache.Dispose();
 
-            RebuildRequests.Dispose();
-            PathRequests.Dispose(); 
-            FlowRequests.Dispose();
-            LineRequests.Dispose();
+            if (RebuildRequests.IsCreated) RebuildRequests.Dispose();
+            if (PathRequests.IsCreated) PathRequests.Dispose(); 
+            if (FlowRequests.IsCreated) FlowRequests.Dispose();
+            if (LineRequests.IsCreated) LineRequests.Dispose();
+            if (PathInFlightKeys.IsCreated) PathInFlightKeys.Dispose();
 
+            DisposeInFlightJobs();
+        }
+
+        // Dispose calculation jobs that have not yet finished. Also dispose their results because they will not be cached.
+        private void DisposeInFlightJobs () {
             if (TempPathTasks.IsCreated) {
                 for (int i = 0; i < TempPathTasks.Length; i++) {
-                    TempPathTasks[i].Dispose();
+                    TempPathTasks[i].DisposeAll();
                 }
                 TempPathTasks.Dispose();
             }
 
             if (TempFlowTasks.IsCreated) {
                 for (int i = 0; i < TempFlowTasks.Length; i++) {
-                    TempFlowTasks[i].Dispose();
+                    TempFlowTasks[i].DisposeAll();
                 }
                 TempFlowTasks.Dispose();
             }
 
             if (TempLineTasks.IsCreated) {
                 for (int i = 0; i < TempLineTasks.Length; i++) {
-                    TempLineTasks[i].Dispose();
+                    TempLineTasks[i].DisposeAll();
                 }
                 TempLineTasks.Dispose();
             }
@@ -85,90 +151,108 @@ namespace FlowTiles.ECS {
         public void OnUpdate(ref SystemState state) {
 
             // Check pathfinding has been initialised
-            var data = SystemAPI.GetSingleton<GlobalPathfindingData>();
-            if (!data.IsInitialised) {
+            if (!LevelIsInitialised) {
                 return;
             }
 
+            // Complete all pathfinding jobs from last frame to avoid race conditions during state update
+            state.Dependency.Complete();
+
             // Cache all data calculated in parallel (from last frame)
-            CacheCalculationsFromLastFrame(data.Graph.GraphVersion.Value);
+            CacheCalculationsFromLastFrame(Graph.GraphVersion.Value);
 
             // Rebuild all dirty graph sectors (spread across multiple frames)
-            if (data.Level.NeedsRebuilding.Value) {
-                RebuildDirtySectors(data.Level, data.Graph, ref state);
+            if (RebuildGraph (ref state)) {
+                // Pause pathfinding until the rebuild is complete
                 return;
             }
 
             // First-time build is complete. Pathing can begin!
-            data.Level.IsInitialised.Value = true;
+            Level.IsInitialised.Value = true;
 
             // Calculate queued path, flow and sightline requests
-            ProcessPathRequests(data.Graph, ref state);
-            ProcessFlowRequests(data.Graph, ref state);
-            ProcessLineRequests(data.Graph, ref state);
+            ProcessPathRequests(ref state);
+            ProcessFlowRequests(ref state);
+            ProcessLineRequests(ref state);
 
             // Check agents for any data-requesting components (added last frame)
-            FindNewRequests(data.Graph, ref state);
+            FindNewRequests(ref state);
 
             // Each agent attempts to follow its path, and adds request components as needed
-            FollowPaths(data.Graph, ref state);
+            FollowPaths(ref state);
 
+            // Capture the final handle so ClearLevel can safely wait for these jobs.
+            LastScheduledHandle = state.Dependency;
         }
 
-        private void RebuildDirtySectors(PathableLevel level, PathableGraph graph, ref SystemState state) {
+        private bool RebuildGraph(ref SystemState state) {
+            var modified = false;
+            if (IsRebuilding) {
+                CompleteSectorRebuild(ref state);
+                modified = true;
+            }
+            if (Level.NeedsRebuilding.Value) {
+                ScheduleSectorRebuild(ref state);
+                modified = true;
+            }
+            return modified;
+        }
+
+        private void ScheduleSectorRebuild(ref SystemState state) {    
             var workRemains = false;
 
             // Prepare sectors for building
             RebuildRequests.Clear();
-            for (int index = 0; index < graph.Layout.NumSectorsInLevel; index++) {
-                var flags = level.RebuildFlags[index];
+            for (int index = 0; index < Graph.Layout.NumSectorsInLevel; index++) {
+                var flags = Level.RebuildFlags[index];
                 if (flags.NeedsRebuilding) {
 
-                    // Prepare this sector (once)
-                    if (!flags.IsReinitialised) {
-                        FlowCache.ClearSector(index);
-                        graph.ReinitialiseSector(index, level);
-                        flags.IsReinitialised = true;
-                    }
-
                     // Queue this sector (if enough space this frame)
-                    if (RebuildRequests.Length < Constants.MAX_FLOWFIELDS_PER_FRAME) {
-                        RebuildRequests.Add(index);
+                    if (RebuildRequests.Length < PathfindingConstants.MAX_REBUILDS_PER_FRAME) {
+                        FlowCache.ClearSector(index);
+                        var newSector = Graph.InstantiateSector(index, Level);
+                        RebuildRequests.Add(newSector);
                         flags.NeedsRebuilding = false;
-                    } else {
+                    } 
+                    // Else, hold for next frame
+                    else {
                         workRemains = true;
                     }
 
-                    level.RebuildFlags[index] = flags;
+                    Level.RebuildFlags[index] = flags;
                 }
             }
-
             // Once all sectors are built, increase the graph version
             if (!workRemains) {
-                level.NeedsRebuilding.Value = false;
-                graph.GraphVersion.Value++;
+                Level.NeedsRebuilding.Value = false;
+                Graph.GraphVersion.Value++;
             }
-
-            // Calculate exit points
-            // (requires checking neighbors, therefore sectors must be fully reinitialised)
-            for (int request = 0; request < RebuildRequests.Length; request++) {
-                var index = RebuildRequests[request];
-                graph.BuildPortals(index);
+            if (RebuildRequests.Length == 0) {
+                return;
             }
 
             // Build internal sector data in parallel
-            var sectorsJob = new RebuildGraphJob {
-                Requests = RebuildRequests,
-                Graph = graph,
+            IsRebuilding = true;
+            RebuildTask = new RebuildGraphJob {
+                Requests = RebuildRequests.AsArray(),
             };
-            state.Dependency = sectorsJob.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
+            state.Dependency = RebuildTask.ScheduleParallel(RebuildRequests.Length, 1, state.Dependency);
+        }
+
+        private void CompleteSectorRebuild(ref SystemState state) {
+            for (int i = 0; i < RebuildRequests.Length; i++) {
+                var result = RebuildRequests[i];
+                var index = result.Index;
+                Graph.StoreSector(index, result);
+            }
+            RebuildTask = default;
+            IsRebuilding = false;
 
             // Once all sectors are built, recalculate the graph continents
-            if (!workRemains) {
-                var continentsJob = new RecalculateContinentsJob(graph, ContinentPathfinder);
+            if (!Level.NeedsRebuilding.Value) {
+                var continentsJob = new RecalculateContinentsJob(Graph, ContinentPathfinder);
                 state.Dependency = continentsJob.Schedule(state.Dependency);
             }
-
         }
 
         private void CacheCalculationsFromLastFrame (int graphVersion) {
@@ -177,13 +261,14 @@ namespace FlowTiles.ECS {
             if (TempPathTasks.IsCreated) {
                 for (int i = 0; i < TempPathTasks.Length; i++) {
                     var task = TempPathTasks[i];
-                    if (task.Success[0]) {
-                        PathCache.StorePath(task.CacheKey, new CachedPortalPath {
-                            GraphVersionAtSearch = graphVersion,
-                            Nodes = task.Path
-                        });
-                    }
-                    task.DisposeTempData();
+                    PathCache.StorePath(task.CacheKey, new CachedPortalPath {
+                        StartCell = task.Start,
+                        Nodes = task.Path,
+                        GraphVersionAtSearch = graphVersion,
+                        PathWasFound = task.Success[0],
+                        // No longer pending
+                    });
+                    task.Dispose();
                 }
                 TempPathTasks.Dispose();
             }
@@ -196,7 +281,7 @@ namespace FlowTiles.ECS {
                     FlowCache.StoreField(result.SectorIndex, task.CacheKey, new CachedFlowField {
                         FlowField = result,
                     });
-                    task.DisposeTempData();
+                    task.Dispose();
                 }
                 TempFlowTasks.Dispose();
             }
@@ -209,40 +294,54 @@ namespace FlowTiles.ECS {
                         WasFound = task.SightlineExists[0],
                         GraphVersionAtSearch = graphVersion,
                     });
-                    task.DisposeTempData();
+                    task.Dispose();
                 }
                 TempLineTasks.Dispose();
             }
 
         }
 
-        private void ProcessPathRequests(PathableGraph graph, ref SystemState state) {
+        private void ProcessPathRequests(ref SystemState state) {
 
             var numRequests = PathRequests.Count;
             if (numRequests == 0) {
                 return;
             }
 
-            // Allocate the tasks
-            var numTasks = math.min(numRequests, Constants.MAX_PATHFINDS_PER_FRAME);
+            var now = (float)SystemAPI.Time.ElapsedTime;
+
+            // Cap how many tasks we schedule this frame.
+            // Snapshot the queue count so re-enqueued requests are not re-examined this frame.
+            var numTasks = math.min(numRequests, PathfindingConstants.MAX_PATHFINDS_PER_FRAME);
             var tasks = new NativeList<FindPathsJob.Task>(numTasks, Allocator.TempJob);
-            for (int i = 0; i < numTasks; i++) {
+            var snapshot = numRequests;
+
+            while (tasks.Length < numTasks && snapshot > 0 && PathRequests.Count > 0) {
+                snapshot--;
                 var request = PathRequests.Dequeue();
 
-                // Discard duplicate requests
+                // If oldest path is still pending, wait for it to complete before accepting new requests.
+                // Defer this request: put it back so it survives until next frame.
+                if (PathCache.WaitForCapacity(now, pendingTimeoutSeconds: 3f)) {
+                    PathRequests.Enqueue(request);
+                    break;
+                }
+
+                // Discard duplicate requests (already promoted to a real task by an earlier frame)
                 if (PathCache.TryGetPath(request.CacheKey, out var existing) && existing.HasBeenQueued) {
+                    PathInFlightKeys.Remove(request.CacheKey);
                     continue;
                 }
 
-                // Check dest field exists
+                // Request flow fields for start and dest cells
                 CachedFlowField startField;
                 CachedFlowField destField;
                 var startFieldKey = CacheKeys.ToFlowKey(request.originCell, 0, request.travelType);
                 var destFieldKey = CacheKeys.ToFlowKey(request.destCell, 0, request.travelType);
-                var failed = false;
+                var flowCacheMiss = false;
 
                 if (!FlowCache.TryGetField(startFieldKey, out startField)) {
-                    failed = true;
+                    flowCacheMiss = true;
 
                     // Request a start field
                     FlowRequests.Enqueue(new FlowRequest {
@@ -250,11 +349,11 @@ namespace FlowTiles.ECS {
                         travelType = request.travelType,
                     });
                 } else {
-                    failed |= startField.IsPending;
+                    flowCacheMiss |= startField.IsPending;
                 }
 
                 if (!FlowCache.TryGetField(destFieldKey, out destField)) {
-                    failed = true;
+                    flowCacheMiss = true;
 
                     // Request a dest field
                     FlowRequests.Enqueue(new FlowRequest {
@@ -262,10 +361,12 @@ namespace FlowTiles.ECS {
                         travelType = request.travelType,
                     });
                 } else {
-                    failed |= destField.IsPending;
+                    flowCacheMiss |= destField.IsPending;
                 }
 
-                if (failed) {
+                // Defer this request until the flow tiles are ready.
+                // Keep the in-flight key marker so agents do not re-emit while we wait.
+                if (flowCacheMiss) {
                     PathRequests.Enqueue(request);
                     continue;
                 }
@@ -278,36 +379,46 @@ namespace FlowTiles.ECS {
                     StartField = startField.FlowField,
                     DestField = destField.FlowField,
                     TravelType = request.travelType,
-                    Path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Persistent),
+                    Path = new UnsafeList<PortalPathNode>(PathfindingConstants.EXPECTED_MAX_PATH_LENGTH, Allocator.Persistent),
                     Success = new UnsafeArray<bool>(1, Allocator.TempJob),
                 };
                 tasks.Add(task);
 
+                // Promote: the request is now a real pending task, drop the in-flight marker.
+                PathInFlightKeys.Remove(request.CacheKey);
+
                 // Update the cache
                 PathCache.StorePath(request.CacheKey, new CachedPortalPath {
-                    IsPending = true,
+                    StartCell = request.originCell,
                     HasBeenQueued = true,
+                    IsPending = true,
+                    PendingSinceTime = now,
                 });
-
             }
+
+            // No PathRequests.Clear() - any unprocessed requests stay in the queue for next frame.
 
             // Schedule the tasks
             TempPathTasks = tasks;
-            var pathJob = new FindPathsJob(graph, tasks.AsArray());
+            var pathJob = new FindPathsJob(Graph, tasks.AsArray());
             state.Dependency = pathJob.ScheduleParallel(tasks.Length, 1, state.Dependency);
         }
 
-        private void ProcessFlowRequests(PathableGraph graph, ref SystemState state) {
+        private void ProcessFlowRequests(ref SystemState state) {
 
             var numRequests = FlowRequests.Count;
             if (numRequests == 0) {
                 return;
             }
 
-            // Allocate the tasks
-            var numTasks = math.min(numRequests, Constants.MAX_FLOWFIELDS_PER_FRAME);
+            // Cap how many tasks we schedule this frame.
+            // Snapshot the queue count so re-enqueued requests are not re-examined this frame.
+            var numTasks = math.min(numRequests, PathfindingConstants.MAX_FLOWFIELDS_PER_FRAME);
             var tasks = new NativeList<FindFlowsJob.Task>(numTasks, Allocator.TempJob);
-            for (int i = 0; i < numRequests; i++) {
+            var snapshot = numRequests;
+
+            while (tasks.Length < numTasks && snapshot > 0 && FlowRequests.Count > 0) {
+                snapshot--;
                 var request = FlowRequests.Dequeue();
 
                 // Discard duplicate requests
@@ -318,7 +429,7 @@ namespace FlowTiles.ECS {
                 // Find the goal boundaries
                 var goal = request.goalCell;
                 var travelType = request.travelType;
-                var goalMap = graph.CellToSectorMap(goal, travelType);
+                var goalMap = Graph.CellToSectorMap(goal, travelType);
                 var goalBounds = new CellRect(goal, goal);
 
                 if (!request.goalDirection.Equals(0)) {
@@ -334,8 +445,8 @@ namespace FlowTiles.ECS {
                     Sector = goalMap,
                     GoalBounds = goalBounds,
                     ExitDirection = request.goalDirection,
-                    Flow = new Utils.UnsafeField<float2>(sizeCells, Allocator.Persistent),
-                    Distances = new Utils.UnsafeField<int>(sizeCells, Allocator.Persistent),
+                    Flow = new UnsafeField<float2>(sizeCells, Allocator.Persistent),
+                    Distances = new UnsafeField<int>(sizeCells, Allocator.Persistent),
                 };
                 tasks.Add(task);
 
@@ -345,6 +456,8 @@ namespace FlowTiles.ECS {
                 });
             }
 
+            // No FlowRequests.Clear() - any unprocessed requests stay in the queue for next frame.
+
             // Schedule the tasks
             TempFlowTasks = tasks;
             var flowJob = new FindFlowsJob(tasks.AsArray());
@@ -352,19 +465,22 @@ namespace FlowTiles.ECS {
 
         }
 
-        private void ProcessLineRequests(PathableGraph graph, ref SystemState state) {
+        private void ProcessLineRequests(ref SystemState state) {
 
             var numRequests = LineRequests.Count;
             if (numRequests == 0) {
                 return;
             }
 
-            // Allocate the tasks
-            var numTasks = math.min(numRequests, Constants.MAX_SIGHTLINES_PER_FRAME);
+            // Cap how many tasks we schedule this frame.
+            // Snapshot the queue count so re-enqueued requests are not re-examined this frame.
+            var numTasks = math.min(numRequests, PathfindingConstants.MAX_SIGHTLINES_PER_FRAME);
             var tasks = new NativeList<FindSightlinesJob.Task>(numTasks, Allocator.TempJob);
-            var graphVersion = graph.GraphVersion.Value;
+            var graphVersion = Graph.GraphVersion.Value;
+            var snapshot = numRequests;
 
-            for (int i = 0; i < numRequests; i++) {
+            while (tasks.Length < numTasks && snapshot > 0 && LineRequests.Count > 0) {
+                snapshot--;
                 var request = LineRequests.Dequeue();
 
                 // Discard duplicate requests
@@ -385,69 +501,88 @@ namespace FlowTiles.ECS {
                 LineCache.SetSightline(request.CacheKey, new CachedSightline {
                     IsPending = true,
                     HasBeenQueued = true,
-                    GraphVersionAtSearch = graph.GraphVersion.Value,
+                    GraphVersionAtSearch = graphVersion,
                 });
             }
 
+            // No LineRequests.Clear() - any unprocessed requests stay in the queue for next frame.
+
             // Schedule the tasks
             TempLineTasks = tasks;
-            var sightlineJob = new FindSightlinesJob(tasks.AsArray(), graph);
+            var sightlineJob = new FindSightlinesJob(tasks.AsArray(), Graph);
             state.Dependency = sightlineJob.ScheduleParallel(tasks.Length, 4, state.Dependency);
 
         }
 
         // These jobs cannot be multi-threaded
-        private void FindNewRequests(PathableGraph graph, ref SystemState state) {
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+        private void FindNewRequests( ref SystemState state) {
+            var ecb = SystemAPI.GetSingleton<EndInitializationEntityCommandBufferSystem.Singleton>();
+
+            var dependency = state.Dependency;
 
             // Invalidate old paths
-            new InvalidatePathsJob {
+            dependency = new InvalidatePathsJob {
                 PathCache = PathCache,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
+            }.Schedule(dependency);
 
             // Accumulate path requests
-            new RequestPathsJob {
+            dependency = new RequestPathsJob {
                 PathCache = PathCache,
                 PathRequests = PathRequests,
+                PathInFlightKeys = PathInFlightKeys,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
+            }.Schedule(dependency);
 
             // Accumulate flow requests
-            new RequestFlowsJob {
+            dependency = new RequestFlowsJob {
                 FlowCache = FlowCache,
                 FlowRequests = FlowRequests,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
+            }. Schedule(dependency);
 
             // Accumulate line requests
-            new RequestSightlinesJob {
+            dependency = new RequestSightlinesJob {
                 LineCache = LineCache,
                 LineRequests = LineRequests,
-                GraphVersion = graph.GraphVersion.Value,
+                GraphVersion = Graph.GraphVersion.Value,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged),
-            }.Schedule();
+            }.Schedule(dependency);
 
+            state.Dependency = dependency;
         }
 
-        private SystemState FollowPaths(PathableGraph graph, ref SystemState state) {
-            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+        private void FollowPaths(ref SystemState state) {
+            var ecb = SystemAPI.GetSingleton<EndInitializationEntityCommandBufferSystem.Singleton>();
+
+            var dependency = state.Dependency;
 
             // Follow the paths
-            new FollowPathsJob {
-                Graph = graph,
+            dependency = new FollowPathsJob {
+                Graph = Graph,
                 PathCache = PathCache,
                 FlowCache = FlowCache,
                 LineCache = LineCache,
+                PathInFlightKeys = PathInFlightKeys,
                 ECB = ecb.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter(),
-            }.ScheduleParallel();
+            }.ScheduleParallel(dependency);
 
-            // Expose flow data of each agent for debug visualisation (optional)
-            new DebugPathsJob {
-                FlowCache = FlowCache,
-            }.ScheduleParallel();
+            if (Application.isEditor) {
+                // Expose flow data of each agent for debug visualisation (optional)
+                dependency = new DebugPathsJob {
+                    FlowCache = FlowCache,
+                }.ScheduleParallel(dependency);
+            }
 
-            return state;
+            state.Dependency = dependency;
+        }
+
+        public static NativeArray<CachedPortalPath> FindAllCachedPaths (Allocator allocator = Allocator.Temp) {
+            ThreadSafety.EnsureECSThreadSafety();
+            var world = World.DefaultGameObjectInjectionWorld;
+            var handle = world.Unmanaged.GetExistingUnmanagedSystem<PathfindingSystem>();
+            ref var sys = ref world.Unmanaged.GetUnsafeSystemRef<PathfindingSystem>(handle);
+            return sys.PathCache.GetAllValues(allocator);
         }
 
     }

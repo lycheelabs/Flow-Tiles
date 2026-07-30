@@ -7,7 +7,7 @@ namespace FlowTiles {
         public static readonly SectorFlags Rebuild = new SectorFlags { NeedsRebuilding = true };
 
         public bool NeedsRebuilding;
-        public bool IsReinitialised;
+
     }
 
 }

@@ -14,6 +14,7 @@ namespace FlowTiles.ECS {
 
         [BurstCompile]
         private void Execute(RefRO<MissingFlowData> data, Entity entity) {
+            
             var key = data.ValueRO.Key;
             if (!FlowCache.ContainsField(key)) {
 
@@ -34,6 +35,7 @@ namespace FlowTiles.ECS {
 
             // Remove component
             ECB.RemoveComponent<MissingFlowData>(entity);
+            
         }
     }
 

@@ -22,7 +22,9 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void Dispose() {
-            Cells.Dispose();
+            if (Cells.IsCreated) {
+                Cells.Dispose();
+            }
         }
 
         public void CalculateIslands(SectorCosts costs) {
@@ -37,7 +39,11 @@ namespace FlowTiles.PortalPaths {
         }
 
         public short GetIslandAt(int2 pos) {
+            if (!Contains(pos)) return -1;
             var localPos = pos - Bounds.MinCell;
+            if (localPos.x < 0 || localPos.x >= Cells.Size.x || localPos.y < 0 || localPos.y >= Cells.Size.y) {
+                return -1;
+            }
             return Cells[localPos.x, localPos.y];
         }
 
@@ -56,7 +62,7 @@ namespace FlowTiles.PortalPaths {
                     Cells[x, y] = open;
 
                     var cost = costs.Cells[x, y];
-                    var blocked = cost == PathableLevel.MAX_COST;
+                    var blocked = cost == PathableGrid.MAX_COST;
                     if (blocked) Cells[x, y] = wall;
                 }
             }
@@ -102,6 +108,11 @@ namespace FlowTiles.PortalPaths {
         // Flood fill using the scanline method. Based on...
         // https://simpledevcode.wordpress.com/2015/12/29/flood-fill-algorithm-using-c-net/
         private void FloodFill(SectorCosts costs, int2 startPoint, short oldColorIndex, short newColorIndex, int cellsInSector) {
+            // Bounds check for start point
+            if (startPoint.x < 0 || startPoint.x >= Cells.Size.x || startPoint.y < 0 || startPoint.y >= Cells.Size.y) {
+                return;
+            }
+
             NativeStack<int2> points = new NativeStack<int2>(cellsInSector, Allocator.Temp);
             NativeHashSet<int2> visited = new NativeHashSet<int2>(cellsInSector, Allocator.Temp);
 
@@ -110,8 +121,14 @@ namespace FlowTiles.PortalPaths {
 
             while (points.Count != 0) {
                 int2 temp = points.Pop();
+                
+                // Bounds check for current point
+                if (temp.x < 0 || temp.x >= Cells.Size.x || temp.y < 0 || temp.y >= Cells.Size.y) {
+                    continue;
+                }
+                
                 int row = temp.y;
-                while (row >= 0 && Cells[temp.x, row] == oldColorIndex) {
+                while (row >= 0 && row < Cells.Size.y && Cells[temp.x, row] == oldColorIndex) {
                     row--;
                 }
                 row++;
@@ -121,7 +138,7 @@ namespace FlowTiles.PortalPaths {
                 while (row < Cells.Size.y && Cells[temp.x, row] == oldColorIndex) {
                     Cells[temp.x, row] = newColorIndex;
 
-                    if (!spanLeft && temp.x > 0 && Cells[temp.x - 1, row] == oldColorIndex) {
+                    if (!spanLeft && temp.x > 0 && temp.x - 1 < Cells.Size.x && Cells[temp.x - 1, row] == oldColorIndex) {
                         var next = new int2(temp.x - 1, row);
                         if (!visited.Contains(next)) {
                             visited.Add(next);
@@ -129,11 +146,11 @@ namespace FlowTiles.PortalPaths {
                         }
                         spanLeft = true;
                     }
-                    else if (spanLeft && (temp.x - 1 == 0 || Cells[temp.x - 1, row] != oldColorIndex)) {
+                    else if (spanLeft && (temp.x - 1 < 0 || temp.x - 1 >= Cells.Size.x || Cells[temp.x - 1, row] != oldColorIndex)) {
                         spanLeft = false;
                     }
 
-                    if (!spanRight && temp.x < Cells.Size.x - 1 && Cells[temp.x + 1, row] == oldColorIndex) {
+                    if (!spanRight && temp.x < Cells.Size.x - 1 && temp.x + 1 < Cells.Size.x && Cells[temp.x + 1, row] == oldColorIndex) {
                         var next = new int2(temp.x + 1, row);
                         if (!visited.Contains(next)) {
                             visited.Add(next);
@@ -141,12 +158,15 @@ namespace FlowTiles.PortalPaths {
                         }
                         spanRight = true;
                     }
-                    else if (spanRight && (temp.x < Cells.Size.x - 1 && Cells[temp.x + 1, row] != oldColorIndex)) {
+                    else if (spanRight && (temp.x + 1 >= Cells.Size.x || Cells[temp.x + 1, row] != oldColorIndex)) {
                         spanRight = false;
                     }
                     row++;
                 }
             }
+            
+            points.Dispose();
+            visited.Dispose();
         }
 
         private short TryGetColor(int x, int y) {

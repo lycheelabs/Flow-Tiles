@@ -1,5 +1,8 @@
 ﻿using Unity.Collections;
 using FlowTiles.Utils;
+using System;
+using Unity.Mathematics;
+using UnityEngine;
 
 namespace FlowTiles.PortalPaths {
 
@@ -13,8 +16,12 @@ namespace FlowTiles.PortalPaths {
         public readonly int Version;
         public readonly CellRect Bounds;
         public UnsafeArray<SectorData> DataSets;
+        public bool IsCreated;
 
-        public GraphSector(int index, int version, CellRect boundaries, PathableLevel level, int numTravelTypes) {
+        public SectorData GetData (int travelType) => DataSets[travelType];
+
+        public GraphSector(int index, int version, CellRect boundaries, ref PathableGrid levelGrid, int numTravelTypes) {
+            IsCreated = true;
             Index = index;
             Bounds = boundaries;
             Version = version;
@@ -22,26 +29,31 @@ namespace FlowTiles.PortalPaths {
             DataSets = new UnsafeArray<SectorData>(numTravelTypes, Allocator.Persistent);
             for (int i = 0; i < DataSets.Length; i++) {
                 var data = new SectorData(Index, Bounds, i, version);
-                data.Costs.Initialise(level);
+                data.Initialise(ref levelGrid);
                 DataSets[i] = data;
             }
         }
 
-        public bool IsCreated => DataSets.IsCreated;
-
-        public SectorData GetData (int travelType) {
-            return DataSets[travelType];
-        }
-
-        public void UpdateData(int travelType, SectorData data) {
-            DataSets[travelType] = data;
+        public void Calculate() {
+            var size = Bounds.WidthCells * Bounds.HeightCells;
+            SectorPathfinder pathfinder = new SectorPathfinder(size, Allocator.Temp);
+            for (int travelType = 0; travelType < DataSets.Length; travelType++) {
+                var data = DataSets[travelType];
+                data.Islands.CalculateIslands(data.Costs);
+                data.Portals.BuildInternalConnections(data, ref pathfinder);
+                DataSets[travelType] = data;
+            }
+            pathfinder.Dispose();
         }
 
         public void Dispose () {
+            if (!IsCreated) return;
+            IsCreated = false;
+
             for (int i = 0; i < DataSets.Length; i++) {
                 DataSets[i].Dispose();
             }
-            DataSets.Dispose();
+            if (DataSets.IsCreated) DataSets.Dispose();
         }
 
     }

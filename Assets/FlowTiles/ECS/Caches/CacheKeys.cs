@@ -17,6 +17,10 @@ namespace FlowTiles.ECS {
             return CellToIndex(dest, levelSize) == key.y;
         }
 
+        public static int2 ToSourceCell (int4 key, int2 levelSize) {
+            return IndexToCell(key.x, levelSize);
+        }
+
         public static int2 ToDestCell(int4 key, int2 levelSize) {
             return IndexToCell(key.y, levelSize);
         }

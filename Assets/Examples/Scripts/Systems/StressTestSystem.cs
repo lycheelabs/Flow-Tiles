@@ -44,7 +44,7 @@ namespace FlowTiles.Examples {
                     newGoal.x = math.min(newGoal.x / 4 * 4 + 2, LevelSize.x - 1);
                     goal.Goal = newGoal; 
                     goal.HasGoal = true;
-                    progress.HasPath = false;
+                    progress.IsAttachedToPath = false;
                 }
 
                 data.Random = random;

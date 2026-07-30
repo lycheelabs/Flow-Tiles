@@ -8,6 +8,8 @@ namespace FlowTiles.Examples {
     public static class Visualisation {
 
         public static void DrawSectors (PathableGraph graph) {
+            ThreadSafety.EnsureECSThreadSafety();
+
             var numSectors = graph.Layout.NumSectorsInLevel;
             for (int index = 0; index < numSectors; index++) {
                 if (!graph.SectorIsInitialised(index)) continue;
@@ -17,6 +19,8 @@ namespace FlowTiles.Examples {
         }
 
         public static void DrawSectorPortals (PathableGraph graph, int travelType) {
+            ThreadSafety.EnsureECSThreadSafety();
+
             var numSectors = graph.Layout.NumSectorsInLevel;
             for (int index = 0; index < numSectors; index++) {
                 if (!graph.SectorIsInitialised(index)) continue;
@@ -30,6 +34,8 @@ namespace FlowTiles.Examples {
         }
 
         public static void DrawSectorConnections(PathableGraph graph, int travelType) {
+            ThreadSafety.EnsureECSThreadSafety();
+            
             var numSectors = graph.Layout.NumSectorsInLevel;
             for (int index = 0; index < numSectors; index++) {
                 if (!graph.SectorIsInitialised(index)) continue;

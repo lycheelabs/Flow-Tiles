@@ -21,12 +21,14 @@ namespace FlowTiles.PortalPaths {
             Cells = new UnsafeField<byte>(Bounds.SizeCells, Allocator.Persistent, initialiseTo: 1);
         }
 
-        public void Initialise(PathableLevel map) {
+        public void Initialise(PathableGrid map) {
             CopyCosts(map, Bounds.MinCell);
         }
 
         public void Dispose() {
-            Cells.Dispose();
+            if (Cells.IsCreated) {
+                Cells.Dispose();
+            }
         }
 
         public bool Contains(int2 pos) {
@@ -37,19 +39,28 @@ namespace FlowTiles.PortalPaths {
         }
 
         public bool IsOpenAt(int2 pos) {
+            if (!Contains(pos)) return false;
             var localPos = pos - Bounds.MinCell;
-            return Contains(pos)
-                && Cells[localPos.x, localPos.y] < PathableLevel.MAX_COST;
+            if (localPos.x < 0 || localPos.x >= Cells.Size.x || localPos.y < 0 || localPos.y >= Cells.Size.y) {
+                return false;
+            }
+            return Cells[localPos.x, localPos.y] < PathableGrid.MAX_COST;
         }
 
         public byte GetCostAt(int2 pos) {
+            if (!Contains(pos)) {
+                return PathableGrid.MAX_COST;
+            }
             var localPos = pos - Bounds.MinCell;
+            if (localPos.x < 0 || localPos.x >= Cells.Size.x || localPos.y < 0 || localPos.y >= Cells.Size.y) {
+                return PathableGrid.MAX_COST;
+            }
             return Cells[localPos.x, localPos.y];
         }
 
         // --------------------------------------------------------------
 
-        private void CopyCosts(PathableLevel map, int2 corner) {
+        private void CopyCosts(PathableGrid map, int2 corner) {
             for (int x = 0; x < Cells.Size.x; x++) {
                 for (var y = 0; y < Cells.Size.y; y++) {
                     Cells[x, y] = map.GetCostAt(corner.x + x, corner.y + y, MovementType);

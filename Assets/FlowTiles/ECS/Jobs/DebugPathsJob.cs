@@ -11,9 +11,10 @@ namespace FlowTiles.ECS {
 
         [BurstCompile]
         private void Execute(RefRO<FlowProgress> progress, ref FlowDebugData debug) {
+            
             debug.CurrentFlowTile = default;
 
-            if (!progress.ValueRO.HasFlow) {
+            if (!progress.ValueRO.IsAttachedToFlow) {
                 return;
             }
             var foundFlow = FlowCache.TryGetField(progress.ValueRO.FlowKey, out var flow);
@@ -22,6 +23,7 @@ namespace FlowTiles.ECS {
             }
 
             debug.CurrentFlowTile = flow.FlowField;
+            
         }
     }
 

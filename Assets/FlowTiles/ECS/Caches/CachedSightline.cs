@@ -6,6 +6,7 @@
 
         public bool WasFound;
         public int GraphVersionAtSearch;
+        public bool IsCreated;
 
     }
 

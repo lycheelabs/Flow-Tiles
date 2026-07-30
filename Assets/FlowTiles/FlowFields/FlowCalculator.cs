@@ -1,3 +1,4 @@
+using System;
 using FlowTiles.ECS;
 using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
@@ -21,14 +22,17 @@ namespace FlowTiles.FlowFields {
         public FlowCalculator(FindFlowsJob.Task task, Allocator allocator) 
             : this (task.Sector, task.GoalBounds, task.ExitDirection, allocator) {}
 
-        public FlowCalculator(SectorData sector, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
-            Size = sector.Bounds.SizeCells;
-            Costs = sector.Costs;
+        public FlowCalculator(SectorData sector, CellRect goalBounds, int2 exitDirection, Allocator allocator)
+            : this (sector.Costs, sector.Bounds, goalBounds, exitDirection, allocator) {}
+
+        public FlowCalculator(SectorCosts sectorCosts, CellRect sectorBounds, CellRect goalBounds, int2 exitDirection, Allocator allocator) {
+            Size = sectorBounds.SizeCells;
+            Costs = sectorCosts;
             GoalBounds = goalBounds;
             ExitDirection = exitDirection;
 
-            var numCells = sector.Bounds.WidthCells * sector.Bounds.HeightCells;
-            BaseFlow = new UnsafeField<int2>(numCells, allocator);
+            var numCells = sectorBounds.WidthCells * sectorBounds.HeightCells;
+            BaseFlow = new UnsafeField<int2>(sectorBounds.SizeCells, allocator);
             Visited = new NativeHashSet<int2>(numCells, allocator);
             Queue = new NativePriorityQueue<PathfinderNode>(numCells * 2, allocator);
             Directions = new NativeArray<int2>(4, allocator);
@@ -39,25 +43,43 @@ namespace FlowTiles.FlowFields {
             Directions[3] = new int2(0, -1);
         }
 
-        public void Calculate(ref UnsafeField<float2> flow, ref UnsafeField<int> distance) {
+        public void Dispose () {
+            BaseFlow.Dispose();
+            Visited.Dispose();
+            Queue.Dispose();
+            Directions.Dispose();
+        }
+
+        public void Calculate(ref UnsafeField<float2> flow, ref UnsafeField<int> distance, bool allowDiagonals) {
 
             Visited.Clear();
             Queue.Clear();
 
             // Initialise the goal cells
             var sectorBounds = Costs.Bounds;
-            var size = sectorBounds.SizeCells;
-
             var goalMin = GoalBounds.MinCell - sectorBounds.MinCell;
             var goalMax = GoalBounds.MaxCell - sectorBounds.MinCell;
+            bool seededAnyGoal = false;
             for (int x = goalMin.x; x <= goalMax.x; x++) {
                 for (int y = goalMin.y; y <= goalMax.y; y++) {
                     var goal = new int2(x, y);
 
+                    if (!BaseFlow.IsValidIndex(goal.x, goal.y) ||
+                        !flow.IsValidIndex(goal.x, goal.y) ||
+                        !distance.IsValidIndex(goal.x, goal.y)) {
+                        continue;
+                    }
+
                     BaseFlow[goal.x, goal.y] = ExitDirection;
+                    distance[goal.x, goal.y] = 0;
                     Visited.Add(goal);
                     Queue.Enqueue(new PathfinderNode(goal, 0));
+                    seededAnyGoal = true;
                 }
+            }
+
+            if (!seededAnyGoal) {
+                throw new InvalidOperationException($"Goal bounds {GoalBounds} do not overlap sector bounds {sectorBounds}");
             }
 
             // Iterate over the cells once in least-cost order
@@ -98,14 +120,14 @@ namespace FlowTiles.FlowFields {
                     var flow1 = BaseFlow[x, y];
                     flow[x, y] = flow1;
 
-                    if (flow1.Equals(0)) continue;
+                    if (flow1.Equals(0) || !allowDiagonals) continue;
 
                     var cell2 = cell1 + flow1;
-                    if (IsIn(cell2) && Costs.Cells[cell2.x, cell2.y] < PathableLevel.MAX_COST) {
+                    if (IsIn(cell2) && Costs.Cells[cell2.x, cell2.y] < PathableGrid.MAX_COST) {
                         var flow2 = BaseFlow[cell2.x, cell2.y];
 
                         var cell3 = cell1 + flow2;
-                        if (IsIn(cell3) && Costs.Cells[cell3.x, cell3.y] < PathableLevel.MAX_COST) {
+                        if (IsIn(cell3) && Costs.Cells[cell3.x, cell3.y] < PathableGrid.MAX_COST) {
 
                             var combinedFlow = math.normalize(flow1 + flow2);
                             flow[x, y] = combinedFlow;

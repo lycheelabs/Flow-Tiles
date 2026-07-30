@@ -1,17 +1,26 @@
-using System.Diagnostics;
 using Unity.Collections;
 
 namespace FlowTiles.PortalPaths {
 
     public struct ContinentPathfinder {
 
-        public NativeQueue<Portal> QueuedNodes;
+        private NativeQueue<Portal> QueuedNodes;
+        public ContinentPathfinder (Allocator allocator) {
+            QueuedNodes = new NativeQueue<Portal>(allocator);
+        }
+
+        public bool IsCreated => QueuedNodes.IsCreated;
 
         public void Dispose () {
-            QueuedNodes.Dispose();
+            if (QueuedNodes.IsCreated) {
+                QueuedNodes.Dispose();
+                QueuedNodes = default;
+            }
         }
 
         public void RecalculateContinents(ref PathableGraph graph) {
+            if (!IsCreated) return;
+
             var numTravelType = graph.NumTravelTypes;
             for (int t = 0; t < numTravelType; t++) {
                 RecalculateContinents(ref graph, t);
@@ -59,7 +68,7 @@ namespace FlowTiles.PortalPaths {
                     for (int r = 0; r < portals.Roots.Length; r++) {
                         var root = portals.Roots[r];
                         if (root.Continent <= 0) {
-                            FindContinentStartingAt(graph, root, continent, travelType);
+                            FindContinentStartingAt(ref graph, root, continent, travelType);
                             continent++;
                             foundUnsetNode = true;
                         }
@@ -80,12 +89,19 @@ namespace FlowTiles.PortalPaths {
             return graph;
         }
 
-        private void FindContinentStartingAt(PathableGraph graph, SectorRoot start, int continent, int travelType) {
+        private void FindContinentStartingAt(ref PathableGraph graph, SectorRoot start, int continent, int travelType) {
 
             // Update the root
             var startSector = graph.IndexToSectorMap(start.SectorIndex, travelType);
             start.Continent = continent;
-            startSector.Portals.Roots[start.Island - 1] = start;
+            
+            // SAFETY FIX: Bounds check to prevent array access corruption
+            if (start.Island > 0 && start.Island <= startSector.Portals.Roots.Length) {
+                startSector.Portals.Roots[start.Island - 1] = start;
+            } else {
+                UnityEngine.Debug.LogError($"ContinentPathfinder: Invalid Island index {start.Island} for Roots array of length {startSector.Portals.Roots.Length}");
+                return;
+            }
 
             // Update and queue the root's portals
             QueuedNodes.Clear();
@@ -107,6 +123,9 @@ namespace FlowTiles.PortalPaths {
                     var edge = node.Edges[i];
                     var cell = edge.end.Cell;
                     var sector = graph.IndexToSectorMap(edge.end.SectorIndex, travelType);
+                    if (!sector.Portals.HasExitPortalAt(cell)) {
+                        continue;          // stale edge into a non-existent neighbor portal
+                    }
                     var exit = sector.GetPortal(cell);
 
                     if (exit.Continent <= 0) {
@@ -117,9 +136,14 @@ namespace FlowTiles.PortalPaths {
                         QueuedNodes.Enqueue(exit);
 
                         // Update this portal's root
-                        var root = sector.Portals.Roots[exit.Island - 1];
-                        root.Continent = continent;
-                        sector.Portals.Roots[exit.Island - 1] = root;
+                        // SAFETY FIX: Bounds check to prevent array access corruption
+                        if (exit.Island > 0 && exit.Island <= sector.Portals.Roots.Length) {
+                            var root = sector.Portals.Roots[exit.Island - 1];
+                            root.Continent = continent;
+                            sector.Portals.Roots[exit.Island - 1] = root;
+                        } else {
+                            UnityEngine.Debug.LogError($"ContinentPathfinder: Invalid Island index {exit.Island} for Roots array of length {sector.Portals.Roots.Length}");
+                        }
 
                     }
                 }
@@ -127,6 +151,7 @@ namespace FlowTiles.PortalPaths {
                 infLoopCheck++;
                 if (infLoopCheck > 9999) {
                     UnityEngine.Debug.Log("Infinite loop detected and broken");
+                    QueuedNodes.Clear();
                     break;
                 }
             }

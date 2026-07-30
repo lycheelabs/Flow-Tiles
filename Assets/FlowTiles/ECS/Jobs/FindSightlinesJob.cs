@@ -19,12 +19,13 @@ namespace FlowTiles.ECS {
 
             public UnsafeArray<bool> SightlineExists; // Expecting size = 1
 
-            public void DisposeTempData() {
-                SightlineExists.Dispose();
+            public void Dispose() {
+                if (SightlineExists.IsCreated) SightlineExists.Dispose();
             }
 
-            public void Dispose() {
-                SightlineExists.Dispose();
+            // Also disposes data intended for caching (nothing extra in this case)
+            public void DisposeAll() {
+                if (SightlineExists.IsCreated) SightlineExists.Dispose();
             }
 
         }
@@ -37,6 +38,7 @@ namespace FlowTiles.ECS {
             Graph = graph;
         }
 
+        [BurstCompile]
         public void Execute(int index) {
             var task = Tasks[index];
             var result = FlowTileUtils.HasLineOfSight(
@@ -47,6 +49,7 @@ namespace FlowTiles.ECS {
                 precise: true);
 
             task.SightlineExists[0] = result;
+            Tasks[index] = task;
         }
 
     }

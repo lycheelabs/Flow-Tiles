@@ -14,6 +14,7 @@ namespace FlowTiles.ECS {
 
         [BurstCompile]
         private void Execute(RefRO<MissingSightlineData> data, Entity entity) {
+            
             var key = data.ValueRO.Key;
             if (!LineCache.ContainsLine(key, GraphVersion)) {
 
@@ -35,6 +36,7 @@ namespace FlowTiles.ECS {
 
             // Remove component
             ECB.RemoveComponent<MissingSightlineData>(entity);
+            
         }
     }
 

@@ -23,13 +23,14 @@ namespace FlowTiles.ECS {
             public UnsafeArray<bool> Success; // Expecting size = 1
             public UnsafeList<PortalPathNode> Path;
 
-            public void DisposeTempData() {
-                Success.Dispose();
+            public void Dispose() {
+                if (Success.IsCreated) Success.Dispose();
             }
 
-            public void Dispose() {
-                Success.Dispose();
-                Path.Dispose();
+            // Also disposes data intended for caching
+            public void DisposeAll() {
+                if (Success.IsCreated) Success.Dispose();
+                if (Path.IsCreated) Path.Dispose();
             }
 
         }
@@ -45,13 +46,15 @@ namespace FlowTiles.ECS {
         [BurstCompile]
         public void Execute(int index) {
             var task = Tasks[index];
-            var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
+            var pathfinder = new PortalPathfinder(Graph, PathfindingConstants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
             var path = task.Path;
 
             var success = pathfinder.TryFindPath(task.Start, task.StartField, task.Dest, task.DestField, task.TravelType, ref path);
             task.Path = path;
             task.Success[0] = success;
             Tasks[index] = task;
+            
+            pathfinder.Dispose();
         }
 
     }

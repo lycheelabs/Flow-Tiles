@@ -10,10 +10,10 @@ namespace FlowTiles.Examples {
         private int Length;
         private float Frequency;
         private int DelayTicks;
-        private PathableLevel Level;
+        private PathableGrid Level;
         private int lastMovedTick;
 
-        public MovingWall (int2 corner, int length, int direction, int delayTicks, PathableLevel level, float fequency) {
+        public MovingWall (int2 corner, int length, int direction, int delayTicks, PathableGrid level, float fequency) {
             var values = new byte[length, 2];
             for (int i = 0; i < length; i++) {
                 values[i, 0] = 255;

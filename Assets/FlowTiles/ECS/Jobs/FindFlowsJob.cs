@@ -1,6 +1,7 @@
 ﻿using FlowTiles.FlowFields;
 using FlowTiles.PortalPaths;
 using FlowTiles.Utils;
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
@@ -24,6 +25,9 @@ namespace FlowTiles.ECS {
 
             public FlowField ResultAsFlowField() {
                 var goalCell = GoalBounds.CentreCell - Sector.Bounds.MinCell;
+                if (!Sector.Islands.Cells.IsValidIndex(goalCell.x, goalCell.y)) {
+                    throw new InvalidOperationException($"Goal cell {goalCell} is outside sector island data bounds {Sector.Islands.Cells.Size}");
+                }
                 var goalIsland = Sector.Islands.Cells[goalCell.x, goalCell.y];
 
                 return new FlowField {
@@ -37,12 +41,14 @@ namespace FlowTiles.ECS {
                 };
             }
 
-            public void DisposeTempData() {
-                //
+            public void Dispose () {
+                // Nothing to dispose at this step
             }
 
-            public void Dispose() {
-                Flow.Dispose();
+            // Also disposes data intended for caching
+            public void DisposeAll () {
+                if (Flow.IsCreated) Flow.Dispose();
+                if (Distances.IsCreated) Distances.Dispose();
             }
 
         }
@@ -53,14 +59,18 @@ namespace FlowTiles.ECS {
             Tasks = tasks;
         }
 
+        [BurstCompile]
         public void Execute(int index) {
             var task = Tasks[index];
             var calculator = new FlowCalculator(task, Allocator.Temp);
-            
+
             var flow = task.Flow;
             var distance = task.Distances;
-            calculator.Calculate(ref flow, ref distance);
+            calculator.Calculate(ref flow, ref distance, true);
             task.Flow = flow;
+            task.Distances = distance;
+            calculator.Dispose();
+            Tasks[index] = task;
         }
 
     }

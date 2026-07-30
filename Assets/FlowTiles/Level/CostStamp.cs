@@ -26,7 +26,7 @@ namespace FlowTiles {
         }
 
         public byte this[int x, int y] {
-            get => Values[x + y * Size.x];
+            get => Values[x, y];  
         }
 
         public void Dispose () {

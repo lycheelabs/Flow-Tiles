@@ -1,5 +1,5 @@
-﻿
-using FlowTiles.PortalPaths;
+﻿using FlowTiles.PortalPaths;
+using NUnit.Framework.Internal;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -14,6 +14,7 @@ namespace FlowTiles.ECS {
         [ReadOnly] public PathCache PathCache;
         [ReadOnly] public FlowCache FlowCache;
         [ReadOnly] public LineCache LineCache;
+        [ReadOnly] public NativeHashSet<int4> PathInFlightKeys;
 
         public EntityCommandBuffer.ParallelWriter ECB;
 
@@ -27,71 +28,104 @@ namespace FlowTiles.ECS {
                 [ChunkIndexInQuery] int sortKey) {
 
             result.Direction = 0;
-            progress.HasFlow = false;
+            progress.IsAttachedToFlow = false;
 
-            // Check dest has been set
+            // Check pathfinding is enabled
             if (!goal.ValueRO.HasGoal) {
-                progress.HasPath = false;
+                progress.IsAttachedToPath = false;
+                result.PathIsImpossible = false;
                 return;
             }
 
-            var current = position.ValueRO.PositionCell;
-            var dest = goal.ValueRO.Goal;
+            // Check start and dest are valid
+            var currentCell = position.ValueRO.PositionCell;
+            var goalCell = goal.ValueRO.Goal;
             var levelSize = Graph.Bounds.SizeCells;
             var travelType = goal.ValueRO.TravelType;
-            
-            // Check start and dest are valid
-            if (!Graph.Bounds.ContainsCell(current) || !Graph.Bounds.ContainsCell(dest)) {
-                progress.HasPath = false;
+
+            if (!Graph.Bounds.ContainsCell(currentCell) || !Graph.Bounds.ContainsCell(goalCell)) {
+                progress.IsAttachedToPath = false;
+                result.PathIsImpossible = true;
                 return;
             }
 
-            // Check path exists
-            var currentMap = Graph.CellToSectorMap(current, travelType);
-            var currentContinent = currentMap.GetRoot(current).Continent;
+            // Check path can exist (continents match)
+            var startCell = currentCell;
+            var startSector = Graph.Layout.CellToSectorIndex(startCell);
+            var startMap = Graph.IndexToSectorMap(startSector, travelType);
+            var startContinent = startMap.GetRoot(startCell).Continent;
+            
+            var destCell = goalCell;
+            var destSector = Graph.Layout.CellToSectorIndex(destCell);
+            var destMap = Graph.IndexToSectorMap(destSector, travelType);
+            var destContinent = destMap.GetRoot(destCell).Continent;
 
-            var destMap = Graph.CellToSectorMap(dest, travelType);
-            var destContinent = destMap.GetRoot(dest).Continent;
+            if (startContinent != destContinent) {
+                progress.IsAttachedToPath = false;
+                result.PathIsImpossible = true;
+                return;
+            }
+            result.PathIsImpossible = false;
 
-            if (currentContinent != destContinent) {
-                progress.HasPath = false;
+            // Apply start and dest cell rounding
+            startCell = Graph.TryApplySectorRounding(startCell, travelType);
+            destCell = Graph.TryApplySectorRounding(destCell, travelType);
+
+            var startIsland = startMap.GetCellIsland(startCell);
+            var destIsland = destMap.GetCellIsland(destCell);
+
+            // Override direction near destination
+            var smoothPos = position.ValueRO.Position;
+            var pos = position.ValueRO.PositionCell;
+            if (currentCell.Equals(goalCell)) {
+                result.Direction = 0;
+                return;
+            } 
+            if (startSector == destSector && startCell.Equals(destCell)) {
+                var directDir = math.normalizesafe(goalCell - currentCell);
+                result.Direction = directDir;
                 return;
             }
 
             // Attach to a path
-            if (!progress.HasPath) {
+            if (!progress.IsAttachedToPath) {
 
                 // Generate or retrieve a path
-                var pathKey = CacheKeys.ToPathKey(current, dest, levelSize, travelType);
+                var pathKey = CacheKeys.ToPathKey(startCell, destCell, levelSize, travelType);
                 var pathCacheHit = PathCache.ContainsPath(pathKey);
                 if (!pathCacheHit) {
-                    ECB.AddComponent(sortKey, entity, new MissingPathData {
-                        Start = current,
-                        Dest = dest,
-                        LevelSize = levelSize,
-                        TravelType = travelType,
-                    });
+                    // Only tag if no request is already queued for this key.
+                    // Otherwise we would re-emit every frame for every unsatisfied agent and
+                    // burn CPU in RequestPathsJob filtering duplicates.
+                    if (!PathInFlightKeys.Contains(pathKey)) {
+                        ECB.AddComponent(sortKey, entity, new MissingPathData {
+                            Start = startCell,
+                            Dest = destCell,
+                            LevelSize = levelSize,
+                            TravelType = travelType,
+                        });
+                    }
                     return;
                 }
 
-                progress.HasPath = true;
+                progress.IsAttachedToPath = true;
                 progress.PathKey = pathKey;
                 progress.NodeIndex = -1;
             }
 
             // Follow current path
-            if (progress.HasPath) {
+            if (progress.IsAttachedToPath) {
 
                 // Check destination hasn't changed
-                if (!CacheKeys.DestMatchesPathKey(dest, levelSize, progress.PathKey)) {
-                    progress.HasPath = false;
+                if (!CacheKeys.DestMatchesPathKey(destCell, levelSize, progress.PathKey)) {
+                    progress.IsAttachedToPath = false;
                     return;
                 }
 
-                // Check path exists
-                var pathFound = PathCache.TryGetPath(progress.PathKey, out var path);
-                if (!pathFound) {
-                    progress.HasPath = false;
+                // Check path has been calculated
+                var foundInCache = PathCache.TryGetPath(progress.PathKey, out var path);
+                if (!foundInCache) {
+                    progress.IsAttachedToPath = false;
                     return;
                 }
 
@@ -100,96 +134,85 @@ namespace FlowTiles.ECS {
                     return;
                 }
 
-                // Check version of the starting node
-                var firstNode = path.Nodes[0];
-                var firstSector = Graph.CellToSector(firstNode.Position.Cell);
-                if (firstNode.Version != firstSector.Version) {
-                    progress.HasPath = false;
+                // Check path is not empty
+                if (!path.PathWasFound) {
+                    result.PathIsImpossible = true;
 
-                    // Remove this path from the cache
-                    ECB.AddComponent(sortKey, entity, new InvalidPathData {
-                        Key = progress.PathKey,
-                    });
+                    // Invalidate empty path after graph update
+                    if (path.GraphVersionAtSearch != Graph.GraphVersion.Value) {
+                        ECB.AddComponent(sortKey, entity, new InvalidPathData {
+                            Key = progress.PathKey,
+                        });
+                        progress.IsAttachedToPath = false;
+                        return;
+                    }
                     return;
                 }
 
-
-                // Check for island change
-                var currentIsland = currentMap.GetCellIsland(current);
-                var currentIslandFound = false;
-                var versionCheckRange = 1;
-
+                // Check for sector change
+                var nodeIsValid = false;
+                int versionCheckDistance = 1;
                 if (progress.NodeIndex >= 0 && progress.NodeIndex < path.Nodes.Length) {
                     var node = path.Nodes[progress.NodeIndex];
                     var nodeCell = node.Position.Cell;
                     var nodeMap = Graph.CellToSectorMap(nodeCell, travelType);
                     var newIsland = nodeMap.GetCellIsland(nodeCell);
-                    var currentSectorFound = nodeMap.Index == currentMap.Index;
-                    currentIslandFound = currentSectorFound && newIsland == currentIsland;
+                    nodeIsValid = nodeMap.Index == startMap.Index && newIsland == startIsland;
                 }
 
-                // On island change, search path for current island
-                if (!currentIslandFound) {
+                // Connect to a sector
+                if (!nodeIsValid) {
+                    versionCheckDistance = 3;
 
-                    // Extend version checks when the island changes
-                    versionCheckRange = 3; 
-
-                    // Check the expected (next) island
+                    // Try checking next sector
                     if (progress.NodeIndex < path.Nodes.Length - 1) {
                         var newIndex = progress.NodeIndex + 1;
                         var newNode = path.Nodes[newIndex];
                         var newCell = newNode.Position.Cell;
                         var newMap = Graph.CellToSectorMap(newCell, travelType);
                         var newIsland = newMap.GetCellIsland(newCell);
-
-                        var currentSectorFound = newMap.Index == currentMap.Index;
-                        currentIslandFound = currentSectorFound && newIsland == currentIsland;
-
-                        if (currentIslandFound) {
+                        if (newMap.Index == startMap.Index && newIsland == startIsland) {
                             progress.NodeIndex = newIndex;
-                            currentSectorFound = true;
+                            nodeIsValid = true;
                         }
                     }
 
-                    // Fallback: Check all islands
-                    if (!currentIslandFound) {
+                    // Try checking all sectors
+                    if (!nodeIsValid) {
                         for (int index = 0; index < path.Nodes.Length; index++) {
                             var newNode = path.Nodes[index];
                             var newCell = newNode.Position.Cell;
                             var newMap = Graph.CellToSectorMap(newCell, travelType);
                             var newIsland = newMap.GetCellIsland(newCell);
-
-                            var currentSectorFound = newMap.Index == currentMap.Index;
-                            currentIslandFound = currentSectorFound && newIsland == currentIsland;
-
-                            if (currentIslandFound) {
+                            if (newMap.Index == startMap.Index && newIsland == startIsland) {
                                 progress.NodeIndex = index;
+                                nodeIsValid = true;
                                 break;
                             }
                         }
                     }
 
-                    // If the path doesn't contain my island, cancel the path
-                    if (!currentIslandFound) {
-                        progress.HasPath = false;
+                    // We are too far from the path. Detach!
+                    if (!nodeIsValid) {
+                        progress.IsAttachedToPath = false;
                         return;
                     }
 
                 }
 
-                // Check version of the current and nearby node
+                // Check path version
                 int minVersionCheck = math.max(progress.NodeIndex, 0);
-                int maxVersionCheck = math.min(progress.NodeIndex + versionCheckRange, path.Nodes.Length);
+                int maxVersionCheck = math.min(progress.NodeIndex + versionCheckDistance, path.Nodes.Length);
                 for (int i = minVersionCheck; i < maxVersionCheck; i++) {
                     var checkNode = path.Nodes[i];
                     var checkSector = Graph.CellToSector(checkNode.Position.Cell);
                     if (checkSector.Version != checkNode.Version) {
-                        progress.HasPath = false;
 
-                        // Invalidate the path
+                        // Invalidate old paths
                         ECB.AddComponent(sortKey, entity, new InvalidPathData {
                             Key = progress.PathKey,
                         });
+                        progress.IsAttachedToPath = false;
                         return;
                     }
                 }
@@ -218,36 +241,30 @@ namespace FlowTiles.ECS {
                 // Check flow version
                 var flowMap = Graph.CellToSector(pathNode.Position.Cell);
                 if (flow.FlowField.Version != flowMap.Version) {
-                    progress.HasPath = false;
+                    progress.IsAttachedToPath = false;
                     return;
                 }
 
                 // Find the flow direction
-                progress.HasFlow = true;
+                progress.IsAttachedToFlow = true;
                 progress.FlowKey = flowKey;
 
-                var cornerCell = Graph.Layout.GetMinCorner(currentMap.Index);
-                var smoothPos = position.ValueRO.Position;
-                var pos = position.ValueRO.PositionCell;
-                var flowDirection = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, smoothPos);
-
-                result.Direction = flowDirection;
-                if (pos.Equals(dest)) {
-                    return;
-                }
-
+                var cornerCell = Graph.Layout.GetMinCorner(flowMap.Index);
+                var flowDir = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, smoothPos);
                 var smoothing = goal.ValueRO.SmoothingMode;
 
-                // Lookahead one tile smoothing
+                result.Direction = flowDir;
+
+                // Apply smoothing: Lookahead one tile
                 if (smoothing != PathSmoothingMode.None) {
                     var nextPos = pos + result.Direction;
-                    var nextFlowDirection = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, nextPos);
-                    if (!nextFlowDirection.Equals(pos)) {
-                        result.Direction = math.normalizesafe(flowDirection + nextFlowDirection);
+                    var newFlowDir = FlowTileUtils.GetFlowDirection(ref flow, cornerCell, nextPos);
+                    if (!newFlowDir.Equals(pos)) {
+                        result.Direction = math.normalizesafe(flowDir + newFlowDir);
                     }
                 }
 
-                // Line of sight smoothing
+                // Apply smoothing: Line of sight
                 if (smoothing == PathSmoothingMode.LineOfSight) {
 
                     // Read previous line of sight results from cache
@@ -260,15 +277,14 @@ namespace FlowTiles.ECS {
                     if (LineCache.TryGetSightline(key1, version, out var line1) && line1.WasFound) {
                         var cell1 = CacheKeys.ToDestCell(key1, levelSize);
                         result.Direction = math.normalizesafe(cell1 - smoothPos);
-                    }
-                    else if (LineCache.TryGetSightline(key2, version, out var line2) && line2.WasFound) {
+                    } else if (LineCache.TryGetSightline(key2, version, out var line2) && line2.WasFound) {
                         var cell2 = CacheKeys.ToDestCell(key2, levelSize);
                         result.Direction = math.normalizesafe(cell2 - smoothPos);
                     }
 
                     // Queue new line of sight calculations
                     var maxNode = math.min(
-                        pathIndex + Constants.MAX_LINE_OF_SIGHT_LOOKAHEAD,
+                        pathIndex + PathfindingConstants.MAX_LINE_OF_SIGHT_LOOKAHEAD,
                         path.Nodes.Length);
 
                     for (int n = pathIndex; n < maxNode; n++) {
@@ -289,14 +305,14 @@ namespace FlowTiles.ECS {
                             for (int j = nodeGoal.MinCell.y; j <= nodeGoal.MaxCell.y; j++) {
 
                                 // We only want the shortest open line 
-                                var goalCell = new int2(i, j);
-                                var distSq = math.distancesq(pos, goalCell);
+                                var target = new int2(i, j);
+                                var distSq = math.distancesq(pos, target);
                                 if (distSq > bestDistanceSq) {
                                     continue;
                                 }
 
                                 // Checked cached line of sight result
-                                var losKey = CacheKeys.ToPathKey(pos, goalCell, levelSize, travelType);
+                                var losKey = CacheKeys.ToPathKey(pos, target, levelSize, travelType);
                                 var cacheHit = LineCache.TryGetSightline(losKey, version, out var sightline);
 
                                 if (cacheHit) {
@@ -313,7 +329,7 @@ namespace FlowTiles.ECS {
                                     progress.NewSightlineKey = losKey;
                                     ECB.AddComponent(sortKey, entity, new MissingSightlineData {
                                         Start = pos,
-                                        End = goalCell,
+                                        End = target,
                                         LevelSize = levelSize,
                                         TravelType = travelType,
                                     });
@@ -330,6 +346,7 @@ namespace FlowTiles.ECS {
                 }
 
             }
+
         }
 
     }

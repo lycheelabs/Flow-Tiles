@@ -11,6 +11,8 @@ namespace FlowTiles.ECS {
             Cache = new NativeHashMap<int4, CachedSightline>(capacity, Allocator.Persistent);
         }
 
+        public int Count => Cache.Count;
+
         /// <summary> Returns whether the given line has been cached </summary>
         public bool ContainsLine(int4 key, int graphVersion) {
             if (Cache.TryGetValue(key, out CachedSightline value)) {
@@ -23,7 +25,7 @@ namespace FlowTiles.ECS {
         public bool TryGetSightline(int4 key, int graphVersion, out CachedSightline existing) {
             existing = default;
             if (Cache.TryGetValue(key, out CachedSightline value)) {
-                if (graphVersion != value.GraphVersionAtSearch) {
+                if (graphVersion != value.GraphVersionAtSearch || !value.IsCreated) {
                     return false;
                 }
                 existing = value;
@@ -34,6 +36,7 @@ namespace FlowTiles.ECS {
 
         /// <summary> Caches a line with the given key </summary>
         public void SetSightline(int4 key, CachedSightline line) {
+            line.IsCreated = true;
             Cache[key] = line;
         }
 

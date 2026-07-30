@@ -14,7 +14,7 @@ namespace FlowTiles.Examples {
 
         void Awake() {
 
-            var map = new PathableLevel(LevelSize, LevelSize, Resolution);
+            var map = new PathableGrid(LevelSize, LevelSize, Resolution);
             LevelGeneration.InitialiseRandomWalls(map, LevelSize / 5);
 
             Level = new DemoLevel(map, Resolution);

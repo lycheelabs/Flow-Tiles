@@ -1,11 +1,17 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using UnityEngine;
 
 namespace FlowTiles.Utils {
 
     public static class TimerMessage {
 
-        private static Stack<Stopwatch> instances = new Stack<Stopwatch>();
+        private static Stack<Stopwatch> instances;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void ClearStaticData() {
+            instances = new Stack<Stopwatch>();
+        }
 
         public static void Start() {
             var instance = new Stopwatch();

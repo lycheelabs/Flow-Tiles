@@ -15,9 +15,15 @@ namespace FlowTiles.FlowFields {
 
         public int Version;
 
+        public bool IsCreated => Directions.IsCreated || Distances.IsCreated;
+
         public void Dispose() {
-            Directions.Dispose();
-            Distances.Dispose();
+            if (Directions.IsCreated) {
+                Directions.Dispose();
+            }
+            if (Distances.IsCreated) {
+                Distances.Dispose();
+            }
         }
 
         public float2 GetFlow (int x, int y) {

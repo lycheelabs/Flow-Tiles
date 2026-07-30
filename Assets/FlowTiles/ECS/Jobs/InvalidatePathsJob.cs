@@ -11,11 +11,12 @@ namespace FlowTiles.ECS {
 
         [BurstCompile]
         private void Execute(RefRO<InvalidPathData> data, Entity entity) {
-
+            
             PathCache.DisposePath(data.ValueRO.Key);
 
             // Remove component
             ECB.RemoveComponent<InvalidPathData>(entity);
+            
         }
     }
 

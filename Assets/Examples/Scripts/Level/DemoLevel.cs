@@ -32,32 +32,35 @@ namespace FlowTiles.Examples {
         public VisualiseMode VisualiseMode;
         public int VisualisedTravelType;
 
-        private PathableLevel Level;
+        private PathableGrid Level;
+        private PathableGraph Graph;
         private NativeField<float4> ColorData;
         private NativeField<float2> FlowData;
-        private PathableGraph Graph;
         private Entity Singleton;
 
         private List<SpawnAgentCommand> AgentSpawns = new List<SpawnAgentCommand>();
         private List<MovingWall> MovingWalls = new List<MovingWall>();
 
-        public DemoLevel (PathableLevel level, int resolution) {
+        public DemoLevel (PathableGrid level, int resolution) {
+
+            // Create the graph
             Level = level;
+            Graph = new PathableGraph(level);
             LevelSize = level.Size;
             Resolution = resolution;
 
-            // Create the graph
-            Graph = new PathableGraph(LevelSize.x, LevelSize.y, Resolution, level.NumTravelTypes);
+            // Initialise the system
+            PathfindingSystem.SetLevel(Level, Graph);
 
             // Allocate visualisation data
             ColorData = new NativeField<float4>(LevelSize, Allocator.Persistent, initialiseTo: 1);
             FlowData = new NativeField<float2>(LevelSize, Allocator.Persistent);
 
-            // Initialise the ECS simulation
+            // Create visualisation entity
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             Singleton = em.CreateEntity();
             em.AddComponent<LevelSetup>(Singleton);
-            em.AddComponent<GlobalPathfindingData>(Singleton);
+            //em.AddComponent<GlobalPathfindingData>(Singleton);
             em.SetComponentData(Singleton, new LevelSetup {
                 Size = LevelSize,
                 Walls = Level.Blocked,
@@ -67,11 +70,12 @@ namespace FlowTiles.Examples {
                 VisualiseColors = false,
                 Colors = ColorData,
             });
-            em.SetComponentData(Singleton, new GlobalPathfindingData {
+
+            /*em.SetComponentData(Singleton, new GlobalPathfindingData {
                 IsInitialised = true,
                 Level = level,
                 Graph = Graph,
-            });
+            });*/
 
             // Position the camera
             var halfViewedSize = ((float2)LevelSize - 1) / 2f;
@@ -239,8 +243,8 @@ namespace FlowTiles.Examples {
             var travelType = 0;
             var startFlow = CalculateFlow(Graph.CellToSectorMap(start, 0), new CellRect(start), 0);
             var destFlow = CalculateFlow(Graph.CellToSectorMap(dest, 0), new CellRect(dest), 0);
-            var pathfinder = new PortalPathfinder(Graph, Constants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
-            var path = new UnsafeList<PortalPathNode>(Constants.EXPECTED_MAX_PATH_LENGTH, Allocator.Temp);
+            var pathfinder = new PortalPathfinder(Graph, PathfindingConstants.EXPECTED_MAX_SEARCHED_NODES, Allocator.Temp);
+            var path = new UnsafeList<PortalPathNode>(PathfindingConstants.EXPECTED_MAX_PATH_LENGTH, Allocator.Temp);
 
             var success = pathfinder.TryFindPath(start, startFlow, dest, destFlow, travelType, ref path);
 
@@ -318,7 +322,7 @@ namespace FlowTiles.Examples {
                 Distances = dist,
             };
             var calculator = new FlowCalculator(task, Allocator.Temp);
-            calculator.Calculate(ref flow, ref dist);
+            calculator.Calculate(ref flow, ref dist, true);
             return task.ResultAsFlowField();
         }
 

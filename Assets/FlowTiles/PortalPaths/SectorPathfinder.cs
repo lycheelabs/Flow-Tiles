@@ -27,11 +27,17 @@ namespace FlowTiles.PortalPaths {
         }
 
         public void Dispose () {
-            Visited.Dispose();
-            Parent.Dispose();
-            GScore.Dispose();
-            Queue.Dispose();
-            Directions.Dispose();
+            if (Visited.IsCreated) Visited.Dispose();
+            if (Parent.IsCreated) Parent.Dispose();
+            if (GScore.IsCreated) GScore.Dispose();
+            if (Queue.IsCreated) Queue.Dispose();
+            if (Directions.IsCreated) Directions.Dispose();
+
+            Visited = default;
+            Parent = default;
+            GScore = default;
+            Queue = default;
+            Directions = default;
         }
 
         public int FindTravelCost(UnsafeField<byte> costs, int2 start, int2 dest) {
@@ -69,17 +75,34 @@ namespace FlowTiles.PortalPaths {
                         continue;
                     }
 
-                    // Check if the cell is passable
-                    var cost = costs[next.x, next.y];
-                    if (cost == PathableLevel.MAX_COST) {
+                    // Check if the cell is valid
+                    if (!costs.IsValidIndex(next.x, next.y)) {
                         continue;
                     }
 
-                    int temp_gCost = GScore[current] + cost;
+                    // Check if the cell is passable
+                    var cost = costs[next.x, next.y];
+                    if (cost == PathableGrid.MAX_COST) {
+                        continue;
+                    }
+
+                    // Get current cost safely
+                    if (!GScore.TryGetValue(current, out int currentCost)) {
+                        currentCost = 0; // Default if not found
+                    }
+                    
+                    // Check for integer overflow before addition
+                    int temp_gCost;
+                    if (currentCost > int.MaxValue - cost) {
+                        // Overflow would occur, skip this path
+                        continue;
+                    }
+                    temp_gCost = currentCost + cost;
 
                     //If new value is not better then do nothing
-                    if (GScore.TryGetValue(next, out int prev_gCost) && temp_gCost >= prev_gCost)
+                    if (GScore.TryGetValue(next, out int prev_gCost) && temp_gCost >= prev_gCost) {
                         continue;
+                    }
 
                     //Otherwise store the new value and add the destination into the queue
                     Parent[next] = current;

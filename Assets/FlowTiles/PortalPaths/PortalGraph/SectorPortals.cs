@@ -17,9 +17,9 @@ namespace FlowTiles.PortalPaths {
             Index = index;
             Bounds = bounds;
 
-            Roots = new UnsafeList<SectorRoot>(Constants.EXPECTED_MAX_ISLANDS, Allocator.Persistent);
-            Exits = new UnsafeList<Portal>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
-            ExitLookup = new UnsafeHashMap<int2, int>(Constants.EXPECTED_MAX_EXITS, Allocator.Persistent);
+            Roots = new UnsafeList<SectorRoot>(PathfindingConstants.EXPECTED_MAX_ISLANDS, Allocator.Persistent);
+            Exits = new UnsafeList<Portal>(PathfindingConstants.EXPECTED_MAX_EXITS, Allocator.Persistent);
+            ExitLookup = new UnsafeHashMap<int2, int>(PathfindingConstants.EXPECTED_MAX_EXITS, Allocator.Persistent);
         }
 
         public void Clear() {
@@ -33,17 +33,22 @@ namespace FlowTiles.PortalPaths {
         public void Dispose() {
             DisposePortals();
 
-            Roots.Dispose();
-            Exits.Dispose();
-            ExitLookup.Dispose();
+            if (Roots.IsCreated) Roots.Dispose();
+            if (Exits.IsCreated) Exits.Dispose();
+            if (ExitLookup.IsCreated) ExitLookup.Dispose();
         }
 
         private void DisposePortals() {
+            // CRITICAL FIX: Check if already disposed to prevent double-free
             for (int i = 0; i < Roots.Length; i++) {
-                Roots[i].Dispose();
+                if (Roots[i].Portals.IsCreated) {
+                    Roots[i].Dispose();
+                }
             }
             for (int i = 0; i < Exits.Length; i++) {
-                Exits[i].Dispose();
+                if (Exits[i].Edges.IsCreated) {
+                    Exits[i].Dispose();
+                }
             }
         }
 
@@ -59,12 +64,22 @@ namespace FlowTiles.PortalPaths {
         }
 
         public Portal GetExitPortalAt(int2 pos) {
-            var index = ExitLookup[pos];
+            if (!ExitLookup.TryGetValue(pos, out int index)) {
+                return default;
+            }
+            if (index < 0 || index >= Exits.Length) {
+                return default;
+            }
             return Exits[index];
         }
 
         public Portal SetExitPortalAt(int2 pos, Portal portal) {
-            var index = ExitLookup[pos];
+            if (!ExitLookup.TryGetValue(pos, out int index)) {
+                return default;
+            }
+            if (index < 0 || index >= Exits.Length) {
+                return default;
+            }
             return Exits[index] = portal;
         }
 
@@ -115,10 +130,10 @@ namespace FlowTiles.PortalPaths {
         /// Connect all exit portals inside this sector together (if their colors match)
         /// and build a root cluster
         /// </summary>
-        public void BuildInternalConnections (SectorData sector, SectorPathfinder pathfinder) {
+        public void BuildInternalConnections (SectorData sector, ref SectorPathfinder pathfinder) {
             SetPortalIslands(sector);
             BuildRootConnections(sector);
-            BuildExitConnections(sector, pathfinder);
+            BuildExitConnections(sector, ref pathfinder);
         }
 
         // --------------------------------------------------------------
@@ -127,7 +142,14 @@ namespace FlowTiles.PortalPaths {
             for (int i = 0; i < Exits.Length; i++) {
                 var portal = Exits[i];
                 var tile = portal.Center.Cell - Bounds.MinCell;
-                portal.Island = sector.Islands.Cells[tile.x, tile.y];
+                
+                // Bounds check for island access
+                if (tile.x >= 0 && tile.x < sector.Islands.Cells.Size.x && 
+                    tile.y >= 0 && tile.y < sector.Islands.Cells.Size.y) {
+                    portal.Island = sector.Islands.Cells[tile.x, tile.y];
+                } else {
+                    portal.Island = -1; // Invalid island
+                }
                 Exits[i] = portal;
             }
         }
@@ -151,7 +173,7 @@ namespace FlowTiles.PortalPaths {
 
         }
 
-        private void BuildExitConnections (SectorData sector, SectorPathfinder pathfinder) {
+        private void BuildExitConnections (SectorData sector, ref SectorPathfinder pathfinder) {
             int i, j;
             Portal n1, n2;
 
@@ -162,7 +184,7 @@ namespace FlowTiles.PortalPaths {
                 n1 = Exits[i];
                 for (j = i + 1; j < Exits.Length; ++j) {
                     n2 = Exits[j];
-                    if (n1.Island == n2.Island) {
+                    if (n1.Island == n2.Island && n1.Island > 0) { // Valid island check (exclude walls and unassigned)
                         TryConnectExits(ref n1, ref n2, sector.Costs, pathfinder);
                         Exits[i] = n1;
                         Exits[j] = n2;
@@ -175,8 +197,21 @@ namespace FlowTiles.PortalPaths {
             PortalEdge e1, e2;
 
             var corner = sector.Bounds.MinCell;
-            var pathCost = pathfinder.FindTravelCost(
-                sector.Cells, n1.Center.Cell - corner, n2.Center.Cell - corner);
+            var startCell = n1.Center.Cell - corner;
+            var endCell = n2.Center.Cell - corner;
+            
+            // SAFETY FIX: Enhanced bounds check for pathfinding
+            if (startCell.x < 0 || startCell.x >= sector.Cells.Size.x || startCell.y < 0 || startCell.y >= sector.Cells.Size.y ||
+                endCell.x < 0 || endCell.x >= sector.Cells.Size.x || endCell.y < 0 || endCell.y >= sector.Cells.Size.y) {
+                return false;
+            }
+            
+            // SAFETY FIX: Additional validation for UnsafeField access
+            if (!sector.Cells.IsValidIndex(startCell.x, startCell.y) || !sector.Cells.IsValidIndex(endCell.x, endCell.y)) {
+                return false;
+            }
+            
+            var pathCost = pathfinder.FindTravelCost(sector.Cells, startCell, endCell);
 
             if (pathCost > 0) {
                 e1 = new PortalEdge() {

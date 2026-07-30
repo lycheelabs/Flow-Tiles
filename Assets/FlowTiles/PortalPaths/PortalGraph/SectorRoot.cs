@@ -14,11 +14,13 @@ namespace FlowTiles.PortalPaths {
             SectorIndex = sector;
             Island = island;
             Continent = -1;
-            Portals = new UnsafeList<SectorCell>(Constants.EXPECTED_MAX_EDGES, Allocator.Persistent);
+            Portals = new UnsafeList<SectorCell>(PathfindingConstants.EXPECTED_MAX_EDGES, Allocator.Persistent);
         }
 
         public void Dispose() {
-            Portals.Dispose();
+            if (Portals.IsCreated) {
+                Portals.Dispose();
+            }
         }
 
         public bool ConnectsToPortal(Portal portal) {
