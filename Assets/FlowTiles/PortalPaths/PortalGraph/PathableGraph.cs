@@ -2,7 +2,7 @@
 using Unity.Collections;
 using Unity.Mathematics;
 
-namespace FlowTiles.PortalPaths {
+namespace LycheeLabs.FlowTiles.PortalPaths {
 
     public struct PathableGraph {
 

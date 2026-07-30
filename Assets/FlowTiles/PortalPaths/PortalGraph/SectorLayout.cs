@@ -1,7 +1,7 @@
 ﻿using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles.PortalPaths {
+namespace LycheeLabs.FlowTiles.PortalPaths {
 
     public struct SectorLayout {
 

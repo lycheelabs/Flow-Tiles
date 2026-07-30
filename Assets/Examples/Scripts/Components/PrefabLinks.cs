@@ -1,6 +1,6 @@
 ﻿using Unity.Entities;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
 
     public struct PrefabLinks : IComponentData {
 

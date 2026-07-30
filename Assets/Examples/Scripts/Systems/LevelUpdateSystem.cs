@@ -1,12 +1,12 @@
-using FlowTiles.ECS;
-using FlowTiles.Utils;
+using LycheeLabs.FlowTiles.ECS;
+using LycheeLabs.FlowTiles.Utils;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
 
     [BurstCompile]
     public partial struct LevelUpdateSystem : ISystem {

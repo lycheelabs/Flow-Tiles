@@ -1,11 +1,11 @@
 using System;
-using FlowTiles.ECS;
-using FlowTiles.PortalPaths;
-using FlowTiles.Utils;
+using LycheeLabs.FlowTiles.ECS;
+using LycheeLabs.FlowTiles.PortalPaths;
+using LycheeLabs.FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Mathematics;
 
-namespace FlowTiles.FlowFields {
+namespace LycheeLabs.FlowTiles.FlowFields {
 
     public struct FlowCalculator {
 

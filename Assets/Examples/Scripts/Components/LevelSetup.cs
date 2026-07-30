@@ -1,8 +1,8 @@
-﻿using FlowTiles.Utils;
+﻿using LycheeLabs.FlowTiles.Utils;
 using Unity.Entities;
 using Unity.Mathematics;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
     public struct LevelSetup : IComponentData {
 
         public int2 Size;

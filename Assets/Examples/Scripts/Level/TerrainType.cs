@@ -1,5 +1,5 @@
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
     public enum TerrainType {
         GROUND, WATER
     }

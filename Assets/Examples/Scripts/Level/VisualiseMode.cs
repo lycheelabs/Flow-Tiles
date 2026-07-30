@@ -1,4 +1,4 @@
-﻿namespace FlowTiles.Examples {
+﻿namespace LycheeLabs.FlowTiles.Examples {
     public enum VisualiseMode {
         None,
         OnlySectors,

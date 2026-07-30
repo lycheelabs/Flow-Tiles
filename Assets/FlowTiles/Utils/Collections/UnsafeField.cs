@@ -3,7 +3,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
-namespace FlowTiles.Utils {
+namespace LycheeLabs.FlowTiles.Utils {
 
     public struct UnsafeField<T> where T : unmanaged {
 

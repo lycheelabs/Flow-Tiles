@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 
-namespace FlowTiles.Utils {
+namespace LycheeLabs.FlowTiles.Utils {
 
     public static class TimerMessage {
 

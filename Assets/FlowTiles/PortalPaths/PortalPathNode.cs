@@ -1,7 +1,7 @@
-﻿using FlowTiles.ECS;
+﻿using LycheeLabs.FlowTiles.ECS;
 using Unity.Mathematics;
 
-namespace FlowTiles.PortalPaths {
+namespace LycheeLabs.FlowTiles.PortalPaths {
 
     public struct PortalPathNode {
 

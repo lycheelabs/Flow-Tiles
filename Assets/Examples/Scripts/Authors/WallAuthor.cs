@@ -2,7 +2,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
 
     public class WallAuthor : MonoBehaviour {
 

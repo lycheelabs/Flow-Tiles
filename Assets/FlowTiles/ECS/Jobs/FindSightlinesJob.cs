@@ -1,11 +1,11 @@
-﻿using FlowTiles.PortalPaths;
-using FlowTiles.Utils;
+﻿using LycheeLabs.FlowTiles.PortalPaths;
+using LycheeLabs.FlowTiles.Utils;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     [BurstCompile]
     public struct FindSightlinesJob : IJobFor {

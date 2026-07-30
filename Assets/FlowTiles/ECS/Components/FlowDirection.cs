@@ -1,7 +1,7 @@
 ﻿using Unity.Entities;
 using Unity.Mathematics;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     // This component returns the current flow direction for use by other systems
     public struct FlowDirection : IComponentData {

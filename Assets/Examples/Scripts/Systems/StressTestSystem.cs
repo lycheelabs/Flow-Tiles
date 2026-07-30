@@ -1,10 +1,10 @@
-using FlowTiles.ECS;
+using LycheeLabs.FlowTiles.ECS;
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
 
     [BurstCompile]
     public partial struct StressTestSystem : ISystem {

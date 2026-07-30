@@ -1,6 +1,6 @@
 using Unity.Collections;
 
-namespace FlowTiles.PortalPaths {
+namespace LycheeLabs.FlowTiles.PortalPaths {
 
     public struct ContinentPathfinder {
 

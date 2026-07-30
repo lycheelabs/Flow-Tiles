@@ -1,9 +1,9 @@
-using FlowTiles.PortalPaths;
+using LycheeLabs.FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     [BurstCompile]
     public struct RebuildGraphJob : IJobFor {

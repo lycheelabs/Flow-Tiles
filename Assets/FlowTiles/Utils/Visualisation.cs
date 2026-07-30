@@ -1,9 +1,9 @@
-﻿using FlowTiles.PortalPaths;
+﻿using LycheeLabs.FlowTiles.PortalPaths;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles {
+namespace LycheeLabs.FlowTiles {
 
     public static class Visualisation {
 

@@ -1,8 +1,8 @@
-using FlowTiles.ECS;
+using LycheeLabs.FlowTiles.ECS;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
 
     public class ChangingStressTestExampleManager : MonoBehaviour {
 

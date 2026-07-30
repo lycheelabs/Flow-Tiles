@@ -1,7 +1,7 @@
-﻿using FlowTiles.Utils;
+﻿using LycheeLabs.FlowTiles.Utils;
 using Unity.Mathematics;
 
-namespace FlowTiles.FlowFields {
+namespace LycheeLabs.FlowTiles.FlowFields {
 
     public struct FlowField {
 

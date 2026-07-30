@@ -1,10 +1,10 @@
 ﻿using Unity.Collections;
-using FlowTiles.Utils;
+using LycheeLabs.FlowTiles.Utils;
 using System;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles.PortalPaths {
+namespace LycheeLabs.FlowTiles.PortalPaths {
 
     /// <summary>
     /// Contains all the data representing a sub-region of the PathableGraph.

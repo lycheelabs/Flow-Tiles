@@ -2,7 +2,7 @@
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     public struct FlowCache {
 

@@ -1,6 +1,6 @@
 ﻿using Unity.Mathematics;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     public static class CacheKeys {
 

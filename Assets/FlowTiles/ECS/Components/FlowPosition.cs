@@ -2,7 +2,7 @@
 using Unity.Mathematics;
 using Unity.VisualScripting;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     // This component lets the pathfinder know which tile to search from.
     // Important: Update this every time the agent moves!

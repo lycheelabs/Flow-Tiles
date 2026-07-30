@@ -1,7 +1,7 @@
 ﻿using System;
-using FlowTiles.FlowFields;
+using LycheeLabs.FlowTiles.FlowFields;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
     public struct CachedFlowField {
 
         public bool IsPending;

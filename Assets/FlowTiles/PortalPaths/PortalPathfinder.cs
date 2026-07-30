@@ -1,10 +1,10 @@
-using FlowTiles.FlowFields;
-using FlowTiles.Utils;
+using LycheeLabs.FlowTiles.FlowFields;
+using LycheeLabs.FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
-namespace FlowTiles.PortalPaths {
+namespace LycheeLabs.FlowTiles.PortalPaths {
 
     public struct PortalPathfinder {
 

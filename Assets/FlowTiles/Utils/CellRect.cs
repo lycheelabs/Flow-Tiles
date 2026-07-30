@@ -1,6 +1,6 @@
 ﻿using Unity.Mathematics;
 
-namespace FlowTiles {
+namespace LycheeLabs.FlowTiles {
 
     public struct CellRect {
 

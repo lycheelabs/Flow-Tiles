@@ -1,7 +1,7 @@
 ﻿using System;
 using Unity.Mathematics;
 
-namespace FlowTiles.Utils {
+namespace LycheeLabs.FlowTiles.Utils {
     public struct PathfinderNode : IComparable<PathfinderNode> {
 
         public readonly int2 Position;

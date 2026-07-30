@@ -1,4 +1,4 @@
-# FlowTiles — Architecture Overview
+# LycheeLabs.FlowTiles ï¿½ Architecture Overview
 
 A Unity DOTS pathfinding system that combines **Hierarchical Pathfinding A\*** (HPA) with
 **per-tile flow fields**. Designed to scale to thousands of agents by spreading work across
@@ -39,8 +39,8 @@ The system has three layers of data:
 
 1. **Grid layer** (`PathableGrid`): the raw walkable/blocked map plus terrain & dynamic costs.
 2. **Graph layer** (`PathableGraph`): the level cut into fixed-size **sectors**
-   (`Resolution × Resolution`, but the row/column at the right/top edges of the level may
-   be clipped to the level bounds — see `SectorLayout.GetSectorBounds`). Each sector holds
+   (`Resolution ï¿½ Resolution`, but the row/column at the right/top edges of the level may
+   be clipped to the level bounds ï¿½ see `SectorLayout.GetSectorBounds`). Each sector holds
    *islands* (connected-component IDs), *exit portals* between adjacent sectors, and the
    *edges* between those portals. Used for the high-level HPA\* search.
 3. **Flow layer** (`FlowField`, one per `(sector, goal)`): a Dijkstra-derived 2D field of
@@ -63,28 +63,28 @@ frames.
   sector boundary marks both adjacent sectors.
 
 ### 2.2 `PathableGraph` and `GraphSector` (`PortalPaths/PortalGraph/`)
-- Layout (`SectorLayout`) gives each sector a fixed `Resolution × Resolution` cell area.
+- Layout (`SectorLayout`) gives each sector a fixed `Resolution ï¿½ Resolution` cell area.
 - One `GraphSector` per sector index, containing one `SectorData` per travel type:
-  - `SectorCosts` — local copy of cost grid for the sector.
-  - `SectorIslands` — connected-component map (per cell, 1?based island IDs).
-  - `SectorPortals` — `Roots[]` (one per island) and `Exits[]` (border crossings between
+  - `SectorCosts` ï¿½ local copy of cost grid for the sector.
+  - `SectorIslands` ï¿½ connected-component map (per cell, 1?based island IDs).
+  - `SectorPortals` ï¿½ `Roots[]` (one per island) and `Exits[]` (border crossings between
     sectors), plus an `ExitLookup` hashmap from cell ? exit index.
 - `Portal` holds its centre cell, its bounding rect, an `Island` (which island it belongs
   to inside the sector), a `Continent` (cross-sector connected-component ID assigned by
   the `ContinentPathfinder`), and a list of `PortalEdge` connections.
-- `PortalEdge.start/end` are `SectorCell`s — each edge either lives **inside** a sector
+- `PortalEdge.start/end` are `SectorCell`s ï¿½ each edge either lives **inside** a sector
   (connecting two of that sector's exits via an internal A\* through the cost grid) or
   **spans** two sectors (connecting an exit to its mirror exit in the neighbour).
 
 ### 2.3 Continents (`PortalPaths/ContinentPathfinder.cs`)
 After every full graph rebuild, `RecalculateContinents` BFSs through the portal graph and
 labels every root and every exit with a `Continent` id. Two cells with different continent
-ids are guaranteed to have no path between them — the agent can short-circuit immediately.
+ids are guaranteed to have no path between them ï¿½ the agent can short-circuit immediately.
 
 ### 2.4 `FlowField` (`FlowFields/FlowField.cs`)
 A small per-sector grid holding:
-- `Directions[x,y]` — `float2` flow vector to follow at that cell.
-- `Distances[x,y]` — int distance to the goal (used by `PortalPathfinder` to evaluate
+- `Directions[x,y]` ï¿½ `float2` flow vector to follow at that cell.
+- `Distances[x,y]` ï¿½ int distance to the goal (used by `PortalPathfinder` to evaluate
   edge weights for HPA\*).
 - A `Version` matching the `SectorData.Version` it was built from. Mismatch ? stale.
 
@@ -113,22 +113,22 @@ A small per-sector grid holding:
 All three caches are `NativeHashMap<int4, T>` keyed by deterministic `int4` keys built in
 `CacheKeys`.
 
-- **`PathCache`** — `CachedPortalPath`s. Bounded to `MAX_CACHED_PATHS` (500). Keeps a FIFO
+- **`PathCache`** ï¿½ `CachedPortalPath`s. Bounded to `MAX_CACHED_PATHS` (500). Keeps a FIFO
   `KeyQueue` so that when the cache is full, the oldest entry is evicted to make room.
   `WaitForCapacity` provides back-pressure: if the cache is full and the oldest entry is
   *still pending* (its job hasn't finished yet), `StorePath` is delayed so we don't churn.
   After a configurable timeout (3 s) a stuck pending entry is forcibly evicted.
-- **`FlowCache`** — `CachedFlowField`s. **Has no size cap and no LRU eviction**; the
+- **`FlowCache`** ï¿½ `CachedFlowField`s. **Has no size cap and no LRU eviction**; the
   initial `NativeHashMap` capacity (`EXPECTED_SECTORS_IN_MAP * 10` = 500) is just a
   starting hint and the map will grow as new flow keys arrive. The only mechanism that
   removes entries is `ClearSector(sectorIndex)`, called when a sector rebuilds.
   `Lookup[sectorIndex]` remembers all flow keys belonging to a sector for fast
   invalidation.
-- **`LineCache`** — `CachedSightline`s. Versioned by graph version.
+- **`LineCache`** ï¿½ `CachedSightline`s. Versioned by graph version.
 
 A `Cached*` value carries two boolean flags worth highlighting:
-- `HasBeenQueued` — a request has been sent for this key (avoids duplicate scheduling).
-- `IsPending` — the result is being computed in a job and shouldn't be read yet.
+- `HasBeenQueued` ï¿½ a request has been sent for this key (avoids duplicate scheduling).
+- `IsPending` ï¿½ the result is being computed in a job and shouldn't be read yet.
 
 ---
 
@@ -177,7 +177,7 @@ OnUpdate:
 1. **Agent side** (`FollowPathsJob`):
    - If both endpoints are in different continents ? `PathIsImpossible = true`, done.
    - Else build a deterministic `pathKey = (start, dest, levelSize, travelType)`.
-   - If `PathCache` doesn't contain `pathKey` ? add `MissingPathData{Start, Dest, …}`,
+   - If `PathCache` doesn't contain `pathKey` ? add `MissingPathData{Start, Dest, ï¿½}`,
      return.
    - Else if cached path is `IsPending` ? return (wait).
    - Else walk the path: locate the current `PortalPathNode` in the agent's sector, look
@@ -197,7 +197,7 @@ OnUpdate:
      cached (else enqueue `FlowRequest`s and skip this path for now), then build a
      `FindPathsJob.Task` and mark the path as `IsPending` in `PathCache`.
    - Schedule `FindPathsJob.ScheduleParallel(count, 1, dependency)`.
-   - Each task: `PortalPathfinder.TryFindPath(start, startField, dest, destField, …)`
+   - Each task: `PortalPathfinder.TryFindPath(start, startField, dest, destField, ï¿½)`
      does an A\* over the portal graph using flow distances at the endpoints, then writes
      the resulting `UnsafeList<PortalPathNode>` and a `Success` flag into the task.
 
@@ -225,8 +225,8 @@ Several places intentionally cap how much work runs per frame:
 | --- | --- | --- | --- |
 | Sector rebuild | `MAX_REBUILDS_PER_FRAME` (8) | `ScheduleSectorRebuild` | **yes** |
 | Path A\* tasks | `MAX_PATHFINDS_PER_FRAME` (32) | `ProcessPathRequests` | **yes** (loop bound + `PathRequests.Clear()` on overflow) |
-| Flow tile builds | `MAX_FLOWFIELDS_PER_FRAME` (16) | `ProcessFlowRequests` | **no** — only used as the initial `NativeList` capacity; the loop runs over `numRequests`, so all queued flows are scheduled in one frame |
-| Sightline checks | `MAX_SIGHTLINES_PER_FRAME` (128) | `ProcessLineRequests` | **no** — same as flows |
+| Flow tile builds | `MAX_FLOWFIELDS_PER_FRAME` (16) | `ProcessFlowRequests` | **no** ï¿½ only used as the initial `NativeList` capacity; the loop runs over `numRequests`, so all queued flows are scheduled in one frame |
+| Sightline checks | `MAX_SIGHTLINES_PER_FRAME` (128) | `ProcessLineRequests` | **no** ï¿½ same as flows |
 | LOS lookahead per agent | `MAX_LINE_OF_SIGHT_LOOKAHEAD` (5) | `FollowPathsJob` | yes |
 
 Agent recovery loop: `RequestPathsJob` *unconditionally* removes the `MissingPathData`
@@ -234,7 +234,7 @@ tag (whether it enqueued a request or not). On the next frame, if the path still
 cached, `FollowPathsJob` re-adds the tag. So unserviced agents drive their own retry by
 re-emitting the tag every frame until a placeholder or a real path appears in
 `PathCache`. This is the deferral mechanism that lets thousands of agents share a fixed
-compute budget — at the cost of recomputing `RequestPathsJob` work for every unsatisfied
+compute budget ï¿½ at the cost of recomputing `RequestPathsJob` work for every unsatisfied
 agent every frame.
 
 ---
@@ -259,7 +259,7 @@ agent every frame.
 - **`FlowCache` has no eviction**, so over a long session the hashmap keeps growing as
   new goal cells appear. Sectors being rebuilt is the only thing that removes entries.
 - **`FlowCalculator.Calculate` throws** if `GoalBounds` doesn't intersect the sector
-  bounds (line 81–83 of `FlowCalculator.cs`). Since this runs inside a Burst job,
+  bounds (line 81ï¿½83 of `FlowCalculator.cs`). Since this runs inside a Burst job,
   hitting it crashes the worker. It can be triggered if a stale `FlowRequest` outlives
   the sector geometry it was built against.
 - **`ContinentPathfinder` has hard-coded iteration caps of 9999** in two `while (true)`
@@ -270,7 +270,7 @@ agent every frame.
 
 - Every `SectorData` carries a monotonically-increasing `Version`. Every `PortalPathNode`
   and `FlowField` records the version of the sector it was built from.
-- `FollowPathsJob` checks the version of the next 1–3 nodes in its path; a mismatch
+- `FollowPathsJob` checks the version of the next 1ï¿½3 nodes in its path; a mismatch
   invalidates the path (`InvalidPathData` tag ? `InvalidatePathsJob` evicts it).
 - Empty (`!PathWasFound`) results are kept in cache and only re-tried after
   `Graph.GraphVersion` ticks, so impossible paths don't get retried every frame.

@@ -1,13 +1,13 @@
-﻿using FlowTiles.FlowFields;
-using FlowTiles.PortalPaths;
-using FlowTiles.Utils;
+﻿using LycheeLabs.FlowTiles.FlowFields;
+using LycheeLabs.FlowTiles.PortalPaths;
+using LycheeLabs.FlowTiles.Utils;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     [BurstCompile]
     public struct FindPathsJob : IJobFor {

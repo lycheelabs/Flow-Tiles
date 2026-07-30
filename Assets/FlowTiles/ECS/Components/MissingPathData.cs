@@ -1,7 +1,7 @@
 ﻿using Unity.Entities;
 using Unity.Mathematics;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
     public struct MissingPathData : IComponentData {
 
         public int2 Start;

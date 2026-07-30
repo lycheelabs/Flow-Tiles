@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
 
     public static class LevelGeneration {
 

@@ -1,10 +1,10 @@
 ﻿using System;
-using FlowTiles.PortalPaths;
-using FlowTiles.Utils;
+using LycheeLabs.FlowTiles.PortalPaths;
+using LycheeLabs.FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Mathematics;
 
-namespace FlowTiles {
+namespace LycheeLabs.FlowTiles {
 
     public struct TerrainCosts {
         public UnsafeArray<byte> Mapping;

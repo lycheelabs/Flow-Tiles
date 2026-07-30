@@ -1,8 +1,8 @@
-﻿using FlowTiles.ECS;
+﻿using LycheeLabs.FlowTiles.ECS;
 using Unity.Entities;
 using UnityEngine;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
     public class AgentAuthor : MonoBehaviour {
 
         public class MyBaker : Baker<AgentAuthor> {

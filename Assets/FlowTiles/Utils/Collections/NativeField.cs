@@ -2,7 +2,7 @@
 using Unity.Collections;
 using Unity.Mathematics;
 
-namespace FlowTiles.Utils {
+namespace LycheeLabs.FlowTiles.Utils {
 
     public struct NativeField<T> where T : unmanaged {
 

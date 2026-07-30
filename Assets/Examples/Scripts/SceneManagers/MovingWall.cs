@@ -1,7 +1,7 @@
 ﻿using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
     public class MovingWall {
 
         private CostStamp Stamp;

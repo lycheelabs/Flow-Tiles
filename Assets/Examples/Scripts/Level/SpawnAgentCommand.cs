@@ -1,7 +1,7 @@
-﻿using FlowTiles.ECS;
+﻿using LycheeLabs.FlowTiles.ECS;
 using Unity.Mathematics;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
 
     public struct SpawnAgentCommand {
         public int2 Cell;

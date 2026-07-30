@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace FlowTiles {
+namespace LycheeLabs.FlowTiles {
 
     public struct SectorFlags {
 

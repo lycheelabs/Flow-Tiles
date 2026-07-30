@@ -1,8 +1,8 @@
-﻿using FlowTiles.PortalPaths;
+﻿using LycheeLabs.FlowTiles.PortalPaths;
 using Unity.Burst;
 using Unity.Jobs;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     [BurstCompile]
     public struct RecalculateContinentsJob : IJob {

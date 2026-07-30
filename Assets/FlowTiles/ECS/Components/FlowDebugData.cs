@@ -1,7 +1,7 @@
-﻿using FlowTiles.FlowFields;
+﻿using LycheeLabs.FlowTiles.FlowFields;
 using Unity.Entities;
 
-namespace FlowTiles.ECS {
+namespace LycheeLabs.FlowTiles.ECS {
 
     // Only attach this component to visualise flow data for debugging
     public struct FlowDebugData : IComponentData {

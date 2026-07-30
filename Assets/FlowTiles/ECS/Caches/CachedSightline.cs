@@ -1,4 +1,4 @@
-﻿namespace FlowTiles.ECS {
+﻿namespace LycheeLabs.FlowTiles.ECS {
     public struct CachedSightline {
 
         public bool IsPending;

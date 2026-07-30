@@ -1,9 +1,9 @@
-using FlowTiles.ECS;
-using FlowTiles.PortalPaths;
+using LycheeLabs.FlowTiles.ECS;
+using LycheeLabs.FlowTiles.PortalPaths;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
-namespace FlowTiles {
+namespace LycheeLabs.FlowTiles {
 
     public static class FlowTileUtils {
 

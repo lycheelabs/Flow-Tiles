@@ -3,7 +3,7 @@ using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace FlowTiles.Utils {
+namespace LycheeLabs.FlowTiles.Utils {
 
     public struct UnsafeArray<T>  where T : unmanaged {
 

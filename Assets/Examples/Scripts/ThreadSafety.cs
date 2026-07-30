@@ -1,7 +1,7 @@
 using System.Threading;
 using Unity.Entities;
 
-namespace FlowTiles {
+namespace LycheeLabs.FlowTiles {
     public static class ThreadSafety {
 
         private static int mainThreadId;

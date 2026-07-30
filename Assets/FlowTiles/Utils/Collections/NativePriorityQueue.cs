@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace FlowTiles.Utils {
+namespace LycheeLabs.FlowTiles.Utils {
 
     /// <summary>
     /// Priority Queue implementation with item data stored in native containers. 

@@ -1,7 +1,7 @@
-﻿using FlowTiles.ECS;
-using FlowTiles.FlowFields;
-using FlowTiles.PortalPaths;
-using FlowTiles.Utils;
+﻿using LycheeLabs.FlowTiles.ECS;
+using LycheeLabs.FlowTiles.FlowFields;
+using LycheeLabs.FlowTiles.PortalPaths;
+using LycheeLabs.FlowTiles.Utils;
 using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -10,7 +10,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
-namespace FlowTiles.Examples {
+namespace LycheeLabs.FlowTiles.Examples {
 
     public class DemoLevel {
 

@@ -26,7 +26,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 
-namespace FlowTiles.Utils {
+namespace LycheeLabs.FlowTiles.Utils {
 
     public unsafe struct NativeStack<T> : IDisposable where T : struct {
         private NativeArray<T> m_Array;

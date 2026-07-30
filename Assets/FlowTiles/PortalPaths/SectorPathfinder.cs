@@ -1,9 +1,9 @@
-﻿using FlowTiles.Utils;
+﻿using LycheeLabs.FlowTiles.Utils;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace FlowTiles.PortalPaths {
+namespace LycheeLabs.FlowTiles.PortalPaths {
 
     public struct SectorPathfinder {
 
